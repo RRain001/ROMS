@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -53,16 +54,32 @@ def _discover_default_case_name() -> str:
 def resolve_case_context(case_name: str | None = None, case_root: str | Path | None = None) -> CaseContext:
     resolved_name = _normalize_case_name(case_name or os.environ.get("ROMS_CASE_NAME"))
     resolved_root = case_root or os.environ.get("ROMS_CASE_ROOT")
-    project_root = Path(resolved_root).expanduser().resolve() if resolved_root else (PROJECTS_ROOT / resolved_name).resolve()
     case_dir = (CASES_ROOT / resolved_name).resolve()
+    config_dir = case_dir / "config"
+    if resolved_root:
+        project_root = Path(resolved_root).expanduser().resolve()
+    else:
+        project_root = _configured_case_root(config_dir / "project_parameters.json", resolved_name)
     return CaseContext(
         case_name=resolved_name,
         case_root=project_root,
         case_dir=case_dir,
-        config_dir=case_dir / "config",
+        config_dir=config_dir,
         docs_dir=case_dir / "docs",
         manifests_dir=case_dir / "manifests",
     )
+
+
+def _configured_case_root(project_params_path: Path, case_name: str) -> Path:
+    if project_params_path.exists():
+        try:
+            params = json.loads(project_params_path.read_text())
+            configured = params.get("paths", {}).get("case_root") or params.get("paths", {}).get("project_dir")
+            if configured:
+                return Path(os.path.expandvars(os.path.expanduser(str(configured)))).resolve()
+        except json.JSONDecodeError:
+            pass
+    return (PROJECTS_ROOT / case_name).resolve()
 
 
 def export_case_context(context: CaseContext) -> CaseContext:

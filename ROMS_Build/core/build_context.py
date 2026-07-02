@@ -171,15 +171,17 @@ def resolve_build_context(
         available = ", ".join(sorted(variants_cfg))
         raise SystemExit(f"unknown build variant {variant_name!r}; available: {available}")
     variant_cfg = variants_cfg[variant_name]
+    case_cpp_name = project_params.get("case", {}).get("cpp_name") or case_context.case_name.upper()
+    roms_application = variant_cfg.get("roms_application") or case_cpp_name
     header_dir = case_context.case_root / variant_cfg.get("header_dir", "run")
     analytical_dir = case_context.case_root / variant_cfg.get("analytical_dir", variant_cfg.get("header_dir", "run"))
     fallback_binary_paths = tuple(case_context.case_root / rel for rel in variant_cfg.get("fallback_binary_paths", []))
     build_variant = BuildVariant(
         name=variant_name,
-        roms_application=variant_cfg.get("roms_application") or project_params.get("case", {}).get("cpp_name") or case_context.case_name.upper(),
+        roms_application=roms_application,
         header_dir=header_dir,
         analytical_dir=analytical_dir,
-        header_name=variant_cfg.get("header_name") or f"{(variant_cfg.get('roms_application') or case_context.case_name).lower()}.h",
+        header_name=variant_cfg.get("header_name") or f"{case_cpp_name.lower()}.h",
         executable_name=variant_cfg.get("executable_name") or "romsM",
         fallback_binary_paths=fallback_binary_paths,
     )

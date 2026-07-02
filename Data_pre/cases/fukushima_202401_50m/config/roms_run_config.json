@@ -22,8 +22,8 @@
       "fallback_binaries": [
         "run/romsM_external"
       ],
-      "infile": "ocean_fukushima_202401_smoke.in",
-      "log_file": "smoke_run.log"
+      "infile": "ocean_fukushima_202401_50m_smoke.in",
+      "log_file": "smoke.log"
     },
     "pilot_1day": {
       "build_variant": "external",
@@ -32,7 +32,7 @@
         "run/romsM_external"
       ],
       "infile": "ocean_fukushima_202401_50m_pilot_1day.in",
-      "log_file": "pilot_1day_run.log"
+      "log_file": "pilot_1day.log"
     },
     "pilot_month": {
       "build_variant": "external",
@@ -40,8 +40,8 @@
       "fallback_binaries": [
         "run/romsM_external"
       ],
-      "infile": "ocean_fukushima_202401_pilot.in",
-      "log_file": "pilot_run.log"
+      "infile": "ocean_fukushima_202401_50m_pilot.in",
+      "log_file": "pilot_month.log"
     }
   }
 }

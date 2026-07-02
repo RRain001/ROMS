@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from netCDF4 import Dataset
+
 
 FRAMEWORK_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = FRAMEWORK_ROOT.parent
@@ -24,6 +26,7 @@ for path in (DATA_PRE_CORE, ROMS_BUILD_CORE):
         sys.path.insert(0, str(path))
 
 from case_context import export_case_context, resolve_case_context  # type: ignore  # noqa: E402
+from case_naming import run_infile_name  # type: ignore  # noqa: E402
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -85,10 +88,14 @@ class RunContext:
 @dataclass(frozen=True)
 class InfileMetadata:
     my_app_cpp: str | None
+    lm: int | None
+    mm: int | None
+    n: int | None
     ntile_i: int | None
     ntile_j: int | None
     referenced_tokens: tuple[str, ...]
     optional_tokens: tuple[str, ...]
+    keyed_tokens: tuple[tuple[str, str, bool], ...]
 
     @property
     def required_np(self) -> int | None:
@@ -159,7 +166,8 @@ def resolve_run_context(
     mode_cfg = run_modes[mode_name]
     default_launcher = _expand_text(str(run_config.get("launcher", "mpirun"))) or "mpirun"
     default_np = int(run_config.get("np", 1))
-    infile = case_context.case_root / "run" / mode_cfg["infile"]
+    infile_name = mode_cfg.get("infile") or run_infile_name("pilot" if mode_name == "pilot_month" else mode_name)
+    infile = case_context.case_root / "run" / infile_name
     log_file = case_context.case_root / project_params.get("paths", {}).get("logs_dir", "logs") / mode_cfg.get("log_file", f"{mode_name}.log")
     run_mode = RunMode(
         name=mode_name,
@@ -245,13 +253,17 @@ def _parse_int(text: str, key: str) -> int | None:
 
 def parse_infile_metadata(path: Path) -> InfileMetadata:
     text = path.read_text(errors="ignore")
-    required_tokens, optional_tokens = _extract_input_file_tokens(text)
+    required_tokens, optional_tokens, keyed_tokens = _extract_input_file_tokens(text)
     return InfileMetadata(
         my_app_cpp=_parse_scalar(text, "MyAppCPP"),
+        lm=_parse_int(text, "Lm"),
+        mm=_parse_int(text, "Mm"),
+        n=_parse_int(text, "N"),
         ntile_i=_parse_int(text, "NtileI"),
         ntile_j=_parse_int(text, "NtileJ"),
         referenced_tokens=tuple(sorted(set(required_tokens))),
         optional_tokens=tuple(sorted(set(optional_tokens))),
+        keyed_tokens=tuple(keyed_tokens),
     )
 
 
@@ -263,13 +275,13 @@ REQUIRED_INPUT_FILE_KEYS = {
     "TIDENAME",
     "RIVERNAME",
     "FRCNAME",
+    "SSFNAME",
 }
 
 
 OPTIONAL_INPUT_FILE_KEYS = {
     "CLMNAME",
     "NUDNAME",
-    "SSFNAME",
     "APARNAM",
     "SPOSNAM",
 }
@@ -279,11 +291,13 @@ def _extract_file_tokens(fragment: str) -> list[str]:
     return re.findall(r"([A-Za-z0-9_./-]+\.(?:nc|yaml|csv|dat))", fragment)
 
 
-def _extract_input_file_tokens(text: str) -> tuple[list[str], list[str]]:
+def _extract_input_file_tokens(text: str) -> tuple[list[str], list[str], list[tuple[str, str, bool]]]:
     required_tokens: list[str] = []
     optional_tokens: list[str] = []
+    keyed_tokens: list[tuple[str, str, bool]] = []
     collecting = False
     current_optional = False
+    current_key = ""
     for raw_line in text.splitlines():
         line = strip_comment(raw_line).strip()
         if not line:
@@ -293,16 +307,21 @@ def _extract_input_file_tokens(text: str) -> tuple[list[str], list[str]]:
             key = lhs.replace("=", "").strip().upper()
             collecting = key in REQUIRED_INPUT_FILE_KEYS or key in OPTIONAL_INPUT_FILE_KEYS
             current_optional = key in OPTIONAL_INPUT_FILE_KEYS
+            current_key = key if collecting else ""
             if collecting:
                 target = optional_tokens if current_optional else required_tokens
-                target.extend(_extract_file_tokens(rhs))
+                tokens = _extract_file_tokens(rhs)
+                target.extend(tokens)
+                keyed_tokens.extend((key, token, current_optional) for token in tokens)
                 collecting = line.endswith("\\") or line.endswith("|")
             continue
         if collecting:
             target = optional_tokens if current_optional else required_tokens
-            target.extend(_extract_file_tokens(line))
+            tokens = _extract_file_tokens(line)
+            target.extend(tokens)
+            keyed_tokens.extend((current_key, token, current_optional) for token in tokens)
             collecting = line.endswith("\\") or line.endswith("|")
-    return required_tokens, optional_tokens
+    return required_tokens, optional_tokens, keyed_tokens
 
 
 def resolve_binary_path(context: RunContext) -> Path | None:
@@ -330,13 +349,90 @@ def resolve_referenced_path(context: RunContext, token: str) -> Path | None:
     return None
 
 
+def _dim(ds: Dataset, name: str) -> int | None:
+    return len(ds.dimensions[name]) if name in ds.dimensions else None
+
+
+def _first_keyed_path(context: RunContext, metadata: InfileMetadata, key: str) -> Path | None:
+    for item_key, token, _ in metadata.keyed_tokens:
+        if item_key == key:
+            return resolve_referenced_path(context, token)
+    return None
+
+
+def _keyed_paths(context: RunContext, metadata: InfileMetadata, key: str) -> list[Path]:
+    paths: list[Path] = []
+    for item_key, token, _ in metadata.keyed_tokens:
+        if item_key != key:
+            continue
+        resolved = resolve_referenced_path(context, token)
+        if resolved is not None:
+            paths.append(resolved)
+    return paths
+
+
+def validate_dimension_consistency(context: RunContext, metadata: InfileMetadata) -> list[str]:
+    issues: list[str] = []
+    vertical_n = context.project_params.get("vertical", {}).get("N")
+    try:
+        expected_n = int(vertical_n)
+    except (TypeError, ValueError):
+        expected_n = None
+    if expected_n is not None and metadata.n != expected_n:
+        issues.append(f"vertical mismatch: infile N={metadata.n}, case vertical.N={expected_n}")
+
+    grid_path = _first_keyed_path(context, metadata, "GRDNAME")
+    grid_dims: dict[str, int | None] = {}
+    if grid_path is not None:
+        try:
+            with Dataset(grid_path) as grid:
+                grid_dims = {
+                    "xi_rho": _dim(grid, "xi_rho"),
+                    "eta_rho": _dim(grid, "eta_rho"),
+                    "xi_u": _dim(grid, "xi_u"),
+                    "eta_u": _dim(grid, "eta_u"),
+                    "xi_v": _dim(grid, "xi_v"),
+                    "eta_v": _dim(grid, "eta_v"),
+                }
+        except Exception as exc:  # noqa: BLE001
+            issues.append(f"cannot open grid NetCDF {grid_path}: {type(exc).__name__}: {exc}")
+    if grid_dims:
+        expected_lm = grid_dims.get("xi_rho") - 2 if grid_dims.get("xi_rho") is not None else None
+        expected_mm = grid_dims.get("eta_rho") - 2 if grid_dims.get("eta_rho") is not None else None
+        if metadata.lm != expected_lm:
+            issues.append(f"grid mismatch: infile Lm={metadata.lm}, GRDNAME xi_rho-2={expected_lm}")
+        if metadata.mm != expected_mm:
+            issues.append(f"grid mismatch: infile Mm={metadata.mm}, GRDNAME eta_rho-2={expected_mm}")
+
+    for key in ("ININAME", "BRYNAME", "RIVERNAME", "SSFNAME"):
+        for path in _keyed_paths(context, metadata, key):
+            try:
+                with Dataset(path) as ds:
+                    if expected_n is not None and _dim(ds, "s_rho") is not None and _dim(ds, "s_rho") != expected_n:
+                        issues.append(f"{key} vertical mismatch: {path.name} s_rho={_dim(ds, 's_rho')}, case vertical.N={expected_n}")
+                    for dim_name, expected in grid_dims.items():
+                        actual = _dim(ds, dim_name)
+                        if actual is not None and expected is not None and actual != expected:
+                            issues.append(f"{key} grid mismatch: {path.name} {dim_name}={actual}, GRDNAME {dim_name}={expected}")
+            except Exception as exc:  # noqa: BLE001
+                issues.append(f"cannot open {key} NetCDF {path}: {type(exc).__name__}: {exc}")
+    for key in ("FRCNAME", "TIDENAME"):
+        for path in _keyed_paths(context, metadata, key):
+            try:
+                with Dataset(path):
+                    pass
+            except Exception as exc:  # noqa: BLE001
+                issues.append(f"cannot open {key} NetCDF {path}: {type(exc).__name__}: {exc}")
+    return issues
+
+
 def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileMetadata]:
     issues: list[str] = []
     warnings: list[str] = []
     infile = context.mode.infile
     if not infile.exists():
         issues.append(f"missing run input file: {infile}")
-        return issues, warnings, InfileMetadata(None, None, None, (), ())
+        return issues, warnings, InfileMetadata(None, None, None, None, None, None, (), (), ())
     metadata = parse_infile_metadata(infile)
     binary = resolve_binary_path(context)
     if binary is None:
@@ -345,6 +441,8 @@ def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileM
         issues.append(f"executable is not runnable: {binary}")
 
     expected_cpp = str(context.project_params.get("case", {}).get("cpp_name") or "").strip()
+    if expected_cpp and not metadata.my_app_cpp:
+        issues.append(f"MyAppCPP missing: case expects {expected_cpp}")
     if metadata.my_app_cpp and metadata.my_app_cpp != expected_cpp:
         issues.append(f"MyAppCPP mismatch: infile={metadata.my_app_cpp}, case expects {expected_cpp}")
     required_np = metadata.required_np
@@ -362,6 +460,7 @@ def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileM
         primary = context.paths.bin_dir / context.mode.binary_name
         if not primary.exists() and binary is not None:
             warnings.append(f"using fallback executable path: {binary}")
+    issues.extend(validate_dimension_consistency(context, metadata))
     return issues, warnings, metadata
 
 
@@ -375,13 +474,7 @@ def launch_command(context: RunContext, binary: Path) -> str:
 def execute_run(context: RunContext, *, dry_run: bool = False) -> int:
     ensure_case_layout(context)
     issues, _, _ = validate_prereqs(context)
-    if issues:
-        for issue in issues:
-            print(issue, file=sys.stderr)
-        return 1
-    binary = resolve_binary_path(context)
-    assert binary is not None
-    context.mode.log_file.parent.mkdir(parents=True, exist_ok=True)
+    binary = resolve_binary_path(context) or (context.paths.bin_dir / context.mode.binary_name)
     script_lines = [
         "set -euo pipefail",
         *shell_prelude(context),
@@ -390,8 +483,25 @@ def execute_run(context: RunContext, *, dry_run: bool = False) -> int:
     ]
     script = "\n".join(script_lines)
     if dry_run:
+        print(f"case: {context.case_name}")
+        print(f"mode: {context.mode.name}")
+        print(f"run_dir: {context.paths.run_dir}")
+        print(f"infile: {context.mode.infile}")
+        print(f"binary: {binary}")
+        print(f"log_file: {context.mode.log_file}")
         print(script)
+        if issues:
+            for issue in issues:
+                print(issue, file=sys.stderr)
+            return 1
         return 0
+    if issues:
+        for issue in issues:
+            print(issue, file=sys.stderr)
+        return 1
+    binary = resolve_binary_path(context)
+    assert binary is not None
+    context.mode.log_file.parent.mkdir(parents=True, exist_ok=True)
     with context.mode.log_file.open("w") as handle:
         result = subprocess.run(
             ["bash", "-lc", script],

@@ -17,7 +17,6 @@ from ocean_source_utils import build_ocean_source_paths, glorys_center_time, loa
 from roms_preprocessing_utils import ROOT, load_project_params, resolve_grid_path
 
 
-TEMPLATE = Path("/home/lhy/ROMS/roms_work/roms_upwelling.in")
 RUN_DIR = ROOT / "run"
 PILOT_MONTH_OUT = RUN_DIR / run_infile_name("pilot")
 PILOT_1DAY_OUT = RUN_DIR / run_infile_name("pilot_1day")
@@ -49,6 +48,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--atm-path", default=None)
     parser.add_argument("--rad-path", default=None)
     parser.add_argument("--dt-seconds", type=float, default=None)
+    parser.add_argument("--template", default=None, help="Override ROMS .in template path")
+    parser.add_argument("--dry-run", "--dry-equivalent", action="store_true", help="Resolve and print planned output without writing files")
     return parser.parse_args()
 
 
@@ -290,9 +291,10 @@ def glorys_source_paths_for_args(args: argparse.Namespace):
 def base_text(
     args: argparse.Namespace,
     params: dict,
+    template_path: Path,
     grid_name: str,
-    lm: int,
-    mm: int,
+    lm: int | None,
+    mm: int | None,
     dt_seconds: float,
     mode: str,
     forcing_mode: str,
@@ -327,12 +329,14 @@ def base_text(
     ntimes = max(1, int(round(seconds / dt_seconds)))
     nhis = max(1, int(round(time_cfg["output_interval_hours"] * 3600 / dt_seconds))) if mode != "smoke" else 5
     nrst = nhis if mode == "smoke" else max(1, int(round(24 * 3600 / dt_seconds)))
-    text = TEMPLATE.read_text()
+    text = template_path.read_text()
     text = f"! Draft {naming.slug} {mode} input derived from roms_upwelling.in. Not production-ready.\n" + text
     text = replace_line(text, "TITLE", title)
     text = replace_line(text, "MyAppCPP", naming.cpp_name)
-    text = replace_line(text, "Lm", f"{lm}            ! pilot interior XI points")
-    text = replace_line(text, "Mm", f"{mm}            ! pilot interior ETA points")
+    lm_value = str(lm) if lm is not None else "UNRESOLVED"
+    mm_value = str(mm) if mm is not None else "UNRESOLVED"
+    text = replace_line(text, "Lm", f"{lm_value}            ! pilot interior XI points")
+    text = replace_line(text, "Mm", f"{mm_value}            ! pilot interior ETA points")
     text = replace_line(text, "N", f"{int(vertical['N'])}             ! vertical levels")
     text = replace_line(text, "NPT", "1             ! one HTO-like inert passive tracer")
     text = replace_line(text, "Vtransform", str(int(vertical["Vtransform"])))
@@ -467,13 +471,55 @@ def write_mode(path: Path, text: str) -> None:
     print(f"wrote {path}")
 
 
+def print_mode_plan(path: Path, text: str, grid_note: str | None = None) -> None:
+    print(f"would write {path}")
+    if grid_note:
+        print(f"  grid_status: unresolved ({grid_note.splitlines()[0]})")
+    for key in ("TITLE", "MyAppCPP", "Lm", "Mm", "N", "NTIMES", "DT", "GRDNAME", "ININAME", "BRYNAME", "TIDENAME", "SSFNAME"):
+        match = re.search(rf"^\s*{re.escape(key)}\s*(?:==|=)\s*(.+?)\s*$", text, flags=re.MULTILINE)
+        if match:
+            print(f"  {key}: {match.group(1).strip()}")
+
+
+def resolve_template_path(args: argparse.Namespace, params: dict) -> Path:
+    candidates: list[Path] = []
+    if args.template:
+        candidates.append(Path(args.template).expanduser())
+    configured = params.get("paths", {}).get("roms_in_template")
+    if configured:
+        candidates.append(Path(str(configured)).expanduser())
+    roms_src = params.get("paths", {}).get("roms_src")
+    if roms_src:
+        candidates.append(Path(str(roms_src)).expanduser() / "ROMS" / "External" / "roms_upwelling.in")
+    candidates.append(ROOT / "run" / "roms_upwelling.in")
+
+    for candidate in candidates:
+        path = candidate if candidate.is_absolute() else ROOT / candidate
+        if path.exists():
+            return path.resolve()
+    formatted = "\n".join(f"- {candidate}" for candidate in candidates)
+    raise SystemExit(f"ROMS .in template not found; checked:\n{formatted}")
+
+
 def main() -> None:
     args = parse_args()
     ocean_source = normalize_ocean_source(args.ocean_source)
     params = load_project_params()
-    grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
+    template_path = resolve_template_path(args, params)
+    grid_note = None
+    try:
+        grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
+    except SystemExit as exc:
+        if not args.dry_run:
+            raise
+        grid_note = str(exc)
+        grid_path = Path(args.grid).expanduser().resolve() if args.grid else ROOT / "input" / "roms_grid_bathy_500m_smoothed.nc"
     grid_name = relative_to_run(grid_path)
-    lm, mm = grid_metrics(grid_path)
+    if grid_path.exists():
+        lm, mm = grid_metrics(grid_path)
+    else:
+        lm = None
+        mm = None
     default_dt = float(params["time"]["pilot_dt_seconds"])
     if args.mode == "smoke":
         dt_seconds = args.dt_seconds or 10.0
@@ -497,8 +543,12 @@ def main() -> None:
 
     for mode in modes:
         local_forcing_mode = "analytical" if mode == "smoke" and args.forcing_mode == "external" else args.forcing_mode
-        text = base_text(args, params, grid_name, lm, mm, dt_seconds, mode, local_forcing_mode)
-        write_mode(output_path_for_mode(mode, ocean_source, args), text)
+        text = base_text(args, params, template_path, grid_name, lm, mm, dt_seconds, mode, local_forcing_mode)
+        path = output_path_for_mode(mode, ocean_source, args)
+        if args.dry_run:
+            print_mode_plan(path, text, grid_note)
+        else:
+            write_mode(path, text)
 
 
 if __name__ == "__main__":

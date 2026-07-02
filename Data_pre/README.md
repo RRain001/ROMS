@@ -51,4 +51,10 @@ Case selection:
 - optional `--case-root /home/lhy/ROMS/projects/<case_name>`
 - fallback default case is read from `cases/default_case.txt`
 
+Configuration source:
+
+- runtime configuration is read from `Data_pre/cases/<case_name>/config`
+- `projects/<case_name>/config`, when present, is a legacy snapshot and is not used by the shared entrypoints
+- the standard ocean source is HYCOM unless a command explicitly opts into another source
+
 To add a new region, start from `cases/_template/` and create a matching project directory under `/home/lhy/ROMS/projects/`.

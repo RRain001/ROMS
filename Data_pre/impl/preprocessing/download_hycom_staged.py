@@ -10,13 +10,14 @@ from pathlib import Path
 
 import xarray as xr
 
-from case_naming import load_case_naming
-from staged_data_utils import config_path_to_abs, get_bbox, get_time_window, load_download_config
 
-
-CORE_PATH = Path("/home/lhy/ROMS/Data_pre/core")
+DATA_PRE_ROOT = Path(__file__).resolve().parents[2]
+CORE_PATH = DATA_PRE_ROOT / "core"
 if str(CORE_PATH) not in sys.path:
     sys.path.insert(0, str(CORE_PATH))
+
+from case_naming import load_case_naming  # noqa: E402
+from staged_data_utils import config_path_to_abs, get_bbox, get_time_window, load_download_config  # noqa: E402
 
 from hycom_3d_download_core import (  # noqa: E402
     COMMON_STEP_HOURS,
@@ -28,7 +29,6 @@ from hycom_3d_download_core import (  # noqa: E402
 )
 
 
-DEFAULT_CONFIG = str(Path("/home/lhy/ROMS/Data_pre/core").parents[0] / "cases" / "default_case.txt")
 DATA_PRE_RENAMES = {
     "ssh": "zeta",
     "sal": "salt",

@@ -16,12 +16,26 @@
   },
   "default_run_mode": "pilot_1day",
   "run_modes": {
+    "smoke": {
+      "build_variant": "default",
+      "binary": "romsM_example_region_202401",
+      "fallback_binaries": [],
+      "infile": "ocean_example_region_202401_smoke.in",
+      "log_file": "smoke.log"
+    },
     "pilot_1day": {
       "build_variant": "default",
       "binary": "romsM_example_region_202401",
       "fallback_binaries": [],
       "infile": "ocean_example_region_202401_pilot_1day.in",
-      "log_file": "pilot_1day_run.log"
+      "log_file": "pilot_1day.log"
+    },
+    "pilot_month": {
+      "build_variant": "default",
+      "binary": "romsM_example_region_202401",
+      "fallback_binaries": [],
+      "infile": "ocean_example_region_202401_pilot.in",
+      "log_file": "pilot_month.log"
     }
   }
 }

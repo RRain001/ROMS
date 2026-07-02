@@ -60,12 +60,13 @@ def load_project_params() -> dict:
     params = json.loads(PARAMS.read_text())
     if "case" not in params:
         project_cfg = params.get("project", {})
+        default_name = project_cfg.get("name", ROOT.name)
         params["case"] = {
-            "name": project_cfg.get("name", ROOT.name),
-            "slug": project_cfg.get("name", ROOT.name),
-            "title": project_cfg.get("description", ROOT.name),
-            "cpp_name": project_cfg.get("name", ROOT.name).upper(),
-            "description": project_cfg.get("description", ROOT.name),
+            "name": default_name,
+            "slug": default_name,
+            "title": project_cfg.get("description", default_name),
+            "cpp_name": default_name.upper().replace("-", "_"),
+            "description": project_cfg.get("description", default_name),
         }
     if "naming" not in params:
         slug = params["case"].get("slug", ROOT.name)
@@ -75,6 +76,16 @@ def load_project_params() -> dict:
             "source_csv_name": f"{slug}_source_discharge.csv",
             "source_timeseries_name": f"{slug}_source_hourly.csv",
         }
+    params.setdefault("ocean", {})
+    params["ocean"].setdefault("default_source", "hycom")
+    params.setdefault("vertical", {})
+    params["vertical"].setdefault("N", 30)
+    params["vertical"].setdefault("theta_s", 5.0)
+    params["vertical"].setdefault("theta_b", 0.8)
+    params["vertical"].setdefault("Tcline_m", 50.0)
+    params["vertical"].setdefault("Hmin_m", 10.0)
+    params["vertical"].setdefault("Vtransform", 2)
+    params["vertical"].setdefault("Vstretching", 4)
     return params
 
 

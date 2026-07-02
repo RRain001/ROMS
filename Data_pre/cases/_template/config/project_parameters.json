@@ -33,6 +33,9 @@
     "Vtransform": 2,
     "Vstretching": 4
   },
+  "ocean": {
+    "default_source": "hycom"
+  },
   "shoreline": {
     "enabled": true,
     "dataset": "GSHHG",

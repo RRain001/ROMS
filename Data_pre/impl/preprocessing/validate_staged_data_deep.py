@@ -13,9 +13,10 @@ import numpy as np
 from netCDF4 import Dataset
 
 from case_context import get_case_config_path
+from case_naming import load_case_naming, staged_atmosphere_name, staged_ocean_name, staged_source_csv_name, staged_tides_name
 from ocean_source_utils import build_glorys_paths, glorys_center_time, load_glorys_config, normalize_ocean_source
 from roms_preprocessing_utils import load_grid, resolve_grid_path
-from staged_data_utils import ROOT, candidate_first, get_bbox, get_time_window, load_download_config
+from staged_data_utils import ROOT, candidate_first, config_path_to_abs, get_bbox, get_time_window, load_download_config
 
 DEFAULT_CONFIG = get_case_config_path("staged_download_config.json")
 DEFAULT_MANIFEST = get_case_config_path("staged_data_manifest.csv")
@@ -57,7 +58,7 @@ def inferred_coord_tolerance(values: np.ndarray) -> float:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default=None)
-    parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
+    parser.add_argument("--manifest", default=None, help="Optional legacy manifest override")
     parser.add_argument("--skip-categories", default="")
     parser.add_argument("--ocean-source", default="hycom")
     return parser.parse_args()
@@ -76,6 +77,26 @@ def read_manifest(path: Path) -> list[Requirement]:
                 )
             )
     return rows
+
+
+def hycom_requirements(config: dict) -> list[Requirement]:
+    paths_cfg = config.get("paths", {})
+
+    def configured_or_default(key: str, default_rel: str) -> Path:
+        if key in paths_cfg:
+            return config_path_to_abs(config, key)
+        return ROOT / default_rel
+
+    naming = load_case_naming()
+    return [
+        Requirement("bathymetry", True, ROOT / "data" / "raw" / "bathymetry" / naming.grid_subset_name, ["lon", "lat", "elevation"]),
+        Requirement("ocean_initial", True, configured_or_default("ocean_initial", f"data/raw/ocean/{staged_ocean_name('hycom', 'initial')}"), ["zeta", "u", "v", "temp", "salt"]),
+        Requirement("ocean_boundary", True, configured_or_default("ocean_boundary", f"data/raw/ocean/{staged_ocean_name('hycom', 'boundary')}"), ["zeta", "u", "v", "temp", "salt"]),
+        Requirement("atmosphere", True, configured_or_default("era5_atm", f"data/raw/atmosphere/{staged_atmosphere_name('atm')}"), ["Uwind", "Vwind", "Pair", "Tair", "Qair", "rain"]),
+        Requirement("radiation", True, configured_or_default("era5_rad", f"data/raw/atmosphere/{staged_atmosphere_name('rad')}"), ["swrad", "lwrad", "lwrad_down"]),
+        Requirement("tides", True, configured_or_default("tides", f"data/raw/tides/{staged_tides_name()}"), ["tide_period", "tide_Eamp", "tide_Ephase"]),
+        Requirement("source_discharge", True, configured_or_default("source_discharge", f"data/raw/source/{staged_source_csv_name()}"), ["time", "discharge_m3_s", "scenario"]),
+    ]
 
 
 def validate_rectilinear_netcdf(
@@ -257,7 +278,7 @@ def main() -> None:
         config = load_download_config(args.config or str(DEFAULT_CONFIG))
         bbox = get_active_grid_bbox() or get_bbox(config)
         window = effective_window(config)
-        requirements = read_manifest(Path(args.manifest))
+        requirements = read_manifest(Path(args.manifest)) if args.manifest else hycom_requirements(config)
     else:
         config = load_glorys_config(args.config)
         bbox = get_active_grid_bbox()

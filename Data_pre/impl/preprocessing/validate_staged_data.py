@@ -15,8 +15,9 @@ from pathlib import Path
 from netCDF4 import Dataset
 
 from case_context import get_case_config_path, get_case_root
-from case_naming import load_case_naming
+from case_naming import load_case_naming, staged_atmosphere_name, staged_ocean_name, staged_source_csv_name, staged_tides_name
 from ocean_source_utils import build_glorys_paths, load_glorys_config, normalize_ocean_source
+from staged_data_utils import config_path_to_abs, load_download_config
 
 ROOT = get_case_root()
 DEFAULT_MANIFEST = get_case_config_path("staged_data_manifest.csv")
@@ -48,6 +49,68 @@ def read_manifest(path: Path) -> list[Requirement]:
     return rows
 
 
+def hycom_requirements(config_path: str | None) -> list[Requirement]:
+    config = load_download_config(config_path)
+    paths_cfg = config.get("paths", {})
+
+    def configured_or_default(key: str, default_rel: str) -> Path:
+        if key in paths_cfg:
+            return config_path_to_abs(config, key)
+        return ROOT / default_rel
+
+    return [
+        Requirement(
+            "bathymetry",
+            True,
+            ROOT / "data" / "raw" / "bathymetry" / load_case_naming().grid_subset_name,
+            ["lon", "lat", "elevation"],
+            "GEBCO-style elevation, positive land and negative ocean",
+        ),
+        Requirement(
+            "ocean_initial",
+            True,
+            configured_or_default("ocean_initial", f"data/raw/ocean/{staged_ocean_name('hycom', 'initial')}"),
+            ["zeta", "u", "v", "temp", "salt"],
+            "HYCOM-like source data before ROMS interpolation",
+        ),
+        Requirement(
+            "ocean_boundary",
+            True,
+            configured_or_default("ocean_boundary", f"data/raw/ocean/{staged_ocean_name('hycom', 'boundary')}"),
+            ["zeta", "u", "v", "temp", "salt"],
+            "Open-boundary source data covering the active case window",
+        ),
+        Requirement(
+            "atmosphere",
+            True,
+            configured_or_default("era5_atm", f"data/raw/atmosphere/{staged_atmosphere_name('atm')}"),
+            ["Uwind", "Vwind", "Pair", "Tair", "Qair", "rain"],
+            "ERA5 atmospheric forcing source or preprocessed ROMS forcing",
+        ),
+        Requirement(
+            "radiation",
+            True,
+            configured_or_default("era5_rad", f"data/raw/atmosphere/{staged_atmosphere_name('rad')}"),
+            ["swrad", "lwrad", "lwrad_down"],
+            "Radiation forcing source or preprocessed ROMS forcing",
+        ),
+        Requirement(
+            "tides",
+            True,
+            configured_or_default("tides", f"data/raw/tides/{staged_tides_name()}"),
+            ["tide_period", "tide_Eamp", "tide_Ephase"],
+            "TPXO-derived staged tidal elevation amplitudes/phases",
+        ),
+        Requirement(
+            "source_discharge",
+            True,
+            configured_or_default("source_discharge", f"data/raw/source/{staged_source_csv_name()}"),
+            ["time", "discharge_m3_s", "scenario"],
+            "Numerical carrier discharge for converting annual release to Bq/m3",
+        ),
+    ]
+
+
 def check_netcdf(path: Path, variables: list[str]) -> tuple[bool, list[str]]:
     if not path.exists():
         return False, [f"missing file: {path}"]
@@ -77,17 +140,20 @@ def glorys_requirements(config_path: str | None) -> list[Requirement]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
+    parser.add_argument("--manifest", default=None, help="Optional legacy manifest override")
     parser.add_argument("--ocean-source", default="hycom")
     parser.add_argument("--config", default=None)
     args = parser.parse_args()
 
     ocean_source = normalize_ocean_source(args.ocean_source)
     if ocean_source == "hycom":
-        manifest = Path(args.manifest)
-        if not manifest.exists():
-            raise SystemExit(f"manifest not found: {manifest}")
-        requirements = read_manifest(manifest)
+        manifest = Path(args.manifest) if args.manifest else None
+        if manifest is not None:
+            if not manifest.exists():
+                raise SystemExit(f"manifest not found: {manifest}")
+            requirements = read_manifest(manifest)
+        else:
+            requirements = hycom_requirements(args.config)
     else:
         manifest = None
         requirements = glorys_requirements(args.config)
@@ -96,6 +162,8 @@ def main() -> None:
 
     print(f"{load_case_naming().title} staged data validation")
     print(f"ocean_source: {ocean_source}")
+    if ocean_source == "hycom" and manifest is None:
+        print("requirements: generated from staged_download_config.json and case naming")
     if manifest is not None:
         print(f"manifest: {manifest}")
     print()

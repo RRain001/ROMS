@@ -32,9 +32,10 @@ def main() -> None:
     )
     print(f"case: {context.case_name}")
     print(f"variant: {context.variant.name}")
-    for candidate in resolve_binary_candidates(context):
+    for index, candidate in enumerate(resolve_binary_candidates(context)):
         exists = candidate.exists()
-        print(f"candidate: {candidate}")
+        role = "primary" if index == 0 else "fallback"
+        print(f"{role}_candidate: {candidate}")
         print(f"  exists: {exists}")
         if not exists:
             continue

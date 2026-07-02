@@ -6,13 +6,14 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 from pathlib import Path
+import re
 
 import numpy as np
 from netCDF4 import Dataset, num2date
 
 from case_naming import roms_input_name
 from ocean_source_utils import build_glorys_paths, load_glorys_config, normalize_ocean_source
-from roms_preprocessing_utils import ROOT, resolve_grid_path
+from roms_preprocessing_utils import ROOT, load_vertical_config, resolve_grid_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,6 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rad", default=str(ROOT / "input" / roms_input_name("rad")))
     parser.add_argument("--tides", default=str(ROOT / "input" / roms_input_name("tides")))
     parser.add_argument("--river", default=str(ROOT / "input" / "roms_rivers_production.nc"))
+    parser.add_argument("--infile", default=None, help="Optional ROMS .in file for Lm/Mm/N consistency checks")
     return parser.parse_args()
 
 
@@ -106,6 +108,70 @@ def check_boundary_content(path: Path) -> list[str]:
     return issues
 
 
+def _dim(ds: Dataset, name: str) -> int | None:
+    return len(ds.dimensions[name]) if name in ds.dimensions else None
+
+
+def check_dimension_consistency(grid_path: Path, ini_path: Path, bry_path: Path, river_path: Path) -> list[str]:
+    issues: list[str] = []
+    if not grid_path.exists():
+        return issues
+    vertical = load_vertical_config()
+    with Dataset(grid_path) as grid:
+        grid_dims = {
+            "xi_rho": _dim(grid, "xi_rho"),
+            "eta_rho": _dim(grid, "eta_rho"),
+            "xi_u": _dim(grid, "xi_u"),
+            "eta_u": _dim(grid, "eta_u"),
+            "xi_v": _dim(grid, "xi_v"),
+            "eta_v": _dim(grid, "eta_v"),
+        }
+
+    for label, path in (("ini", ini_path), ("bry", bry_path)):
+        if not path.exists():
+            continue
+        with Dataset(path) as ds:
+            if _dim(ds, "s_rho") != vertical.N:
+                issues.append(f"{label}: s_rho={_dim(ds, 's_rho')} does not match configured vertical.N={vertical.N}")
+            for dim_name, expected in grid_dims.items():
+                actual = _dim(ds, dim_name)
+                if actual is not None and expected is not None and actual != expected:
+                    issues.append(f"{label}: {dim_name}={actual} does not match grid {dim_name}={expected}")
+
+    if river_path.exists():
+        with Dataset(river_path) as ds:
+            if _dim(ds, "s_rho") != vertical.N:
+                issues.append(f"river: s_rho={_dim(ds, 's_rho')} does not match configured vertical.N={vertical.N}")
+    return issues
+
+
+def _parse_infile_int(text: str, key: str) -> int | None:
+    match = re.search(rf"^\s*{re.escape(key)}\s*=+\s*([0-9]+)", text, flags=re.MULTILINE)
+    return int(match.group(1)) if match else None
+
+
+def check_infile_dimensions(infile_path: Path, grid_path: Path) -> list[str]:
+    issues: list[str] = []
+    if not infile_path.exists():
+        return [f"infile: missing file {infile_path}"]
+    vertical = load_vertical_config()
+    text = infile_path.read_text(errors="ignore")
+    n = _parse_infile_int(text, "N")
+    lm = _parse_infile_int(text, "Lm")
+    mm = _parse_infile_int(text, "Mm")
+    if n != vertical.N:
+        issues.append(f"infile: N={n} does not match configured vertical.N={vertical.N}")
+    if grid_path.exists():
+        with Dataset(grid_path) as grid:
+            expected_lm = _dim(grid, "xi_rho") - 2 if _dim(grid, "xi_rho") is not None else None
+            expected_mm = _dim(grid, "eta_rho") - 2 if _dim(grid, "eta_rho") is not None else None
+        if lm != expected_lm:
+            issues.append(f"infile: Lm={lm} does not match grid xi_rho-2={expected_lm}")
+        if mm != expected_mm:
+            issues.append(f"infile: Mm={mm} does not match grid eta_rho-2={expected_mm}")
+    return issues
+
+
 def main() -> None:
     args = parse_args()
     ocean_source = normalize_ocean_source(args.ocean_source)
@@ -134,6 +200,9 @@ def main() -> None:
         if label in {"ini", "atm", "rad", "river"}:
             issues.extend(check_required_variables_finite(path, required, label))
     issues.extend(check_boundary_content(bry_path))
+    issues.extend(check_dimension_consistency(Path(grid_path), ini_path, bry_path, Path(args.river)))
+    if args.infile:
+        issues.extend(check_infile_dimensions(Path(args.infile), Path(grid_path)))
 
     if not issues:
         issues.extend(check_time_range(ini_path, "ocean_time"))
@@ -148,7 +217,11 @@ def main() -> None:
 
     for message in issues:
         print(message)
-    fatal = [message for message in issues if "missing" in message or "cannot open" in message or "expected" in message]
+    fatal = [
+        message
+        for message in issues
+        if "missing" in message or "cannot open" in message or "expected" in message or "does not match" in message
+    ]
     if fatal:
         raise SystemExit(2)
 

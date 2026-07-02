@@ -33,6 +33,7 @@ def main() -> None:
     print(f"infile: {context.mode.infile}")
     print(f"binary: {resolve_binary_path(context) or 'missing'}")
     print(f"MyAppCPP: {metadata.my_app_cpp or 'missing'}")
+    print(f"Lm/Mm/N: {metadata.lm if metadata.lm is not None else 'unknown'}/{metadata.mm if metadata.mm is not None else 'unknown'}/{metadata.n if metadata.n is not None else 'unknown'}")
     print(f"required_np: {metadata.required_np if metadata.required_np is not None else 'unknown'}")
     if warnings:
         print("warnings:")
