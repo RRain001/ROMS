@@ -1,0 +1,27 @@
+{
+  "launcher": "$HOME/intel/oneapi/mpi/2021.9.0/bin/mpirun",
+  "np": 4,
+  "shell_init_files": [
+    "$HOME/intel/oneapi/setvars.sh"
+  ],
+  "library_paths": [
+    "$HOME/roms_build/install/lib",
+    "$HOME/intel/oneapi/compiler/2023.1.0/linux/compiler/lib/intel64_lin"
+  ],
+  "env": {},
+  "build_layout": {
+    "build_root": "build",
+    "build_dir": "build/Build_romsM",
+    "bin_dir": "bin"
+  },
+  "default_run_mode": "pilot_1day",
+  "run_modes": {
+    "pilot_1day": {
+      "build_variant": "default",
+      "binary": "romsM_example_region_202401",
+      "fallback_binaries": [],
+      "infile": "ocean_example_region_202401_pilot_1day.in",
+      "log_file": "pilot_1day_run.log"
+    }
+  }
+}

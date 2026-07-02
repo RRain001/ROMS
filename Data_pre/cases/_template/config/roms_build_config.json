@@ -1,0 +1,38 @@
+{
+  "default_variant": "default",
+  "compiler": {
+    "fort": "ifort",
+    "use_mpi": true,
+    "use_mpif90": true,
+    "which_mpi": "intel",
+    "use_large": true,
+    "static": true,
+    "exec": true,
+    "use_netcdf4": true,
+    "use_parallel_io": true,
+    "use_debug": false
+  },
+  "paths": {
+    "roms_src": "/home/lhy/ROMS/roms_src/roms",
+    "oneapi_setvars": "$HOME/intel/oneapi/setvars.sh",
+    "my_local_paths": "$HOME/ROMS/roms_work/my_local_paths.sh",
+    "netcdf_root": "$HOME/roms_build/install",
+    "hdf5_root": "$HOME/roms_build/install",
+    "mpi_root": "$HOME/intel/oneapi/mpi/2021.9.0"
+  },
+  "build": {
+    "build_subdir": "build/Build_romsM",
+    "bin_subdir": "bin",
+    "clean_first_default": true
+  },
+  "variants": {
+    "default": {
+      "roms_application": "EXAMPLE_REGION_202401",
+      "header_dir": "run",
+      "analytical_dir": "run",
+      "header_name": "example_region_202401.h",
+      "executable_name": "romsM_example_region_202401",
+      "fallback_binary_paths": []
+    }
+  }
+}

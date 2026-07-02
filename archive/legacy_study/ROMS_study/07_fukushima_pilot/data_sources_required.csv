@@ -1,0 +1,9 @@
+priority,category,target_file,variables,source_status,notes
+1,bathymetry_grid,input/roms_grid_real_500m_or_250m.nc,"h mask_rho pm pn angle lon_rho lat_rho",missing,"Replace idealized 100 m all-water grid"
+2,ocean_initial,input/roms_ini_20240101.nc,"zeta u v ubar vbar temp salt dye_01",missing,"Use ocean analysis/reanalysis at start time"
+3,ocean_boundary,input/roms_bdy_202401.nc,"zeta_* u_* v_* ubar_* vbar_* temp_* salt_* dye_01_*",missing,"Open-boundary time series for January 2024"
+4,ocean_climatology,input/roms_clm_202401.nc,"zeta u v ubar vbar temp salt",optional_missing,"Needed only if selected CPP and *.in options require CLM"
+5,atmosphere,input/roms_atm_202401.nc,"Uwind Vwind Pair Tair Qair rain EminusP",missing,"Wind direction/speed must be converted to components"
+6,radiation,input/roms_rad_202401.nc,"swrad lwrad lwrad_down",missing,"Coordinate with heat-flux CPP settings"
+7,tides,input/roms_tides_202401.nc,"tide_Eamp tide_Ephase tide_Cmax tide_Cmin tide_Cangle tide_Cphase",missing,"Generate after real grid is ready"
+8,source,input/roms_rivers_production.nc,"river_transport river_dye_01 river_temp river_salt",pilot_only,"Current format works but discharge is placeholder 1 m3/s"

@@ -1,0 +1,76 @@
+{
+  "case": {
+    "name": "example_region_202401",
+    "slug": "example_region_202401",
+    "title": "Example Region January 2024 ROMS case",
+    "cpp_name": "EXAMPLE_REGION_202401",
+    "description": "Template configuration for a new ROMS preprocessing case"
+  },
+  "domain": {
+    "lon_min": 0.0,
+    "lon_max": 1.0,
+    "lat_min": 0.0,
+    "lat_max": 1.0,
+    "target_resolution_m": 1000.0,
+    "pilot_resolution_m": 5000.0,
+    "source_lon": 0.5,
+    "source_lat": 0.5
+  },
+  "time": {
+    "start": "2024-01-01T00:00:00",
+    "stop": "2024-01-31T23:00:00",
+    "source_interval_hours": 1,
+    "pilot_dt_seconds": 60,
+    "pilot_ndtfast": 20,
+    "output_interval_hours": 1
+  },
+  "vertical": {
+    "N": 30,
+    "theta_s": 5.0,
+    "theta_b": 0.8,
+    "Tcline_m": 50.0,
+    "Hmin_m": 10.0,
+    "Vtransform": 2,
+    "Vstretching": 4
+  },
+  "shoreline": {
+    "enabled": true,
+    "dataset": "GSHHG",
+    "version": "2.3.7",
+    "format": "shapefile",
+    "base_dir": "/workspace/GSHHG/gshhg-shp-2/GSHHS_shp",
+    "default_resolution": "h",
+    "nearshore_resolution": "f",
+    "level": 1,
+    "use_for_mask_cleanup": true,
+    "use_for_bathymetry": false,
+    "bbox_margin_deg": 0.05
+  },
+  "source": {
+    "kind": "point_release",
+    "radionuclide": "passive tracer",
+    "annual_release_TBq_per_year": 1.0,
+    "calendar_year_days": 366,
+    "release_mode": "constant_rate_over_leap_year",
+    "tracer_count": 1,
+    "roms_cpp_option": "T_PASSIVE",
+    "roms_NPT": 1,
+    "nominal_discharge_m3_s": 1.0,
+    "units_for_inventory": "Bq",
+    "units_for_flux": "Bq s-1"
+  },
+  "naming": {
+    "grid_subset_name": "gebco_example_region_202401.nc",
+    "roms_prefix": "example_region_202401",
+    "source_csv_name": "example_region_202401_source_discharge.csv",
+    "source_timeseries_name": "example_region_202401_source_hourly.csv"
+  },
+  "paths": {
+    "roms_src": "/home/lhy/ROMS/roms_src/roms",
+    "case_root": "/home/lhy/ROMS/projects/example_region_202401",
+    "global_bathymetry": "/workspace/GEBCO/GEBCO_2026.nc",
+    "input_dir": "input",
+    "output_dir": "output",
+    "logs_dir": "logs"
+  }
+}

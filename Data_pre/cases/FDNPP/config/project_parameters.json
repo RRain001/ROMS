@@ -1,0 +1,82 @@
+{
+  "case": {
+    "name": "FDNPP",
+    "slug": "fdnpp",
+    "title": "FDNPP January 2025 ROMS case",
+    "cpp_name": "FDNPP_202501",
+    "description": "FDNPP HTO-like passive tracer ROMS case for January 2025"
+  },
+  "project": {
+    "name": "FDNPP",
+    "description": "FDNPP HTO-like passive tracer ROMS case for January 2025",
+    "created": "2026-06-29"
+  },
+  "domain": {
+    "lon_min": 140.88,
+    "lon_max": 142.0,
+    "lat_min": 37.0,
+    "lat_max": 37.84,
+    "target_resolution_m": 50.0,
+    "pilot_resolution_m": 500.0,
+    "source_lon": 141.032,
+    "source_lat": 37.421
+  },
+  "time": {
+    "start": "2025-01-01T00:00:00",
+    "stop": "2025-02-01T00:00:00",
+    "source_interval_hours": 1,
+    "pilot_dt_seconds": 60,
+    "pilot_ndtfast": 20,
+    "output_interval_hours": 1
+  },
+  "vertical": {
+    "N": 30,
+    "theta_s": 5.0,
+    "theta_b": 0.8,
+    "Tcline_m": 50.0,
+    "Hmin_m": 10.0,
+    "Vtransform": 2,
+    "Vstretching": 4
+  },
+  "shoreline": {
+    "enabled": true,
+    "dataset": "GSHHG",
+    "version": "2.3.7",
+    "format": "shapefile",
+    "base_dir": "/workspace/GSHHG/gshhg-shp-2/GSHHS_shp",
+    "default_resolution": "h",
+    "nearshore_resolution": "f",
+    "level": 1,
+    "use_for_mask_cleanup": true,
+    "use_for_bathymetry": false,
+    "bbox_margin_deg": 0.05
+  },
+  "source": {
+    "kind": "point_release",
+    "radionuclide": "HTO-like passive tracer",
+    "annual_release_TBq_per_year": 22.0,
+    "calendar_year_days": 365,
+    "release_mode": "constant_rate_over_year",
+    "tracer_count": 1,
+    "roms_cpp_option": "T_PASSIVE",
+    "roms_NPT": 1,
+    "nominal_discharge_m3_s": 1.0,
+    "units_for_inventory": "Bq",
+    "units_for_flux": "Bq s-1"
+  },
+  "naming": {
+    "grid_subset_name": "gebco_fdnpp.nc",
+    "roms_prefix": "fdnpp",
+    "source_csv_name": "fdnpp_source_discharge.csv",
+    "source_timeseries_name": "fdnpp_source_hourly.csv"
+  },
+  "paths": {
+    "roms_src": "/home/lhy/ROMS/roms_src/roms",
+    "case_root": "/home/lhy/ROMS/projects/FDNPP",
+    "project_dir": "/home/lhy/ROMS/projects/FDNPP",
+    "global_bathymetry": "/workspace/GEBCO/GEBCO_2026.nc",
+    "input_dir": "input",
+    "output_dir": "output",
+    "logs_dir": "logs"
+  }
+}
