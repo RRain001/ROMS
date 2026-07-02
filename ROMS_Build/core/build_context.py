@@ -103,6 +103,17 @@ class BuildContext:
     def default_clean_first(self) -> bool:
         return bool(self.build.get("clean_first_default", True))
 
+    @property
+    def default_jobs(self) -> int | None:
+        value = self.build.get("jobs", self.build.get("make_jobs"))
+        if value is None:
+            return None
+        try:
+            jobs = int(value)
+        except (TypeError, ValueError):
+            return None
+        return jobs if jobs > 0 else None
+
 
 def parse_cli(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -284,9 +295,10 @@ def probe_shell_command(context: BuildContext, command: str) -> subprocess.Compl
 
 def execute_build(context: BuildContext, *, clean: bool, jobs: int | None = None, dry_run: bool = False) -> int:
     ensure_case_layout(context)
+    effective_jobs = jobs or context.default_jobs
     make_cmd = "make"
-    if jobs and jobs > 0:
-        make_cmd = f"make -j {jobs}"
+    if effective_jobs and effective_jobs > 0:
+        make_cmd = f"make -j {effective_jobs}"
     script_lines = ["set -euo pipefail", *shell_prelude(context), f"cd {shlex.quote(str(context.roms_src))}"]
     if clean:
         script_lines.append("make clean")

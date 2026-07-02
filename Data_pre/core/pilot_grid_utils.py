@@ -15,6 +15,7 @@ from case_context import get_case_root
 ROOT = get_case_root()
 DEFAULT_RAW_GRID = ROOT / "input" / "roms_grid_bathy_500m.nc"
 DEFAULT_MASKCLEAN_GRID = ROOT / "input" / "roms_grid_bathy_500m_maskclean.nc"
+DEFAULT_MASKCLEAN_SMOOTHED_GRID = ROOT / "input" / "roms_grid_bathy_500m_maskclean_smoothed.nc"
 DEFAULT_SMOOTHED_GRID = ROOT / "input" / "roms_grid_bathy_500m_smoothed.nc"
 
 
@@ -44,6 +45,8 @@ def resolve_active_pilot_grid(grid_arg: str | None = None) -> Path:
             raise SystemExit(f"grid file not found: {grid_path}")
         return grid_path
 
+    if DEFAULT_MASKCLEAN_SMOOTHED_GRID.exists():
+        return DEFAULT_MASKCLEAN_SMOOTHED_GRID
     if DEFAULT_SMOOTHED_GRID.exists():
         return DEFAULT_SMOOTHED_GRID
     if DEFAULT_MASKCLEAN_GRID.exists():
@@ -53,7 +56,9 @@ def resolve_active_pilot_grid(grid_arg: str | None = None) -> Path:
 
     raise SystemExit(
         "default active pilot grid not found.\n"
-        f"expected one of: {DEFAULT_SMOOTHED_GRID}, {DEFAULT_MASKCLEAN_GRID}, or {DEFAULT_RAW_GRID}\n"
+        "expected one of: "
+        f"{DEFAULT_MASKCLEAN_SMOOTHED_GRID}, {DEFAULT_SMOOTHED_GRID}, "
+        f"{DEFAULT_MASKCLEAN_GRID}, or {DEFAULT_RAW_GRID}\n"
         "Generate it first with preprocessing/create_grid_from_bathymetry.py "
         "--resolution-key pilot, or pass --grid /path/to/grid.nc"
     )

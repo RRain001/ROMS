@@ -28,6 +28,7 @@ from roms_preprocessing_utils import (
     interpolate_rectilinear_2d,
     interpolate_vertical_vectorized,
     load_grid,
+    load_project_params,
     load_vertical_config,
     read_dimensional_variable,
     read_time_values,
@@ -50,8 +51,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--src", default=str(DEFAULT_SRC))
     parser.add_argument("--grid", default=None)
-    parser.add_argument("--start", default="2024-01-01T00:00:00")
-    parser.add_argument("--stop", default="2024-01-31T23:00:00")
+    parser.add_argument("--start", default=None)
+    parser.add_argument("--stop", default=None)
     parser.add_argument("--output", default=str(DEFAULT_OUT))
     return parser.parse_args()
 
@@ -324,8 +325,9 @@ def main() -> None:
     grid = load_grid(grid_path)
     vertical = load_vertical_config()
     z_r, _, hz = sigma_depths(grid.h, vertical)
-    start = datetime.fromisoformat(args.start)
-    stop = datetime.fromisoformat(args.stop)
+    params = load_project_params()
+    start = datetime.fromisoformat(args.start or params["time"]["start"])
+    stop = datetime.fromisoformat(args.stop or params["time"]["stop"])
 
     with Dataset(src_path) as src:
         lon, lat, lon_name, lat_name = get_rectilinear_lon_lat(src)

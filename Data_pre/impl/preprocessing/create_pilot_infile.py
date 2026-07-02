@@ -64,6 +64,33 @@ def relative_to_run(path: Path, run_dir: Path = RUN_DIR) -> str:
     return os.path.relpath(path, run_dir).replace(os.sep, "/")
 
 
+def run_visible_path(path: Path) -> str:
+    path = path.expanduser()
+    if not path.is_absolute():
+        return str(path).replace(os.sep, "/")
+    try:
+        return relative_to_run(path)
+    except ValueError:
+        return str(path)
+
+
+def varinfo_path(params: dict) -> str:
+    candidates: list[Path] = []
+    configured = params.get("paths", {}).get("varinfo_yaml")
+    if configured:
+        candidates.append(Path(str(configured)).expanduser())
+    candidates.append(RUN_DIR / "varinfo.yaml")
+    roms_src = params.get("paths", {}).get("roms_src")
+    if roms_src:
+        candidates.append(Path(str(roms_src)).expanduser() / "ROMS" / "External" / "varinfo.yaml")
+
+    for candidate in candidates:
+        path = candidate if candidate.is_absolute() else ROOT / candidate
+        if path.exists():
+            return run_visible_path(path.resolve())
+    return "varinfo.yaml"
+
+
 def replace_line(text: str, key: str, value: str) -> str:
     return re.sub(rf"^(\s*{re.escape(key)}\s*(?:==|=)).*$", rf"\1 {value}", text, flags=re.MULTILINE)
 
@@ -99,7 +126,7 @@ def forcing_paths(args: argparse.Namespace, forcing_mode: str) -> dict[str, str]
             "ini": "../input/roms_ini_pilot.nc",
             "bry": "../input/roms_bdy_pilot.nc",
             "clm": "../input/roms_clm_pilot.nc",
-            "nud": "../input/roms_nud_pilot.nc",
+            "nud": "none",
             "river": "../input/roms_rivers_pilot.nc",
             "tides": "../input/roms_tides_pilot.nc",
             "frc_files": ["     FRCNAME == ../input/roms_frc_pilot.nc"],
@@ -120,7 +147,7 @@ def forcing_paths(args: argparse.Namespace, forcing_mode: str) -> dict[str, str]
         "ini": args.ini_path or relative_to_run(source_paths.roms_ini),
         "bry": args.bry_path or relative_to_run(source_paths.roms_bdy),
         "clm": args.clm_path or args.ini_path or relative_to_run(source_paths.roms_ini),
-        "nud": f"../input/roms_nud_{load_case_naming().roms_prefix}.nc",
+        "nud": "none",
         "river": args.river_path or "../input/roms_rivers_production.nc",
         "tides": args.tides_path or f"../input/{roms_input_name('tides')}",
         "frc_files": [
@@ -414,6 +441,7 @@ def base_text(
     text = replace_line(text, "LtracerSrc", "F F T                        ! temperature, salinity, dye_01")
     text = replace_line(text, "LtracerCLM", "F F F                        ! temperature, salinity, dye_01")
     text = replace_line(text, "LnudgeTCLM", "F F F                        ! temperature, salinity, dye_01")
+    text = replace_line(text, "VARNAME", varinfo_path(params))
     text = replace_line(text, "GRDNAME", grid_name)
 
     text = replace_line(text, "ININAME", forcing["ini"])
@@ -475,7 +503,7 @@ def print_mode_plan(path: Path, text: str, grid_note: str | None = None) -> None
     print(f"would write {path}")
     if grid_note:
         print(f"  grid_status: unresolved ({grid_note.splitlines()[0]})")
-    for key in ("TITLE", "MyAppCPP", "Lm", "Mm", "N", "NTIMES", "DT", "GRDNAME", "ININAME", "BRYNAME", "TIDENAME", "SSFNAME"):
+    for key in ("TITLE", "MyAppCPP", "Lm", "Mm", "N", "NTIMES", "DT", "VARNAME", "GRDNAME", "ININAME", "BRYNAME", "TIDENAME", "SSFNAME"):
         match = re.search(rf"^\s*{re.escape(key)}\s*(?:==|=)\s*(.+?)\s*$", text, flags=re.MULTILINE)
         if match:
             print(f"  {key}: {match.group(1).strip()}")

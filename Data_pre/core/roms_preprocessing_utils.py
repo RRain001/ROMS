@@ -21,6 +21,7 @@ ROOT = get_case_root()
 PARAMS = get_case_config_path("project_parameters.json")
 DEFAULT_RAW_GRID = ROOT / "input" / "roms_grid_bathy_500m.nc"
 DEFAULT_MASKCLEAN_GRID = ROOT / "input" / "roms_grid_bathy_500m_maskclean.nc"
+DEFAULT_MASKCLEAN_SMOOTHED_GRID = ROOT / "input" / "roms_grid_bathy_500m_maskclean_smoothed.nc"
 DEFAULT_SMOOTHED_GRID = ROOT / "input" / "roms_grid_bathy_500m_smoothed.nc"
 PREPROCESSING_VERSION = "20260628_boundary_audit_v1"
 
@@ -154,6 +155,8 @@ def resolve_grid_path(
         if not grid_path.exists():
             raise SystemExit(f"grid file not found: {grid_path}")
         return grid_path
+    if prefer_smoothed and DEFAULT_MASKCLEAN_SMOOTHED_GRID.exists():
+        return DEFAULT_MASKCLEAN_SMOOTHED_GRID
     if prefer_smoothed and DEFAULT_SMOOTHED_GRID.exists():
         return DEFAULT_SMOOTHED_GRID
     if prefer_maskclean and DEFAULT_MASKCLEAN_GRID.exists():
@@ -162,7 +165,9 @@ def resolve_grid_path(
         return DEFAULT_RAW_GRID
     raise SystemExit(
         f"no active grid found under {ROOT / 'input'}\n"
-        f"expected one of: {DEFAULT_SMOOTHED_GRID}, {DEFAULT_MASKCLEAN_GRID}, or {DEFAULT_RAW_GRID}"
+        "expected one of: "
+        f"{DEFAULT_MASKCLEAN_SMOOTHED_GRID}, {DEFAULT_SMOOTHED_GRID}, "
+        f"{DEFAULT_MASKCLEAN_GRID}, or {DEFAULT_RAW_GRID}"
     )
 
 

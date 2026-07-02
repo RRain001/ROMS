@@ -31,6 +31,7 @@ def main() -> None:
         "roms_src": str(context.roms_src),
         "build_dir": str(context.paths.build_dir),
         "bin_dir": str(context.paths.bin_dir),
+        "build_jobs": context.default_jobs,
         "expected_binary": str(context.expected_binary),
         "binary_candidates": [str(path) for path in resolve_binary_candidates(context)],
         "compiler": context.compiler,
