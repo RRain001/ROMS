@@ -23,7 +23,7 @@
   "build": {
     "build_subdir": "build/Build_romsM",
     "bin_subdir": "bin",
-    "jobs": 4,
+    "jobs": 56,
     "clean_first_default": true
   },
   "variants": {

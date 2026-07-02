@@ -91,6 +91,22 @@ def varinfo_path(params: dict) -> str:
     return "varinfo.yaml"
 
 
+def tile_layout(params: dict) -> tuple[int, int]:
+    run_cfg = params.get("run", {})
+    tiles_cfg = run_cfg.get("tiles", {}) if isinstance(run_cfg.get("tiles"), dict) else {}
+    ntile_i = run_cfg.get("ntile_i", tiles_cfg.get("ntile_i", 2))
+    ntile_j = run_cfg.get("ntile_j", tiles_cfg.get("ntile_j", 2))
+
+    try:
+        ntile_i = int(ntile_i)
+        ntile_j = int(ntile_j)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit("run.ntile_i and run.ntile_j must be positive integers") from exc
+    if ntile_i <= 0 or ntile_j <= 0:
+        raise SystemExit("run.ntile_i and run.ntile_j must be positive integers")
+    return ntile_i, ntile_j
+
+
 def replace_line(text: str, key: str, value: str) -> str:
     return re.sub(rf"^(\s*{re.escape(key)}\s*(?:==|=)).*$", rf"\1 {value}", text, flags=re.MULTILINE)
 
@@ -332,6 +348,7 @@ def base_text(
     ocean_source = normalize_ocean_source(args.ocean_source)
     glorys_paths = glorys_source_paths_for_args(args)
     forcing = forcing_paths(args, forcing_mode)
+    ntile_i, ntile_j = tile_layout(params)
     start = external_model_start(params, forcing_mode, forcing["ini"])
     if forcing_mode == "external" and ocean_source == "glorys12v1":
         ini_path = (RUN_DIR / forcing["ini"]).resolve()
@@ -397,8 +414,8 @@ def base_text(
     text = replace_line(text, "NADJ", str(nhis if mode != "smoke" else 5))
     text = replace_line(text, "NSFF", str(nhis if mode != "smoke" else 5))
     text = replace_line(text, "NOBC", str(nhis if mode != "smoke" else 5))
-    text = replace_line(text, "NtileI", "2")
-    text = replace_line(text, "NtileJ", "2")
+    text = replace_line(text, "NtileI", str(ntile_i))
+    text = replace_line(text, "NtileJ", str(ntile_j))
 
     text = replace_block(
         text,
@@ -503,7 +520,7 @@ def print_mode_plan(path: Path, text: str, grid_note: str | None = None) -> None
     print(f"would write {path}")
     if grid_note:
         print(f"  grid_status: unresolved ({grid_note.splitlines()[0]})")
-    for key in ("TITLE", "MyAppCPP", "Lm", "Mm", "N", "NTIMES", "DT", "VARNAME", "GRDNAME", "ININAME", "BRYNAME", "TIDENAME", "SSFNAME"):
+    for key in ("TITLE", "MyAppCPP", "Lm", "Mm", "N", "NtileI", "NtileJ", "NTIMES", "DT", "VARNAME", "GRDNAME", "ININAME", "BRYNAME", "TIDENAME", "SSFNAME"):
         match = re.search(rf"^\s*{re.escape(key)}\s*(?:==|=)\s*(.+?)\s*$", text, flags=re.MULTILINE)
         if match:
             print(f"  {key}: {match.group(1).strip()}")

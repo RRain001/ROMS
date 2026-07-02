@@ -1,58 +1,137 @@
-# FDNPP Workflow
+# FDNPP 全流程使用说明
 
-Case:
+本文档记录 FDNPP 案例从 `Data_pre` 到 `ROMS_Build` 再到 `ROMS_Run` 的标准执行方式。运行时配置统一来自 `Data_pre/cases/FDNPP/config`，计算产物统一写入 `/home/lhy/ROMS/projects/FDNPP`。
+
+## 1. 案例设置
 
 - case name: `FDNPP`
 - project root: `/home/lhy/ROMS/projects/FDNPP`
-- domain: `140.88-142.00E`, `37.00-37.84N`
-- time window: `2025-01-01 00:00:00` to `2025-02-01 00:00:00`
+- 研究范围: `140.88-142.00E`, `37.00-37.84N`
+- 积分窗口: `2025-01-01 00:00:00` 到 `2025-02-01 00:00:00`
+- 默认海洋数据: HYCOM
+- 垂向层数: `N=30`
+- 当前并行设置: build jobs `56`, MPI ranks `56`, ROMS tiles `NtileI=7`, `NtileJ=8`
+- 当前活动网格: `input/roms_grid_bathy_500m_maskclean_smoothed.nc`
 
-Current completed steps:
+## 2. 已准备的数据
 
-1. Bathymetry subset created:
-   - `data/raw/bathymetry/gebco_fdnpp.nc`
-2. Ocean staged raw created:
-   - `data/raw/ocean/hycom_initial_20250101.nc`
-   - `data/raw/ocean/hycom_boundary_202501.nc`
-3. Atmosphere staged raw created:
-   - `data/raw/atmosphere/era5_atm_fdnpp_202501.nc`
-   - `data/raw/atmosphere/era5_rad_fdnpp_202501.nc`
-4. Tidal staged raw created:
-   - `data/raw/tides/tpxo9_fdnpp_202501.nc`
-5. Source discharge staged:
-   - `data/raw/source/fdnpp_source_discharge.csv`
-6. Pilot grid created:
-   - `input/roms_grid_bathy_500m.nc`
-7. Grid cleanup and smoothing products created:
-   - `input/roms_grid_bathy_500m_maskclean.nc`
-   - `input/roms_grid_bathy_500m_maskclean_smoothed.nc`
-8. ROMS-ready products created:
-   - `input/roms_ini_fdnpp_20250101.nc`
-   - `input/roms_bdy_fdnpp_202501.nc`
-   - `input/roms_atm_fdnpp_202501.nc`
-   - `input/roms_rad_fdnpp_202501.nc`
-   - `input/roms_tides_fdnpp_202501.nc`
-   - `input/fdnpp_source_hourly.csv`
-   - `input/roms_rivers_production.nc`
-9. Pilot `.in` file created:
-   - `run/ocean_fdnpp_pilot_1day.in`
-10. Validation status:
-   - staged validation passed
-   - deep staged validation passed
-   - ROMS-ready validation passed
+FDNPP 的 Data_pre 数据已经按当前研究范围准备好，后续测试应使用这些数据，不依赖历史编译产物。
 
-Current `Data_pre` status:
+- `data/raw/bathymetry/gebco_fdnpp.nc`
+- `data/raw/ocean/hycom_initial_20250101.nc`
+- `data/raw/ocean/hycom_boundary_202501.nc`
+- `data/raw/atmosphere/era5_atm_fdnpp_202501.nc`
+- `data/raw/atmosphere/era5_rad_fdnpp_202501.nc`
+- `data/raw/tides/tpxo9_fdnpp_202501.nc`
+- `data/raw/source/fdnpp_source_discharge.csv`
+- `input/roms_grid_bathy_500m_maskclean_smoothed.nc`
+- `input/roms_ini_fdnpp_20250101.nc`
+- `input/roms_bdy_fdnpp_202501.nc`
+- `input/roms_atm_fdnpp_202501.nc`
+- `input/roms_rad_fdnpp_202501.nc`
+- `input/roms_tides_fdnpp_202501.nc`
+- `input/fdnpp_source_hourly.csv`
+- `input/roms_rivers_production.nc`
 
-- `Data_pre` workflow has been demonstrated end-to-end for this case
-- the active pilot grid now points to the mask-cleaned and smoothed grid
-- downstream ROMS-ready forcing and ocean input files should be regenerated against the new active grid before the next run
-- the remaining downstream work belongs to the ROMS run layer, not the preprocessing layer
-- one important scientific limitation should still be recorded in the handoff report:
-  - the current HYCOM boundary product used for workflow proof is short-window coverage rather than a fully representative monthly ocean boundary for production integration
+## 3. 预处理检查
 
-Recommended readiness-report items for this case:
+在 `/home/lhy/ROMS` 下执行：
 
-1. Explicitly list the raw products under `data/raw/...`
-2. Explicitly list the ROMS-ready products under `input/...`
-3. Record that staged and ROMS-ready validations passed
-4. Record the current HYCOM boundary duration limitation before handing off to ROMS runtime work
+```bash
+python3 Data_pre/scripts/validation/validate_staged_data.py --case-name FDNPP --ocean-source hycom
+python3 Data_pre/scripts/validation/validate_roms_ready_inputs.py --case-name FDNPP
+```
+
+如需重新生成运行输入文件：
+
+```bash
+python3 Data_pre/scripts/run_support/create_pilot_infile.py --case-name FDNPP --mode pilot_1day --forcing-mode external
+python3 Data_pre/scripts/run_support/create_pilot_infile.py --case-name FDNPP --mode pilot_month --forcing-mode external
+```
+
+生成后的关键文件：
+
+- `projects/FDNPP/run/ocean_fdnpp_pilot_1day.in`
+- `projects/FDNPP/run/ocean_fdnpp_pilot.in`
+
+nudging 关闭时，`.in` 文件应写 `NUDNAME == none`，不需要准备 `roms_nud_fdnpp.nc`。
+
+## 4. 构建
+
+先查看构建计划：
+
+```bash
+python3 ROMS_Build/scripts/build/show_build_plan.py --case-name FDNPP
+```
+
+如需重新编译：
+
+```bash
+python3 ROMS_Build/scripts/build/build_roms_case.py --case-name FDNPP
+```
+
+当前配置会使用 `56` 个并行构建任务，标准可执行文件为：
+
+```text
+/home/lhy/ROMS/projects/FDNPP/bin/romsM_fdnpp
+```
+
+构建后可检查二进制：
+
+```bash
+python3 ROMS_Build/scripts/build/inspect_binary.py --case-name FDNPP
+```
+
+## 5. 运行前验证
+
+1 天测试：
+
+```bash
+python3 ROMS_Run/scripts/checks/validate_run_prereqs.py --case-name FDNPP --mode pilot_1day
+python3 ROMS_Run/scripts/run/run_case.py --case-name FDNPP --mode pilot_1day --dry-run
+```
+
+1 个月积分：
+
+```bash
+python3 ROMS_Run/scripts/checks/validate_run_prereqs.py --case-name FDNPP --mode pilot_month
+python3 ROMS_Run/scripts/run/run_case.py --case-name FDNPP --mode pilot_month --dry-run
+```
+
+`dry-run` 应显示 56 核启动命令，并指向：
+
+```text
+/home/lhy/ROMS/projects/FDNPP/bin/romsM_fdnpp
+/home/lhy/ROMS/projects/FDNPP/run/ocean_fdnpp_pilot.in
+```
+
+## 6. 真实运行
+
+真实 Intel MPI/Hydra 运行需要在普通终端或已批准的非沙箱环境执行；沙箱环境可能阻止本地 socket 创建，导致 MPI 启动失败。
+
+手动触发 1 个月积分：
+
+```bash
+cd /home/lhy/ROMS
+python3 ROMS_Run/scripts/run/run_case.py --case-name FDNPP --mode pilot_month
+```
+
+查看日志：
+
+```bash
+python3 ROMS_Run/scripts/run/tail_run_log.py --case-name FDNPP --mode pilot_month
+```
+
+或直接：
+
+```bash
+tail -f /home/lhy/ROMS/projects/FDNPP/logs/pilot_month.log
+```
+
+## 7. 输出位置
+
+- 运行日志: `/home/lhy/ROMS/projects/FDNPP/logs/pilot_month.log`
+- 历史输出: `/home/lhy/ROMS/projects/FDNPP/output/his_fdnpp_pilot.nc`
+- 重启动输出: `/home/lhy/ROMS/projects/FDNPP/output/rst_fdnpp_pilot.nc`
+
+短测试已验证该案例可以完成 ROMS 初始化和外部强迫积分。月积分仍建议先做 `pilot_month --dry-run` 和 `validate_run_prereqs`，确认二进制、`.in`、NetCDF 输入和 `NtileI*NtileJ=np=56` 全部一致后再提交真实运行。

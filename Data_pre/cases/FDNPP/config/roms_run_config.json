@@ -1,6 +1,6 @@
 {
   "launcher": "$HOME/intel/oneapi/mpi/2021.9.0/bin/mpirun",
-  "np": 4,
+  "np": 56,
   "shell_init_files": [
     "$HOME/intel/oneapi/setvars.sh"
   ],

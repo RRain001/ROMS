@@ -41,6 +41,10 @@
   "ocean": {
     "default_source": "hycom"
   },
+  "run": {
+    "ntile_i": 7,
+    "ntile_j": 8
+  },
   "shoreline": {
     "enabled": true,
     "dataset": "GSHHG",

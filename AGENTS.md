@@ -27,16 +27,20 @@ Use `Data_pre/cases/<case_name>/config` as the authoritative runtime configurati
 - For FDNPP validation, use its `Data_pre` configuration and data products.
 - Do not depend on historical FDNPP build artifacts. Rebuild through `ROMS_Build` when a binary is needed.
 - The preferred FDNPP active grid is `input/roms_grid_bathy_500m_maskclean_smoothed.nc`.
+- FDNPP is configured for local 56-core use: build jobs `56`, MPI ranks `56`, and ROMS tiles `NtileI=7`, `NtileJ=8`.
 
 ## Build And Run Defaults
 
-- Build with 4 parallel jobs by default. The standard command is:
+- Build parallelism comes from each case's `roms_build_config.json`. The standard command is:
   - `python3 ROMS_Build/scripts/build/build_roms_case.py --case-name <case_name>`
-- Run with 4 MPI ranks by default. The standard dry-run command is:
+- Run MPI ranks come from each case's `roms_run_config.json`; `.in` tile settings must satisfy `NtileI * NtileJ == np`.
+- The standard dry-run command is:
   - `python3 ROMS_Run/scripts/run/run_case.py --case-name <case_name> --mode pilot_1day --dry-run`
 - The standard executable location is `projects/<case_name>/bin/<executable>`.
 - The standard build directory is `projects/<case_name>/build/Build_romsM`.
 - Runtime logs belong in `projects/<case_name>/logs`; ROMS NetCDF outputs belong in `projects/<case_name>/output`.
+- Real Intel MPI/Hydra runs must be launched outside the Codex sandbox, or with an approved non-sandbox execution, because local socket creation can be blocked by sandboxing.
+- When nudging is disabled, generated `.in` files should use `NUDNAME == none`; do not require `roms_nud_<prefix>.nc` just because the template has a nudging slot.
 
 ## Validation Expectations
 
