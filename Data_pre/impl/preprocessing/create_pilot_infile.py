@@ -107,6 +107,11 @@ def tile_layout(params: dict) -> tuple[int, int]:
     return ntile_i, ntile_j
 
 
+def all_tracer_flags(params: dict, value: str) -> str:
+    tracer_count = int(params.get("source", {}).get("tracer_count", 0))
+    return " ".join([value] * (2 + max(0, tracer_count)))
+
+
 def replace_line(text: str, key: str, value: str) -> str:
     return re.sub(rf"^(\s*{re.escape(key)}\s*(?:==|=)).*$", rf"\1 {value}", text, flags=re.MULTILINE)
 
@@ -453,6 +458,12 @@ def base_text(
     text = replace_line(text, "TNU4", "3*0.0d0                         ! temp, salt, dye_01 m4/s")
     text = replace_line(text, "ad_TNU2", "0.0d0  0.0d0  0.0d0              ! temp, salt, dye_01 m2/s")
     text = replace_line(text, "ad_TNU4", "3*0.0d0                         ! temp, salt, dye_01 m4/s")
+    avg_tracer_flags = all_tracer_flags(params, "F")
+    text = replace_line(text, "Aout(idTTav)", f"{avg_tracer_flags}     ! disable quadratic tracer averages")
+    text = replace_line(text, "Aout(idUTav)", f"{avg_tracer_flags}     ! disable quadratic u-tracer averages")
+    text = replace_line(text, "Aout(idVTav)", f"{avg_tracer_flags}     ! disable quadratic v-tracer averages")
+    text = replace_line(text, "Aout(iHUTav)", f"{avg_tracer_flags}     ! disable tracer u-volume flux averages")
+    text = replace_line(text, "Aout(iHVTav)", f"{avg_tracer_flags}     ! disable tracer v-volume flux averages")
     text = replace_line(text, "LuvSrc", "F                            ! no horizontal momentum source in pilot")
     text = replace_line(text, "LwSrc", "T                             ! enable vertical point/source transport")
     text = replace_line(text, "LtracerSrc", "F F T                        ! temperature, salinity, dye_01")

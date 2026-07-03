@@ -109,6 +109,18 @@ python3 ROMS_Run/scripts/run/run_case.py --case-name FDNPP --mode pilot_month --
 
 真实 Intel MPI/Hydra 运行需要在普通终端或已批准的非沙箱环境执行；沙箱环境可能阻止本地 socket 创建，导致 MPI 启动失败。
 
+当前 `.in` 文件已显式关闭非必要的平均 tracer 二次项和体积通量项：
+
+```text
+Aout(idTTav) == F F F
+Aout(idUTav) == F F F
+Aout(idVTav) == F F F
+Aout(iHUTav) == F F F
+Aout(iHVTav) == F F F
+```
+
+这样可避免 ROMS 在写 `Huon_dye_01` 平均场时触发 NetCDF `Numeric conversion not representable`。`Aout(inert)` 仍保留为 `T`，平均文件继续输出 `dye_01` 本身。
+
 手动触发 1 个月积分：
 
 ```bash
