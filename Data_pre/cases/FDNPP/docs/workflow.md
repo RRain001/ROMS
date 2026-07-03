@@ -70,6 +70,14 @@ python3 ROMS_Build/scripts/build/show_build_plan.py --case-name FDNPP
 python3 ROMS_Build/scripts/build/build_roms_case.py --case-name FDNPP
 ```
 
+FDNPP 的网格包含 land/sea mask，CPP 头文件必须启用：
+
+```c
+#define MASKING
+```
+
+若未启用 `MASKING`，ROMS 会忽略 `mask_rho`，把掩膜陆地点当作浅水格点参与积分，可能在十几个模型小时内触发 BLOWUP。
+
 当前配置会使用 `56` 个并行构建任务，标准可执行文件为：
 
 ```text
@@ -145,5 +153,7 @@ tail -f /home/lhy/ROMS/projects/FDNPP/logs/pilot_month.log
 - 运行日志: `/home/lhy/ROMS/projects/FDNPP/logs/pilot_month.log`
 - 历史输出: `/home/lhy/ROMS/projects/FDNPP/output/his_fdnpp_pilot.nc`
 - 重启动输出: `/home/lhy/ROMS/projects/FDNPP/output/rst_fdnpp_pilot.nc`
+- 平均输出: `/home/lhy/ROMS/projects/FDNPP/output/avg_fdnpp_pilot.nc`
+- 诊断输出: `/home/lhy/ROMS/projects/FDNPP/output/dia_fdnpp_pilot.nc`
 
-短测试已验证该案例可以完成 ROMS 初始化和外部强迫积分。月积分仍建议先做 `pilot_month --dry-run` 和 `validate_run_prereqs`，确认二进制、`.in`、NetCDF 输入和 `NtileI*NtileJ=np=56` 全部一致后再提交真实运行。
+2026-07-03 的 16 小时短测已验证 `MASKING` 版二进制可以越过此前 `2025-01-01 14:00:00` 的 BLOWUP 点并正常结束。月积分仍建议先做 `pilot_month --dry-run` 和 `validate_run_prereqs`，确认二进制、`.in`、NetCDF 输入和 `NtileI*NtileJ=np=56` 全部一致后再提交真实运行。

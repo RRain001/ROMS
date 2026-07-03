@@ -27,6 +27,7 @@ Use `Data_pre/cases/<case_name>/config` as the authoritative runtime configurati
 - For FDNPP validation, use its `Data_pre` configuration and data products.
 - Do not depend on historical FDNPP build artifacts. Rebuild through `ROMS_Build` when a binary is needed.
 - The preferred FDNPP active grid is `input/roms_grid_bathy_500m_maskclean_smoothed.nc`.
+- FDNPP uses a land/sea mask. Its CPP header must define `MASKING`; otherwise ROMS ignores `mask_rho` and can integrate masked land cells as shallow ocean, causing early BLOWUP.
 - FDNPP is configured for local 56-core use: build jobs `56`, MPI ranks `56`, and ROMS tiles `NtileI=7`, `NtileJ=8`.
 
 ## Build And Run Defaults
