@@ -78,6 +78,20 @@ FDNPP 的网格包含 land/sea mask，CPP 头文件必须启用：
 
 若未启用 `MASKING`，ROMS 会忽略 `mask_rho`，把掩膜陆地点当作浅水格点参与积分，可能在十几个模型小时内触发 BLOWUP。
 
+当前稳定网格还关闭了西南角几个过浅的南边界端点格点。标准 grid 仍命名为：
+
+```text
+/home/lhy/ROMS/projects/FDNPP/input/roms_grid_bathy_500m_maskclean_smoothed.nc
+```
+
+其南边界第一个湿格点应为 `i=24`、深度约 `44.7 m`；原始文件备份为：
+
+```text
+/home/lhy/ROMS/projects/FDNPP/input/roms_grid_bathy_500m_maskclean_smoothed.pre_swmask_20260703_1230.nc
+```
+
+生成的 external `.in` 会按 grid mask 自动关闭全陆地 west 边界，并设置 `VolCons(*) == F`。
+
 当前配置会使用 `56` 个并行构建任务，标准可执行文件为：
 
 ```text
@@ -156,4 +170,4 @@ tail -f /home/lhy/ROMS/projects/FDNPP/logs/pilot_month.log
 - 平均输出: `/home/lhy/ROMS/projects/FDNPP/output/avg_fdnpp_pilot.nc`
 - 诊断输出: `/home/lhy/ROMS/projects/FDNPP/output/dia_fdnpp_pilot.nc`
 
-2026-07-03 的 16 小时短测已验证 `MASKING` 版二进制可以越过此前 `2025-01-01 14:00:00` 的 BLOWUP 点并正常结束。月积分仍建议先做 `pilot_month --dry-run` 和 `validate_run_prereqs`，确认二进制、`.in`、NetCDF 输入和 `NtileI*NtileJ=np=56` 全部一致后再提交真实运行。
+2026-07-03 的 16 小时短测已验证 `MASKING` 版二进制可以越过此前 `2025-01-01 14:00:00` 的 BLOWUP 点。后续诊断发现正式运行在 `2025-01-01 18:00:00-19:00:00` 之间仍会因西南角浅水开边界端点失稳；修正南边界起点掩膜后，24 小时 `swmaskcheck` 已正常结束。月积分仍建议先做 `pilot_month --dry-run` 和 `validate_run_prereqs`，确认二进制、`.in`、NetCDF 输入和 `NtileI*NtileJ=np=56` 全部一致后再提交真实运行。

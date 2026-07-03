@@ -10,6 +10,7 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import numpy as np
 from netCDF4 import Dataset, num2date
 
 from case_naming import load_case_naming, output_product_name, roms_input_name, run_infile_name
@@ -58,6 +59,25 @@ def grid_metrics(grid_path: Path) -> tuple[int, int]:
         xi_rho = len(grid.dimensions["xi_rho"])
         eta_rho = len(grid.dimensions["eta_rho"])
     return xi_rho - 2, eta_rho - 2
+
+
+def open_boundary_flags(grid_path: Path | None) -> dict[str, bool] | None:
+    if not grid_path or not grid_path.exists():
+        return None
+    with Dataset(grid_path) as grid:
+        mask = np.asarray(grid.variables["mask_rho"][:, :], dtype=int)
+    return {
+        "west": bool(mask[:, 0].any()),
+        "south": bool(mask[0, :].any()),
+        "east": bool(mask[:, -1].any()),
+        "north": bool(mask[-1, :].any()),
+    }
+
+
+def boundary_values(open_edges: dict[str, bool] | None, open_value: str) -> str:
+    if open_edges is None:
+        return f"{open_value:<7} {open_value:<7} {open_value:<7} {open_value:<7}"
+    return " ".join(("Clo" if not open_edges[edge] else open_value).ljust(7) for edge in ("west", "south", "east", "north"))
 
 
 def relative_to_run(path: Path, run_dir: Path = RUN_DIR) -> str:
@@ -256,7 +276,7 @@ def common_year_offset_days(start: datetime) -> float:
     return (start - year_start).total_seconds() / 86400.0
 
 
-def set_lbc(text: str, forcing_mode: str) -> str:
+def set_lbc(text: str, forcing_mode: str, open_edges: dict[str, bool] | None = None) -> str:
     if forcing_mode == "analytical":
         lbc = (
             "   LBC(isFsur) ==   Per     Clo     Per     Clo         ! free-surface\n"
@@ -292,38 +312,41 @@ def set_lbc(text: str, forcing_mode: str) -> str:
         text = replace_line(text, "ad_VolCons(north)", "F")
         return text
 
+    fsur_lbc = boundary_values(open_edges, "Cha")
+    m2_lbc = boundary_values(open_edges, "Fla")
+    m3_lbc = boundary_values(open_edges, "RadNud")
     lbc = (
-        "   LBC(isFsur) ==   Cha     Cha     Cha     Cha         ! free-surface\n"
-        "   LBC(isUbar) ==   Fla     Fla     Fla     Fla         ! 2D U-momentum\n"
-        "   LBC(isVbar) ==   Fla     Fla     Fla     Fla         ! 2D V-momentum\n"
-        "   LBC(isUvel) ==   RadNud  RadNud  RadNud  RadNud      ! 3D U-momentum\n"
-        "   LBC(isVvel) ==   RadNud  RadNud  RadNud  RadNud      ! 3D V-momentum\n"
+        f"   LBC(isFsur) ==   {fsur_lbc}        ! free-surface\n"
+        f"   LBC(isUbar) ==   {m2_lbc}        ! 2D U-momentum\n"
+        f"   LBC(isVbar) ==   {m2_lbc}        ! 2D V-momentum\n"
+        f"   LBC(isUvel) ==   {m3_lbc}     ! 3D U-momentum\n"
+        f"   LBC(isVvel) ==   {m3_lbc}     ! 3D V-momentum\n"
         "   LBC(isMtke) ==   Clo     Clo     Clo     Clo         ! mixing TKE\n\n"
-        "   LBC(isTvar) ==   RadNud  RadNud  RadNud  RadNud \\    ! temperature\n"
-        "                    RadNud  RadNud  RadNud  RadNud \\    ! salinity\n"
-        "                    RadNud  RadNud  RadNud  RadNud      ! dye_01"
+        f"   LBC(isTvar) ==   {m3_lbc} \\    ! temperature\n"
+        f"                    {m3_lbc} \\    ! salinity\n"
+        f"                    {m3_lbc}      ! dye_01"
     )
     ad_lbc = (
-        "ad_LBC(isFsur) ==   Cha     Cha     Cha     Cha         ! free-surface\n"
-        "ad_LBC(isUbar) ==   Fla     Fla     Fla     Fla         ! 2D U-momentum\n"
-        "ad_LBC(isVbar) ==   Fla     Fla     Fla     Fla         ! 2D V-momentum\n"
-        "ad_LBC(isUvel) ==   RadNud  RadNud  RadNud  RadNud      ! 3D U-momentum\n"
-        "ad_LBC(isVvel) ==   RadNud  RadNud  RadNud  RadNud      ! 3D V-momentum\n"
+        f"ad_LBC(isFsur) ==   {fsur_lbc}        ! free-surface\n"
+        f"ad_LBC(isUbar) ==   {m2_lbc}        ! 2D U-momentum\n"
+        f"ad_LBC(isVbar) ==   {m2_lbc}        ! 2D V-momentum\n"
+        f"ad_LBC(isUvel) ==   {m3_lbc}     ! 3D U-momentum\n"
+        f"ad_LBC(isVvel) ==   {m3_lbc}     ! 3D V-momentum\n"
         "ad_LBC(isMtke) ==   Clo     Clo     Clo     Clo         ! mixing TKE\n\n"
-        "ad_LBC(isTvar) ==   RadNud  RadNud  RadNud  RadNud \\    ! temperature\n"
-        "                    RadNud  RadNud  RadNud  RadNud \\    ! salinity\n"
-        "                    RadNud  RadNud  RadNud  RadNud      ! dye_01"
+        f"ad_LBC(isTvar) ==   {m3_lbc} \\    ! temperature\n"
+        f"                    {m3_lbc} \\    ! salinity\n"
+        f"                    {m3_lbc}      ! dye_01"
     )
     text = replace_block(text, "LBC(isFsur)", lbc, "LBC(isU2Sd)")
     text = replace_block(text, "ad_LBC(isFsur)", ad_lbc, "VolCons(west)")
-    text = replace_line(text, "VolCons(west)", "T")
-    text = replace_line(text, "VolCons(east)", "T")
-    text = replace_line(text, "VolCons(south)", "T")
-    text = replace_line(text, "VolCons(north)", "T")
-    text = replace_line(text, "ad_VolCons(west)", "T")
-    text = replace_line(text, "ad_VolCons(east)", "T")
-    text = replace_line(text, "ad_VolCons(south)", "T")
-    text = replace_line(text, "ad_VolCons(north)", "T")
+    text = replace_line(text, "VolCons(west)", "F")
+    text = replace_line(text, "VolCons(east)", "F")
+    text = replace_line(text, "VolCons(south)", "F")
+    text = replace_line(text, "VolCons(north)", "F")
+    text = replace_line(text, "ad_VolCons(west)", "F")
+    text = replace_line(text, "ad_VolCons(east)", "F")
+    text = replace_line(text, "ad_VolCons(south)", "F")
+    text = replace_line(text, "ad_VolCons(north)", "F")
     return text
 
 
@@ -346,6 +369,7 @@ def base_text(
     dt_seconds: float,
     mode: str,
     forcing_mode: str,
+    open_edges: dict[str, bool] | None,
 ) -> str:
     vertical = params["vertical"]
     time_cfg = params["time"]
@@ -481,7 +505,7 @@ def base_text(
     text = replace_line(text, "NBCFILES", "1")
     text = replace_line(text, "NCLMFILES", str(forcing["nclmfiles"]))
     text = replace_nffiles_block(text, forcing["nffiles"], forcing["frc_files"])
-    text = set_lbc(text, forcing_mode)
+    text = set_lbc(text, forcing_mode, open_edges)
 
     if forcing_mode == "external":
         text = replace_line(text, "LsshCLM", "F                          ! sea-surface height")
@@ -573,9 +597,11 @@ def main() -> None:
     grid_name = relative_to_run(grid_path)
     if grid_path.exists():
         lm, mm = grid_metrics(grid_path)
+        open_edges = open_boundary_flags(grid_path)
     else:
         lm = None
         mm = None
+        open_edges = None
     default_dt = float(params["time"]["pilot_dt_seconds"])
     if args.mode == "smoke":
         dt_seconds = args.dt_seconds or 10.0
@@ -599,7 +625,7 @@ def main() -> None:
 
     for mode in modes:
         local_forcing_mode = "analytical" if mode == "smoke" and args.forcing_mode == "external" else args.forcing_mode
-        text = base_text(args, params, template_path, grid_name, lm, mm, dt_seconds, mode, local_forcing_mode)
+        text = base_text(args, params, template_path, grid_name, lm, mm, dt_seconds, mode, local_forcing_mode, open_edges)
         path = output_path_for_mode(mode, ocean_source, args)
         if args.dry_run:
             print_mode_plan(path, text, grid_note)
