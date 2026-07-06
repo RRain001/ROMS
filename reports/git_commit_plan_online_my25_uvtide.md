@@ -117,7 +117,7 @@ Additional ignored reports left uncommitted:
 2. `2222c88` `Generate TPXO UV tide forcing for online tracer cases`
 3. `55569b3` `Set default Smagorinsky coefficient for tracer profiles`
 4. `a8da3d3` `Add FDNPP online MY25 UV-tide tracer case configuration`
-5. `see git log -1` `Document FDNPP online tracer validation results`
+5. `0b62123` `Document FDNPP online tracer validation results`
 
 ## 5. What each commit contains
 
@@ -161,7 +161,7 @@ Contains:
 - FDNPP build variant `online_my25_uvtide`
 - FDNPP run modes `online_6h`, `online_3d`, `online_month`
 
-### `git log -1` Document FDNPP online tracer validation results
+### `0b62123` Document FDNPP online tracer validation results
 
 Contains:
 
