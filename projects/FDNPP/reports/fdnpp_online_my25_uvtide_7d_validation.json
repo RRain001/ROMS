@@ -1442,9 +1442,9 @@
     },
     "inventory": {
       "approx_open_boundary_loss_bq": 4402546.919120651,
-      "cumulative_source_bq": 421917808219.1781,
+      "cumulative_source_bq": 421917808219.17804,
       "inventory_delta_bq": 421913754201.44946,
-      "inventory_over_source": 0.9999903914514873
+      "inventory_over_source": 0.9999903914514875
     },
     "temp_low": {
       "min_temp_c": 0.006932535208761692,
@@ -1452,12 +1452,13 @@
     }
   },
   "inventory": {
-    "cumulative_source_bq": 421917808219.1781,
+    "cumulative_source_bq": 421917808219.17804,
     "delta_bq": 421913754201.44946,
     "first_bq": 0.0,
     "last_bq": 421913754201.44946,
-    "source_rate_bq_s": 697615.4236428209
+    "source_rate_bq_s": 697615.4236428208
   },
+  "ocean_source": "hycom",
   "open_boundary_export_estimate": {
     "east_bq": 0.0,
     "north_bq": 4402524.273780699,

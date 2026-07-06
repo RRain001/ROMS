@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from math import asin, cos, radians, sin, sqrt
 from pathlib import Path
@@ -11,7 +12,8 @@ import numpy as np
 from netCDF4 import Dataset, num2date
 
 from case_context import get_case_root
-from case_naming import load_case_naming
+from case_naming import load_case_naming, output_product_name
+from ocean_source_utils import normalize_ocean_source
 from pilot_grid_utils import locate_source_on_grid
 from roms_preprocessing_utils import load_project_params, resolve_grid_path
 
@@ -36,15 +38,29 @@ def scalar_var(ds: Dataset, name: str, default: float) -> float:
     return float(getattr(ds, name, default))
 
 
-def get_paths() -> dict[str, Path]:
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ocean-source", default="hycom")
+    parser.add_argument("--profile", default=PROFILE)
+    return parser.parse_args()
+
+
+def report_stem(ocean_source: str, profile: str) -> str:
+    suffix = "" if ocean_source == "hycom" else f"_{ocean_source}"
+    return f"fdnpp_{profile}_7d{suffix}_validation"
+
+
+def get_paths(ocean_source: str, profile: str) -> dict[str, Path]:
+    source_for_name = None if ocean_source == "hycom" else ocean_source
+    log_name = "online_7d.log" if ocean_source == "hycom" else f"online_7d_{ocean_source}.log"
     return {
         "grid": resolve_grid_path(None, prefer_smoothed=True),
-        "history": ROOT / "output" / "his_fdnpp_online_7d_online_my25_uvtide.nc",
-        "average": ROOT / "output" / "avg_fdnpp_online_7d_online_my25_uvtide.nc",
-        "diagnostics": ROOT / "output" / "dia_fdnpp_online_7d_online_my25_uvtide.nc",
-        "restart": ROOT / "output" / "rst_fdnpp_online_7d_online_my25_uvtide.nc",
+        "history": ROOT / "output" / output_product_name("his", "online_7d", source_for_name, profile),
+        "average": ROOT / "output" / output_product_name("avg", "online_7d", source_for_name, profile),
+        "diagnostics": ROOT / "output" / output_product_name("dia", "online_7d", source_for_name, profile),
+        "restart": ROOT / "output" / output_product_name("rst", "online_7d", source_for_name, profile),
         "river": ROOT / "input" / "roms_rivers_production_online_my25_uvtide.nc",
-        "log": ROOT / "logs" / "online_7d.log",
+        "log": ROOT / "logs" / log_name,
     }
 
 
@@ -380,10 +396,9 @@ def build_interpretation(history: dict[str, object], average: dict[str, object],
     }
 
 
-def write_reports(payload: dict[str, object]) -> tuple[Path, Path]:
+def write_reports(payload: dict[str, object], stem: str) -> tuple[Path, Path]:
     reports_dir = ROOT / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
-    stem = "fdnpp_online_my25_uvtide_7d_validation"
     json_path = reports_dir / f"{stem}.json"
     md_path = reports_dir / f"{stem}.md"
     json_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
@@ -433,9 +448,12 @@ def write_reports(payload: dict[str, object]) -> tuple[Path, Path]:
 
 
 def main() -> None:
+    args = parse_args()
+    ocean_source = normalize_ocean_source(args.ocean_source)
+    profile = args.profile
     params = load_project_params()
     naming = load_case_naming()
-    paths = get_paths()
+    paths = get_paths(ocean_source, profile)
     source_loc = locate_source_on_grid(paths["grid"], params["domain"]["source_lon"], params["domain"]["source_lat"])
     source = source_summary(paths["river"], source_loc.configured_lon, source_loc.configured_lat)
     log = log_status(paths["log"])
@@ -461,7 +479,8 @@ def main() -> None:
         blocking.append("restart record count missing from log")
     payload = {
         "case": naming.case_name,
-        "profile": PROFILE,
+        "profile": profile,
+        "ocean_source": ocean_source,
         "paths": {key: str(value) for key, value in paths.items()},
         "run": {
             "completed": not blocking,
@@ -485,7 +504,7 @@ def main() -> None:
         "blocking_issues": blocking,
         "recommend_online_month": not blocking,
     }
-    md_path, json_path = write_reports(payload)
+    md_path, json_path = write_reports(payload, report_stem(ocean_source, profile))
     print(f"wrote {md_path}")
     print(f"wrote {json_path}")
 

@@ -45,6 +45,7 @@ def parse_args() -> argparse.Namespace:
             "pilot_month",
             "online_6h",
             "online_3d",
+            "online_7d",
             "online_month",
             "online_spinup_3mo",
             "both",
@@ -210,6 +211,7 @@ def forcing_paths(args: argparse.Namespace, forcing_mode: str, mode: str | None 
         source_paths = build_ocean_source_paths(
             ocean_source,
             config=load_glorys_config(args.config),
+            profile=profile,
         )
     else:
         source_paths = build_ocean_source_paths(ocean_source)
@@ -218,9 +220,14 @@ def forcing_paths(args: argparse.Namespace, forcing_mode: str, mode: str | None 
     river_default = "../input/roms_rivers_production.nc"
     if profile:
         river_default = f"../input/roms_rivers_production_{profile}.nc"
+    ini_default = f"../input/{roms_input_name('ini', ocean_source=ocean_source, profile=profile)}"
+    bry_default = f"../input/{roms_input_name('bdy', ocean_source=ocean_source, profile=profile)}"
+    if ocean_source == "glorys12v1":
+        ini_default = relative_to_run(source_paths.roms_ini)
+        bry_default = relative_to_run(source_paths.roms_bdy)
     return {
-        "ini": args.ini_path or f"../input/{roms_input_name('ini', ocean_source=ocean_source, profile=profile)}",
-        "bry": args.bry_path or f"../input/{roms_input_name('bdy', ocean_source=ocean_source, profile=profile)}",
+        "ini": args.ini_path or ini_default,
+        "bry": args.bry_path or bry_default,
         "clm": args.clm_path or args.ini_path or relative_to_run(source_paths.roms_ini),
         "nud": "none",
         "river": args.river_path or river_default,
@@ -435,6 +442,10 @@ def base_text(
         stop = min(start + timedelta(days=3), boundary_stop)
         title = f"{naming.title} online MY25/UV tide 3-day check{source_label}"
         out_prefix = "online_3d"
+    elif mode == "online_7d":
+        stop = min(start + timedelta(days=7), boundary_stop)
+        title = f"{naming.title} online MY25/UV tide 7-day check{source_label}"
+        out_prefix = "online_7d"
     elif mode == "online_month":
         stop = boundary_stop
         title = f"{naming.title} online MY25/UV tide month{source_label}"

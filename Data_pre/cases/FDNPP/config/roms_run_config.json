@@ -58,6 +58,20 @@
       "infile": "ocean_fdnpp_online_3d_online_my25_uvtide.in",
       "log_file": "online_3d.log"
     },
+    "online_7d": {
+      "build_variant": "online_my25_uvtide",
+      "binary": "romsM_fdnpp_online_my25_uvtide",
+      "fallback_binaries": [],
+      "infile": "ocean_fdnpp_online_7d_online_my25_uvtide.in",
+      "log_file": "online_7d.log"
+    },
+    "online_7d_glorys12v1": {
+      "build_variant": "online_my25_uvtide",
+      "binary": "romsM_fdnpp_online_my25_uvtide",
+      "fallback_binaries": [],
+      "infile": "ocean_fdnpp_online_7d_online_my25_uvtide_glorys12v1.in",
+      "log_file": "online_7d_glorys12v1.log"
+    },
     "online_month": {
       "build_variant": "online_my25_uvtide",
       "binary": "romsM_fdnpp_online_my25_uvtide",
