@@ -30,13 +30,39 @@
     "output_interval_hours": 1
   },
   "vertical": {
-    "N": 30,
-    "theta_s": 5.0,
-    "theta_b": 0.8,
-    "Tcline_m": 50.0,
+    "N": 40,
+    "theta_s": 7.0,
+    "theta_b": 0.1,
+    "Tcline_m": 200.0,
     "Hmin_m": 10.0,
     "Vtransform": 2,
     "Vstretching": 4
+  },
+  "physics": {
+    "profile": "online_my25_uvtide",
+    "vertical_mixing": "MY25_MIXING",
+    "my25_options": [
+      "KANTHA_CLAYSON",
+      "N2S2_HORAVG",
+      "RI_SPLINES"
+    ],
+    "horizontal_mixing": "Smagorinsky",
+    "smagorinsky_coefficient": 0.2,
+    "uv_smagorinsky": true,
+    "ts_smagorinsky": true,
+    "akv_bak_m2_s": 1.0e-5,
+    "akt_bak_m2_s": 1.0e-6,
+    "tnu2_m2_s": 10.0,
+    "visc2_m2_s": 10.0
+  },
+  "tides": {
+    "ssh_tides": true,
+    "uv_tides": true
+  },
+  "output": {
+    "history_interval_hours": 1,
+    "average_interval_hours": 1,
+    "diagnostic_interval_hours": 1
   },
   "ocean": {
     "default_source": "hycom"
