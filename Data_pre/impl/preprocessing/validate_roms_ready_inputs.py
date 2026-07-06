@@ -21,12 +21,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--grid", default=None)
     parser.add_argument("--ocean-source", default="hycom")
     parser.add_argument("--config", default=None)
+    parser.add_argument("--profile", default=None)
+    parser.add_argument("--require-uv-tides", action="store_true")
     parser.add_argument("--ini", default=None)
     parser.add_argument("--bry", default=None)
     parser.add_argument("--atm", default=str(ROOT / "input" / roms_input_name("atm")))
     parser.add_argument("--rad", default=str(ROOT / "input" / roms_input_name("rad")))
-    parser.add_argument("--tides", default=str(ROOT / "input" / roms_input_name("tides")))
-    parser.add_argument("--river", default=str(ROOT / "input" / "roms_rivers_production.nc"))
+    parser.add_argument("--tides", default=None)
+    parser.add_argument("--river", default=None)
     parser.add_argument("--infile", default=None, help="Optional ROMS .in file for Lm/Mm/N consistency checks")
     return parser.parse_args()
 
@@ -108,6 +110,44 @@ def check_boundary_content(path: Path) -> list[str]:
     return issues
 
 
+def check_zero_variable(path: Path, names: tuple[str, ...], label: str) -> list[str]:
+    if not path.exists():
+        return []
+    with Dataset(path) as ds:
+        for name in names:
+            if name not in ds.variables:
+                continue
+            values = np.ma.filled(ds.variables[name][:], np.nan).astype(float, copy=False)
+            finite = values[np.isfinite(values)]
+            if finite.size and not np.allclose(finite, 0.0):
+                return [f"{label}: {name} is not all zero"]
+            return []
+    return [f"{label}: missing {' or '.join(names)}"]
+
+
+def check_uv_tide_content(path: Path, require_uv: bool) -> list[str]:
+    if not require_uv or not path.exists():
+        return []
+    issues: list[str] = []
+    with Dataset(path) as ds:
+        for name in ("tide_Cmax", "tide_Cmin", "tide_Cangle", "tide_Cphase"):
+            if name not in ds.variables:
+                issues.append(f"tides: missing UV tide variable {name}")
+    return issues
+
+
+def check_river_vshape(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    with Dataset(path) as ds:
+        if "river_Vshape" not in ds.variables:
+            return ["river: missing river_Vshape"]
+        values = np.asarray(ds.variables["river_Vshape"][:], dtype=float)
+        if not np.allclose(values.sum(axis=0), 1.0):
+            return ["river: river_Vshape column sums are not 1"]
+    return []
+
+
 def _dim(ds: Dataset, name: str) -> int | None:
     return len(ds.dimensions[name]) if name in ds.dimensions else None
 
@@ -175,10 +215,11 @@ def check_infile_dimensions(infile_path: Path, grid_path: Path) -> list[str]:
 def main() -> None:
     args = parse_args()
     ocean_source = normalize_ocean_source(args.ocean_source)
+    profile = args.profile
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     if ocean_source == "hycom":
-        ini_path = Path(args.ini or ROOT / "input" / roms_input_name("ini"))
-        bry_path = Path(args.bry or ROOT / "input" / roms_input_name("bdy"))
+        ini_path = Path(args.ini or ROOT / "input" / roms_input_name("ini", profile=profile))
+        bry_path = Path(args.bry or ROOT / "input" / roms_input_name("bdy", profile=profile))
     else:
         config = load_glorys_config(args.config)
         start = datetime.fromisoformat("2024-01-01T12:00:00")
@@ -186,13 +227,15 @@ def main() -> None:
         defaults = build_glorys_paths(config, start=start, stop=stop)
         ini_path = Path(args.ini or defaults.roms_ini)
         bry_path = Path(args.bry or defaults.roms_bdy)
+    river_path = Path(args.river) if args.river else ROOT / "input" / (f"roms_rivers_production_{profile}.nc" if profile else "roms_rivers_production.nc")
+    tide_path = Path(args.tides) if args.tides else ROOT / "input" / roms_input_name("tides", profile=profile)
     files = {
         "grid": (Path(grid_path), ["h", "mask_rho", "pm", "pn", "angle", "lon_rho", "lat_rho"]),
         "ini": (ini_path, ["zeta", "u", "v", "ubar", "vbar", "temp", "salt", "dye_01"]),
         "atm": (Path(args.atm), ["Uwind", "Vwind", "Pair", "Tair", "Qair", "rain", "EminusP"]),
         "rad": (Path(args.rad), ["swrad", "lwrad", "lwrad_down"]),
-        "tides": (Path(args.tides), ["tide_period", "tide_Eamp", "tide_Ephase"]),
-        "river": (Path(args.river), ["river_transport", "river_dye_01", "river_temp", "river_salt"]),
+        "tides": (tide_path, ["tide_period", "tide_Eamp", "tide_Ephase"]),
+        "river": (river_path, ["river_transport", "river_dye_01", "river_temp", "river_salt"]),
     }
     issues: list[str] = []
     for label, (path, required) in files.items():
@@ -200,7 +243,12 @@ def main() -> None:
         if label in {"ini", "atm", "rad", "river"}:
             issues.extend(check_required_variables_finite(path, required, label))
     issues.extend(check_boundary_content(bry_path))
-    issues.extend(check_dimension_consistency(Path(grid_path), ini_path, bry_path, Path(args.river)))
+    issues.extend(check_zero_variable(ini_path, ("dye_01",), "ini"))
+    for edge in ("west", "east", "south", "north"):
+        issues.extend(check_zero_variable(bry_path, (f"dye_{edge}_01", f"dye_01_{edge}"), f"bry {edge}"))
+    issues.extend(check_uv_tide_content(files["tides"][0], args.require_uv_tides))
+    issues.extend(check_river_vshape(river_path))
+    issues.extend(check_dimension_consistency(Path(grid_path), ini_path, bry_path, river_path))
     if args.infile:
         issues.extend(check_infile_dimensions(Path(args.infile), Path(grid_path)))
 
@@ -209,8 +257,8 @@ def main() -> None:
         issues.extend(check_time_range(bry_path, "zeta_time"))
         issues.extend(check_time_range(Path(args.atm), "wind_time"))
         issues.extend(check_time_range(Path(args.rad), "srf_time"))
-        issues.extend(check_time_range(Path(args.river), "river_time"))
-        with Dataset(args.river) as ds:
+        issues.extend(check_time_range(river_path, "river_time"))
+        with Dataset(river_path) as ds:
             units = getattr(ds.variables["river_dye_01"], "units", "")
             if units != "Bq meter-3":
                 issues.append(f"river: expected river_dye_01 units Bq meter-3, got {units!r}")

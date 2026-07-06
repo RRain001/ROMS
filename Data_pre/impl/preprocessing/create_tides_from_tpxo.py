@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -22,7 +23,32 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--src", default=str(DEFAULT_SRC))
     parser.add_argument("--grid", default=None)
     parser.add_argument("--output", default=str(DEFAULT_OUT))
+    parser.add_argument("--require-uv", action="store_true", help="Require tide_Cmax/Cmin/Cangle/Cphase for UV_TIDES")
+    parser.add_argument("--profile", default=None, help="Optional profile label used in blocked reports")
+    parser.add_argument("--report-dir", default=str(ROOT / "reports"))
     return parser.parse_args()
+
+
+def write_blocked_report(report_dir: Path, profile: str | None, src_path: Path, missing: list[str]) -> None:
+    report_dir.mkdir(parents=True, exist_ok=True)
+    label = profile or "tides"
+    payload = {
+        "status": "blocked",
+        "profile": profile,
+        "source_dataset": str(src_path),
+        "missing_variables": missing,
+        "message": "UV_TIDES requires TPXO current ellipse variables; variables were not fabricated.",
+    }
+    json_path = report_dir / f"{label}_uv_tides_blocked.json"
+    md_path = report_dir / f"{label}_uv_tides_blocked.md"
+    json_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    md_path.write_text(
+        "# UV_TIDES blocked\n\n"
+        f"- Source: `{src_path}`\n"
+        f"- Missing variables: {', '.join(missing)}\n"
+        "- Action: stage TPXO u/v current ellipse data and rerun tide generation.\n"
+        "- Note: no `tide_C*` variables were fabricated.\n"
+    )
 
 
 def main() -> None:
@@ -32,6 +58,8 @@ def main() -> None:
         raise SystemExit(f"source file not found: {src_path}")
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     out_path = Path(args.output)
+    if args.profile and args.output == str(DEFAULT_OUT):
+        out_path = ROOT / "input" / roms_input_name("tides", profile=args.profile)
     grid = load_grid(grid_path)
 
     with Dataset(src_path) as src:
@@ -55,6 +83,7 @@ def main() -> None:
             "tide_Ephase": infer_variable(src, ("tide_Ephase", "Ephase")),
         }
         optional_var_names = {}
+        missing_uv: list[str] = []
         for out_name, candidates in {
             "tide_Cmax": ("tide_Cmax", "Cmax"),
             "tide_Cmin": ("tide_Cmin", "Cmin"),
@@ -64,7 +93,12 @@ def main() -> None:
             try:
                 optional_var_names[out_name] = infer_variable(src, candidates)
             except KeyError:
-                continue
+                missing_uv.append(out_name)
+        if args.require_uv and missing_uv:
+            write_blocked_report(Path(args.report_dir), args.profile, src_path, missing_uv)
+            raise SystemExit(
+                "UV_TIDES requested but source tide file is missing: " + ", ".join(missing_uv)
+            )
         var_names = required_var_names | optional_var_names
 
         out_path.parent.mkdir(parents=True, exist_ok=True)

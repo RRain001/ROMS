@@ -9,6 +9,7 @@ from pathlib import Path
 
 import numpy as np
 from netCDF4 import Dataset
+from scipy.ndimage import distance_transform_edt
 
 from case_naming import load_case_naming, staged_tides_name
 from roms_preprocessing_utils import ROOT, load_grid, resolve_grid_path
@@ -41,6 +42,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--grid", default=None)
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
     parser.add_argument("--constituents", default=",".join(CONSTITUENT_PERIOD_HOURS))
+    parser.add_argument("--include-uv", action="store_true", help="Stage TPXO current ellipse variables for UV_TIDES")
+    parser.add_argument("--profile", default=None, help="Optional profile suffix for the staged output name")
+    parser.add_argument("--velocity-depth-min", type=float, default=10.0, help="Minimum TPXO depth used when converting transports to velocity")
     return parser.parse_args()
 
 
@@ -88,8 +92,49 @@ def read_grid_subset(path: Path, lat_slice: slice, lon_slice: slice, shape: tupl
 
 def read_constituent_subset(path: Path, lat_slice: slice, lon_slice: slice, shape: tuple[int, int]) -> np.ndarray:
     nlat, nlon = shape
-    data = np.memmap(path, dtype=">c8", mode="r", offset=44, shape=(nlat, nlon))
-    return np.asarray(data[lat_slice, lon_slice], dtype=np.complex64)
+    data = np.memmap(path, dtype=">f4", mode="r", offset=44, shape=(2, nlat, nlon))
+    real = np.asarray(data[0, lat_slice, lon_slice], dtype=np.float32)
+    imag = np.asarray(data[1, lat_slice, lon_slice], dtype=np.float32)
+    return (real + 1j * imag).astype(np.complex64)
+
+
+def read_transport_subset(path: Path, lat_slice: slice, lon_slice: slice, shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
+    nlat, nlon = shape
+    data = np.memmap(path, dtype=">f4", mode="r", offset=44, shape=(4, nlat, nlon))
+    u = np.asarray(data[0, lat_slice, lon_slice], dtype=np.float32) + 1j * np.asarray(data[1, lat_slice, lon_slice], dtype=np.float32)
+    v = np.asarray(data[2, lat_slice, lon_slice], dtype=np.float32) + 1j * np.asarray(data[3, lat_slice, lon_slice], dtype=np.float32)
+    return u.astype(np.complex64), v.astype(np.complex64)
+
+
+def fill_nearest(values: np.ndarray) -> np.ndarray:
+    data = np.asarray(values, dtype=np.float32)
+    valid = np.isfinite(data)
+    if np.all(valid):
+        return data
+    if not np.any(valid):
+        return np.zeros_like(data, dtype=np.float32)
+    _, indices = distance_transform_edt(~valid, return_indices=True)
+    return data[tuple(indices)].astype(np.float32)
+
+
+def transport_to_velocity(transport: np.ndarray, depth: np.ndarray, mask: np.ndarray, depth_min: float) -> np.ndarray:
+    wet = (np.asarray(mask) == 1) & np.isfinite(depth) & (depth > 0.0)
+    divisor = np.maximum(np.asarray(depth, dtype=np.float32), np.float32(depth_min))
+    real = np.where(wet, np.real(transport) / divisor, np.nan)
+    imag = np.where(wet, np.imag(transport) / divisor, np.nan)
+    return fill_nearest(real) + 1j * fill_nearest(imag)
+
+
+def current_ellipse(u: np.ndarray, v: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    wp = 0.5 * (u + 1j * v)
+    wm = 0.5 * np.conj(u - 1j * v)
+    sema = np.abs(wp) + np.abs(wm)
+    semi = np.abs(wp) - np.abs(wm)
+    angle = 0.5 * (np.angle(wp) + np.angle(wm))
+    phase = 0.5 * (np.angle(wm) - np.angle(wp))
+    cangle = np.mod(np.degrees(angle), 180.0)
+    cphase = np.mod(np.degrees(phase), 360.0)
+    return sema.astype(np.float32), semi.astype(np.float32), cangle.astype(np.float32), cphase.astype(np.float32)
 
 
 def main() -> None:
@@ -100,6 +145,8 @@ def main() -> None:
         raise SystemExit(f"TPXO atlas grid file not found: {grid_file}")
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     out_path = Path(args.output)
+    if args.profile and args.output == str(DEFAULT_OUTPUT):
+        out_path = DEFAULT_OUTPUT.with_name(f"{DEFAULT_OUTPUT.stem}_{args.profile}{DEFAULT_OUTPUT.suffix}")
 
     nlon, nlat, half_step = read_grid_header(grid_file)
     lon, lat = atlas_coordinates(nlon, nlat, half_step)
@@ -115,6 +162,10 @@ def main() -> None:
 
     eamp = np.empty((len(constituents), len(subset_lat), len(subset_lon)), dtype=np.float32)
     ephase = np.empty_like(eamp)
+    cmax = np.empty_like(eamp) if args.include_uv else None
+    cmin = np.empty_like(eamp) if args.include_uv else None
+    cangle = np.empty_like(eamp) if args.include_uv else None
+    cphase = np.empty_like(eamp) if args.include_uv else None
     for index, constituent in enumerate(constituents):
         path = atlas_dir / f"h_{constituent}_tpxo9_atlas_30_v5"
         if not path.exists():
@@ -122,6 +173,15 @@ def main() -> None:
         values = read_constituent_subset(path, lat_slice, lon_slice, (nlat, nlon))
         eamp[index] = np.abs(values)
         ephase[index] = np.mod(np.degrees(np.angle(values)), 360.0)
+        if args.include_uv:
+            uv_path = atlas_dir / f"u_{constituent}_tpxo9_atlas_30_v5"
+            if not uv_path.exists():
+                raise SystemExit(f"TPXO current constituent file not found: {uv_path}")
+            u_transport, v_transport = read_transport_subset(uv_path, lat_slice, lon_slice, (nlat, nlon))
+            u_velocity = transport_to_velocity(u_transport, depth, mask, args.velocity_depth_min)
+            v_velocity = transport_to_velocity(v_transport, depth, mask, args.velocity_depth_min)
+            assert cmax is not None and cmin is not None and cangle is not None and cphase is not None
+            cmax[index], cmin[index], cangle[index], cphase[index] = current_ellipse(u_velocity, v_velocity)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with Dataset(out_path, "w", format="NETCDF4") as ds:
@@ -132,8 +192,12 @@ def main() -> None:
         ds.source_dataset = str(atlas_dir)
         ds.grid_source = str(grid_path)
         ds.constituents = ",".join(constituents)
-        ds.tide_mode = "elevation_only"
-        ds.uv_tides_included = "false"
+        ds.tide_mode = "ssh_uv" if args.include_uv else "elevation_only"
+        ds.uv_tides_included = "true" if args.include_uv else "false"
+        if args.include_uv:
+            ds.current_source = "TPXO atlas u_* files, four float planes [Ure,Uim,Vre,Vim]"
+            ds.current_conversion = "transport divided by TPXO atlas depth, then converted to tidal ellipse"
+            ds.velocity_depth_min_m = float(args.velocity_depth_min)
 
         tide_period = ds.createVariable("tide_period", "f8", ("tide_period",), zlib=True, complevel=1)
         tide_period.units = "hours"
@@ -165,9 +229,25 @@ def main() -> None:
         phase_var.units = "degrees"
         phase_var[:, :, :] = ephase
 
+        if args.include_uv:
+            assert cmax is not None and cmin is not None and cangle is not None and cphase is not None
+            cmax_var = ds.createVariable("tide_Cmax", "f4", ("tide_period", "lat", "lon"), zlib=True, complevel=1)
+            cmax_var.units = "meter second-1"
+            cmax_var[:, :, :] = cmax
+            cmin_var = ds.createVariable("tide_Cmin", "f4", ("tide_period", "lat", "lon"), zlib=True, complevel=1)
+            cmin_var.units = "meter second-1"
+            cmin_var[:, :, :] = cmin
+            cangle_var = ds.createVariable("tide_Cangle", "f4", ("tide_period", "lat", "lon"), zlib=True, complevel=1)
+            cangle_var.units = "degrees"
+            cangle_var[:, :, :] = cangle
+            cphase_var = ds.createVariable("tide_Cphase", "f4", ("tide_period", "lat", "lon"), zlib=True, complevel=1)
+            cphase_var.units = "degrees"
+            cphase_var[:, :, :] = cphase
+
     print(f"atlas_dir={atlas_dir}")
     print(f"grid={grid_path}")
     print(f"constituents={','.join(constituents)}")
+    print(f"include_uv={args.include_uv}")
     print(f"output={out_path}")
 
 
