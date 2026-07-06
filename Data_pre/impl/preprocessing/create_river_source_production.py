@@ -25,6 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--grid", default=None)
     parser.add_argument("--discharge-csv", default=str(DEFAULT_CSV))
     parser.add_argument("--output", default=str(DEFAULT_OUT))
+    parser.add_argument("--profile", default=None)
     return parser.parse_args()
 
 
@@ -54,6 +55,8 @@ def main() -> None:
     params = load_project_params()
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     out_path = Path(args.output)
+    if args.profile and args.output == str(DEFAULT_OUT):
+        out_path = out_path.with_name(f"{out_path.stem}_{args.profile}{out_path.suffix}")
     discharge_path = Path(args.discharge_csv)
     vertical = load_vertical_config()
     times, discharge, scenario_tag = read_discharge_csv(discharge_path)
@@ -86,14 +89,27 @@ def main() -> None:
         ds.carrier_transport_m3_s = float(np.nanmedian(discharge))
         ds.not_measured_discharge = "true" if scenario_key in {"derived_release_carrier", "scenario_baseline"} else "false"
         ds.annual_release_TBq_per_year = float(params["source"]["annual_release_TBq_per_year"])
+        ds.annual_release_TBq_per_year_note = "case-specific source value from project_parameters.json"
         ds.release_rate_note = "derived from annual HTO release rate"
         ds.release_Bq_s = release_bq_s
+        ds.source_profile = args.profile or "default"
+        ds.source_mode = params["source"].get("release_mode", "constant_rate")
+        ds.source_vertical_location = "surface_layer"
+        ds.s_rho_surface_index_zero_based = int(vertical.N - 1)
+        ds.river_Vshape_sum_expected = 1.0
+        ds.tracer_meaning = "dye_01 represents dissolved passive tracer concentration increment"
         ds.configured_source_lon = placement.configured_lon
         ds.configured_source_lat = placement.configured_lat
+        ds.nearest_source_xi = placement.nearest_xi
+        ds.nearest_source_eta = placement.nearest_eta
+        ds.nearest_source_lon = placement.nearest_lon
+        ds.nearest_source_lat = placement.nearest_lat
+        ds.nearest_source_is_water = "true" if placement.nearest_is_water else "false"
         ds.snapped_source_lon = placement.snapped_lon
         ds.snapped_source_lat = placement.snapped_lat
         ds.snapped_source_xi = placement.snapped_xi
         ds.snapped_source_eta = placement.snapped_eta
+        ds.snapped_source_depth_m = placement.snapped_depth_m
         ds.source_snap_distance_m = placement.snapped_distance_m
         ds.source_placement_rule = placement.placement_rule
 
@@ -124,6 +140,8 @@ def main() -> None:
         vshape = var("river_Vshape", "f8", ("s_rho", "river"))
         profile = np.zeros((vertical.N, 1), dtype=float)
         profile[-1, 0] = 1.0
+        if not np.isclose(float(profile.sum()), 1.0):
+            raise SystemExit("river_Vshape profile sum is not 1")
         vshape[:] = profile
 
         transport = var("river_transport", "f8", ("river_time", "river"))

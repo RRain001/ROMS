@@ -42,6 +42,33 @@
       ],
       "infile": "ocean_fukushima_202401_50m_pilot.in",
       "log_file": "pilot_month.log"
+    },
+    "online_6h": {
+      "build_variant": "online_my25_uvtide",
+      "binary": "romsM_online_my25_uvtide",
+      "fallback_binaries": [
+        "run/romsM_online_my25_uvtide"
+      ],
+      "infile": "ocean_fukushima_202401_50m_online_6h_online_my25_uvtide.in",
+      "log_file": "online_6h.log"
+    },
+    "online_3d": {
+      "build_variant": "online_my25_uvtide",
+      "binary": "romsM_online_my25_uvtide",
+      "fallback_binaries": [
+        "run/romsM_online_my25_uvtide"
+      ],
+      "infile": "ocean_fukushima_202401_50m_online_3d_online_my25_uvtide.in",
+      "log_file": "online_3d.log"
+    },
+    "online_month": {
+      "build_variant": "online_my25_uvtide",
+      "binary": "romsM_online_my25_uvtide",
+      "fallback_binaries": [
+        "run/romsM_online_my25_uvtide"
+      ],
+      "infile": "ocean_fukushima_202401_50m_online_month_online_my25_uvtide.in",
+      "log_file": "online_month.log"
     }
   }
 }

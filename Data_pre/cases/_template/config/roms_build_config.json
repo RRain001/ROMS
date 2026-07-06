@@ -34,6 +34,14 @@
       "header_name": "example_region_202401.h",
       "executable_name": "romsM_example_region_202401",
       "fallback_binary_paths": []
+    },
+    "online_my25_uvtide": {
+      "roms_application": "EXAMPLE_REGION_202401_ONLINE_MY25_UVTIDE",
+      "header_dir": "run",
+      "analytical_dir": "run",
+      "header_name": "example_region_202401_online_my25_uvtide.h",
+      "executable_name": "romsM_example_region_202401_online_my25_uvtide",
+      "fallback_binary_paths": []
     }
   }
 }

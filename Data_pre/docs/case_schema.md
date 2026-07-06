@@ -8,6 +8,12 @@ Top-level sections:
 - `domain`: horizontal domain and source point
 - `time`: simulation window and pilot timing controls
 - `vertical`: ROMS sigma-coordinate settings
+- `physics`: standard online physics profile settings such as MY25/k-kl
+  vertical mixing, Smagorinsky mixing, and background mixing coefficients
+- `tides`: tide forcing switches; `SSH_TIDES` and `UV_TIDES` are enabled by
+  default and UV tide generation must be blocked rather than fabricated when
+  TPXO current ellipses are missing
+- `output`: history, average, and diagnostic output cadence
 - `source`: source-kind and tracer/source metadata
 - `naming`: filenames and prefixes for generated products
 - `paths`: project root, ROMS source path, shared dataset paths
@@ -33,3 +39,10 @@ Lifecycle rule:
 Out of scope:
 
 - case schema should not encode solver build recipes, MPI launch commands, or runtime stabilization procedures
+
+Default online profile:
+
+- New cases default to `N=40`, `Vtransform=2`, `Vstretching=4`,
+  `theta_s=7.0`, `theta_b=0.1`, and `Tcline_m=200.0`.
+- New cases default to MY25/k-kl vertical mixing, Smagorinsky horizontal
+  mixing with ROMS source-level `SmagorCoef = 0.2`, and SSH+UV tides.

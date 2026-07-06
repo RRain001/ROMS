@@ -9,7 +9,9 @@ data, inputs, build artifacts, logs, and model outputs.
 1. Copy `Data_pre/cases/_template` to `Data_pre/cases/<case_name>`.
 2. Edit `config/project_parameters.json`.
    - Set `case.name`, `case.slug`, `case.cpp_name`, and `naming.roms_prefix`.
-   - Keep `vertical.N` at `30` unless the case explicitly needs another level count.
+   - The standard online profile uses `vertical.N = 40`, `theta_s = 7.0`,
+     `theta_b = 0.1`, and `Tcline_m = 200.0` unless the case explicitly
+     overrides these values.
    - Set `ocean.default_source` to `hycom` for the standard workflow.
    - Set `paths.case_root` to `projects/<case_name>`.
 3. Edit `config/staged_download_config.json` only for source windows, credentials, and staged raw paths.
@@ -33,7 +35,9 @@ Use `--case-name <case_name>` on all commands.
 ## Defaults
 
 - Ocean source: HYCOM.
-- Vertical levels: `N = 30`.
+- Vertical levels: `N = 40`.
+- Standard online physics profile: MY25/k-kl vertical mixing, Smagorinsky
+  horizontal mixing with `C = 0.2`, `SSH_TIDES`, and `UV_TIDES`.
 - Build artifacts: `projects/<case_name>/build/Build_romsM`.
 - Executables: `projects/<case_name>/bin`.
 - Run logs: `projects/<case_name>/logs`.

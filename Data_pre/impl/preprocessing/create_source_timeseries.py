@@ -23,6 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--grid", default=None)
     parser.add_argument("--output", default=str(OUT))
+    parser.add_argument("--profile", default=None)
     return parser.parse_args()
 
 
@@ -34,6 +35,8 @@ def main() -> None:
     t = p["time"]
     grid_path = resolve_active_pilot_grid(args.grid)
     out_path = Path(args.output)
+    if args.profile and args.output == str(OUT):
+        out_path = out_path.with_name(f"{out_path.stem}_{args.profile}{out_path.suffix}")
     placement = locate_source_on_grid(grid_path, d["source_lon"], d["source_lat"])
 
     start = datetime.fromisoformat(t["start"])

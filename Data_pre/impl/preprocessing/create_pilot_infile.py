@@ -33,11 +33,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--grid", default=None)
     parser.add_argument("--ocean-source", default="hycom")
+    parser.add_argument("--profile", default=None, help="Optional profile suffix such as online_my25_uvtide")
     parser.add_argument("--config", default=None)
     parser.add_argument("--pilot", choices=["1day", "month", "month_or_year"], default=None)
     parser.add_argument(
         "--mode",
-        choices=["smoke", "pilot_1day", "pilot_month", "both", "pilot"],
+        choices=["smoke", "pilot_1day", "pilot_month", "online_6h", "online_3d", "online_month", "both", "pilot"],
         default="both",
     )
     parser.add_argument("--forcing-mode", choices=["analytical", "external"], default="analytical")
@@ -132,6 +133,16 @@ def all_tracer_flags(params: dict, value: str) -> str:
     return " ".join([value] * (2 + max(0, tracer_count)))
 
 
+def source_tracer_flags(params: dict) -> str:
+    tracer_count = int(params.get("source", {}).get("tracer_count", 0))
+    return " ".join(["F", "F", *(["T"] * max(0, tracer_count))])
+
+
+def fortran_float(value: float, *, precision: int = 1) -> str:
+    mantissa, exponent = f"{float(value):.{precision}e}".split("e")
+    return f"{mantissa}d{int(exponent):+03d}"
+
+
 def replace_line(text: str, key: str, value: str) -> str:
     return re.sub(rf"^(\s*{re.escape(key)}\s*(?:==|=)).*$", rf"\1 {value}", text, flags=re.MULTILINE)
 
@@ -161,7 +172,16 @@ def pick_stable_dt(default_dt: float) -> float:
     return default_dt
 
 
-def forcing_paths(args: argparse.Namespace, forcing_mode: str) -> dict[str, str]:
+def active_profile(args: argparse.Namespace, mode: str | None = None) -> str | None:
+    if args.profile:
+        return args.profile
+    if mode and mode.startswith("online_"):
+        return "online_my25_uvtide"
+    return None
+
+
+def forcing_paths(args: argparse.Namespace, forcing_mode: str, mode: str | None = None) -> dict[str, str]:
+    profile = active_profile(args, mode)
     if forcing_mode == "analytical":
         return {
             "ini": "../input/roms_ini_pilot.nc",
@@ -184,13 +204,16 @@ def forcing_paths(args: argparse.Namespace, forcing_mode: str) -> dict[str, str]
         source_paths = build_ocean_source_paths(ocean_source)
     atm_default = f"../input/{roms_input_name('atm')}"
     rad_default = f"../input/{roms_input_name('rad')}"
+    river_default = "../input/roms_rivers_production.nc"
+    if profile:
+        river_default = f"../input/roms_rivers_production_{profile}.nc"
     return {
-        "ini": args.ini_path or relative_to_run(source_paths.roms_ini),
-        "bry": args.bry_path or relative_to_run(source_paths.roms_bdy),
+        "ini": args.ini_path or f"../input/{roms_input_name('ini', ocean_source=ocean_source, profile=profile)}",
+        "bry": args.bry_path or f"../input/{roms_input_name('bdy', ocean_source=ocean_source, profile=profile)}",
         "clm": args.clm_path or args.ini_path or relative_to_run(source_paths.roms_ini),
         "nud": "none",
-        "river": args.river_path or "../input/roms_rivers_production.nc",
-        "tides": args.tides_path or f"../input/{roms_input_name('tides')}",
+        "river": args.river_path or river_default,
+        "tides": args.tides_path or f"../input/{roms_input_name('tides', profile=profile)}",
         "frc_files": [
             f"     FRCNAME == {args.atm_path or atm_default} \\",
             f"                {args.rad_path or rad_default}",
@@ -373,10 +396,14 @@ def base_text(
 ) -> str:
     vertical = params["vertical"]
     time_cfg = params["time"]
+    physics_cfg = params.get("physics", {})
+    output_cfg = params.get("output", {})
+    source_cfg = params.get("source", {})
     naming = load_case_naming()
     ocean_source = normalize_ocean_source(args.ocean_source)
     glorys_paths = glorys_source_paths_for_args(args)
-    forcing = forcing_paths(args, forcing_mode)
+    profile = active_profile(args, mode)
+    forcing = forcing_paths(args, forcing_mode, mode)
     ntile_i, ntile_j = tile_layout(params)
     start = external_model_start(params, forcing_mode, forcing["ini"])
     if forcing_mode == "external" and ocean_source == "glorys12v1":
@@ -389,6 +416,18 @@ def base_text(
         stop = min(start + timedelta(days=1), boundary_stop)
         title = f"{naming.title} 1-day pilot{source_label}"
         out_prefix = "pilot_1day"
+    elif mode == "online_6h":
+        stop = min(start + timedelta(hours=6), boundary_stop)
+        title = f"{naming.title} online MY25/UV tide 6-hour check{source_label}"
+        out_prefix = "online_6h"
+    elif mode == "online_3d":
+        stop = min(start + timedelta(days=3), boundary_stop)
+        title = f"{naming.title} online MY25/UV tide 3-day check{source_label}"
+        out_prefix = "online_3d"
+    elif mode == "online_month":
+        stop = boundary_stop
+        title = f"{naming.title} online MY25/UV tide month{source_label}"
+        out_prefix = "online_month"
     elif mode == "pilot_month":
         stop = boundary_stop
         title = f"{naming.title} pilot{source_label}"
@@ -400,18 +439,28 @@ def base_text(
 
     seconds = int((stop - start).total_seconds())
     ntimes = max(1, int(round(seconds / dt_seconds)))
-    nhis = max(1, int(round(time_cfg["output_interval_hours"] * 3600 / dt_seconds))) if mode != "smoke" else 5
+    if mode.startswith("online_"):
+        nhis = max(1, int(round(float(output_cfg.get("history_interval_hours", 1)) * 3600 / dt_seconds)))
+        navg = max(1, int(round(float(output_cfg.get("average_interval_hours", 1)) * 3600 / dt_seconds)))
+        ndia = max(1, int(round(float(output_cfg.get("diagnostic_interval_hours", 1)) * 3600 / dt_seconds)))
+    else:
+        nhis = max(1, int(round(time_cfg["output_interval_hours"] * 3600 / dt_seconds))) if mode != "smoke" else 5
+        navg = 0 if mode in {"smoke", "pilot_1day"} else nhis
+        ndia = 0 if mode in {"smoke", "pilot_1day"} else nhis
     nrst = nhis if mode == "smoke" else max(1, int(round(24 * 3600 / dt_seconds)))
     text = template_path.read_text()
-    text = f"! Draft {naming.slug} {mode} input derived from roms_upwelling.in. Not production-ready.\n" + text
+    profile_note = f" {profile}" if profile else ""
+    text = f"! Draft {naming.slug} {mode}{profile_note} input derived from roms_upwelling.in.\n" + text
     text = replace_line(text, "TITLE", title)
-    text = replace_line(text, "MyAppCPP", naming.cpp_name)
+    app_cpp = f"{naming.cpp_name}_{profile.upper()}" if profile else naming.cpp_name
+    text = replace_line(text, "MyAppCPP", app_cpp)
     lm_value = str(lm) if lm is not None else "UNRESOLVED"
     mm_value = str(mm) if mm is not None else "UNRESOLVED"
     text = replace_line(text, "Lm", f"{lm_value}            ! pilot interior XI points")
     text = replace_line(text, "Mm", f"{mm_value}            ! pilot interior ETA points")
     text = replace_line(text, "N", f"{int(vertical['N'])}             ! vertical levels")
-    text = replace_line(text, "NPT", "1             ! one HTO-like inert passive tracer")
+    tracer_count = int(source_cfg.get("tracer_count", source_cfg.get("roms_NPT", 1)))
+    text = replace_line(text, "NPT", f"{tracer_count}             ! inert passive tracer count")
     text = replace_line(text, "Vtransform", str(int(vertical["Vtransform"])))
     text = replace_line(text, "Vstretching", str(int(vertical["Vstretching"])))
     text = replace_line(text, "THETA_S", f"{float(vertical['theta_s']):.1f}d0")
@@ -437,8 +486,8 @@ def base_text(
     text = replace_line(text, "NINFO", "1" if mode == "smoke" else str(nhis))
     text = replace_line(text, "NHIS", str(nhis))
     text = replace_line(text, "NXTR", "0" if mode in {"smoke", "pilot_1day"} else str(nhis))
-    text = replace_line(text, "NAVG", "0" if mode in {"smoke", "pilot_1day"} else str(nhis))
-    text = replace_line(text, "NDIA", "0" if mode in {"smoke", "pilot_1day"} else str(nhis))
+    text = replace_line(text, "NAVG", str(navg))
+    text = replace_line(text, "NDIA", str(ndia))
     text = replace_line(text, "NTLM", str(nhis if mode != "smoke" else 5))
     text = replace_line(text, "NADJ", str(nhis if mode != "smoke" else 5))
     text = replace_line(text, "NSFF", str(nhis if mode != "smoke" else 5))
@@ -478,10 +527,17 @@ def base_text(
         "                 C4                             ! dye_01 inert tracer",
         "LBC(isFsur)",
     )
-    text = replace_line(text, "TNU2", "0.0d0  0.0d0  0.0d0              ! temp, salt, dye_01 m2/s")
-    text = replace_line(text, "TNU4", "3*0.0d0                         ! temp, salt, dye_01 m4/s")
-    text = replace_line(text, "ad_TNU2", "0.0d0  0.0d0  0.0d0              ! temp, salt, dye_01 m2/s")
-    text = replace_line(text, "ad_TNU4", "3*0.0d0                         ! temp, salt, dye_01 m4/s")
+    tracer_slots = 2 + max(0, tracer_count)
+    tracer_values = " ".join([f"{float(physics_cfg.get('tnu2_m2_s', 10.0)):.1f}d0"] * tracer_slots)
+    zero_tracer_values = " ".join(["0.0d0"] * tracer_slots)
+    akt_bak = " ".join([fortran_float(float(physics_cfg.get("akt_bak_m2_s", 1.0e-6)))] * tracer_slots)
+    text = replace_line(text, "TNU2", f"{tracer_values}              ! temp, salt, dye m2/s")
+    text = replace_line(text, "TNU4", f"{zero_tracer_values}              ! temp, salt, dye m4/s")
+    text = replace_line(text, "ad_TNU2", f"{tracer_values}              ! temp, salt, dye m2/s")
+    text = replace_line(text, "ad_TNU4", f"{zero_tracer_values}              ! temp, salt, dye m4/s")
+    text = replace_line(text, "VISC2", f"{float(physics_cfg.get('visc2_m2_s', 10.0)):.1f}d0                          ! m2/s")
+    text = replace_line(text, "AKT_BAK", f"{akt_bak}                   ! m2/s")
+    text = replace_line(text, "AKV_BAK", f"{fortran_float(float(physics_cfg.get('akv_bak_m2_s', 1.0e-5)))}                          ! m2/s")
     avg_tracer_flags = all_tracer_flags(params, "F")
     text = replace_line(text, "Aout(idTTav)", f"{avg_tracer_flags}     ! disable quadratic tracer averages")
     text = replace_line(text, "Aout(idUTav)", f"{avg_tracer_flags}     ! disable quadratic u-tracer averages")
@@ -490,9 +546,11 @@ def base_text(
     text = replace_line(text, "Aout(iHVTav)", f"{avg_tracer_flags}     ! disable tracer v-volume flux averages")
     text = replace_line(text, "LuvSrc", "F                            ! no horizontal momentum source in pilot")
     text = replace_line(text, "LwSrc", "T                             ! enable vertical point/source transport")
-    text = replace_line(text, "LtracerSrc", "F F T                        ! temperature, salinity, dye_01")
-    text = replace_line(text, "LtracerCLM", "F F F                        ! temperature, salinity, dye_01")
-    text = replace_line(text, "LnudgeTCLM", "F F F                        ! temperature, salinity, dye_01")
+    text = replace_line(text, "LtracerSrc", f"{source_tracer_flags(params)}                        ! active tracers and inert dyes")
+    text = replace_line(text, "LtracerCLM", f"{all_tracer_flags(params, 'F')}                        ! active tracers and inert dyes")
+    text = replace_line(text, "LnudgeTCLM", f"{all_tracer_flags(params, 'F')}                        ! active tracers and inert dyes")
+    for key in ("Hout(idVvis)", "Hout(idTdif)", "Hout(idSdif)", "Aout(idVvis)", "Aout(idTdif)", "Aout(idSdif)"):
+        text = replace_line(text, key, "T")
     text = replace_line(text, "VARNAME", varinfo_path(params))
     text = replace_line(text, "GRDNAME", grid_name)
 
@@ -524,16 +582,19 @@ def base_text(
         text = replace_line(text, "OBCFAC", "0.0d0                      ! nondimensional")
 
     source_for_name = None if out_prefix == "smoke" else ocean_source
-    text = replace_line(text, "RSTNAME", f"../output/{output_product_name('rst', out_prefix, source_for_name)}")
-    text = replace_line(text, "HISNAME", f"../output/{output_product_name('his', out_prefix, source_for_name)}")
-    text = replace_line(text, "AVGNAME", f"../output/{output_product_name('avg', out_prefix, source_for_name)}")
-    text = replace_line(text, "DIANAME", f"../output/{output_product_name('dia', out_prefix, source_for_name)}")
-    text = replace_line(text, "XTRNAME", f"../output/{output_product_name('xtr', 'pilot', source_for_name)}")
-    text = replace_line(text, "QCKNAME", f"../output/{output_product_name('qck', 'pilot', source_for_name)}")
+    text = replace_line(text, "RSTNAME", f"../output/{output_product_name('rst', out_prefix, source_for_name, profile)}")
+    text = replace_line(text, "HISNAME", f"../output/{output_product_name('his', out_prefix, source_for_name, profile)}")
+    text = replace_line(text, "AVGNAME", f"../output/{output_product_name('avg', out_prefix, source_for_name, profile)}")
+    text = replace_line(text, "DIANAME", f"../output/{output_product_name('dia', out_prefix, source_for_name, profile)}")
+    text = replace_line(text, "XTRNAME", f"../output/{output_product_name('xtr', 'pilot', source_for_name, profile)}")
+    text = replace_line(text, "QCKNAME", f"../output/{output_product_name('qck', 'pilot', source_for_name, profile)}")
     return text
 
 
 def output_path_for_mode(mode: str, ocean_source: str, args: argparse.Namespace) -> Path:
+    profile = active_profile(args, mode)
+    if mode.startswith("online_"):
+        return RUN_DIR / run_infile_name(mode, None if ocean_source == "hycom" else ocean_source, profile)
     if mode == "smoke":
         return SMOKE_OUT
     if ocean_source == "glorys12v1":

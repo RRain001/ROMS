@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from netCDF4 import Dataset
 
 
@@ -279,6 +280,16 @@ REQUIRED_INPUT_FILE_KEYS = {
 }
 
 
+OUTPUT_FILE_KEYS = {
+    "RSTNAME",
+    "HISNAME",
+    "AVGNAME",
+    "DIANAME",
+    "XTRNAME",
+    "QCKNAME",
+}
+
+
 OPTIONAL_INPUT_FILE_KEYS = {
     "CLMNAME",
     "NUDNAME",
@@ -296,7 +307,7 @@ def _extract_input_file_tokens(text: str) -> tuple[list[str], list[str], list[tu
     optional_tokens: list[str] = []
     keyed_tokens: list[tuple[str, str, bool]] = []
     collecting = False
-    current_optional = False
+    current_kind = ""
     current_key = ""
     for raw_line in text.splitlines():
         line = strip_comment(raw_line).strip()
@@ -305,21 +316,32 @@ def _extract_input_file_tokens(text: str) -> tuple[list[str], list[str], list[tu
         if "=" in line:
             lhs, rhs = line.split("=", 1)
             key = lhs.replace("=", "").strip().upper()
-            collecting = key in REQUIRED_INPUT_FILE_KEYS or key in OPTIONAL_INPUT_FILE_KEYS
-            current_optional = key in OPTIONAL_INPUT_FILE_KEYS
+            if key in REQUIRED_INPUT_FILE_KEYS:
+                current_kind = "required"
+            elif key in OPTIONAL_INPUT_FILE_KEYS:
+                current_kind = "optional"
+            elif key in OUTPUT_FILE_KEYS:
+                current_kind = "output"
+            else:
+                current_kind = ""
+            collecting = bool(current_kind)
             current_key = key if collecting else ""
             if collecting:
-                target = optional_tokens if current_optional else required_tokens
                 tokens = _extract_file_tokens(rhs)
-                target.extend(tokens)
-                keyed_tokens.extend((key, token, current_optional) for token in tokens)
+                if current_kind == "required":
+                    required_tokens.extend(tokens)
+                elif current_kind == "optional":
+                    optional_tokens.extend(tokens)
+                keyed_tokens.extend((key, token, current_kind != "required") for token in tokens)
                 collecting = line.endswith("\\") or line.endswith("|")
             continue
         if collecting:
-            target = optional_tokens if current_optional else required_tokens
             tokens = _extract_file_tokens(line)
-            target.extend(tokens)
-            keyed_tokens.extend((current_key, token, current_optional) for token in tokens)
+            if current_kind == "required":
+                required_tokens.extend(tokens)
+            elif current_kind == "optional":
+                optional_tokens.extend(tokens)
+            keyed_tokens.extend((current_key, token, current_kind != "required") for token in tokens)
             collecting = line.endswith("\\") or line.endswith("|")
     return required_tokens, optional_tokens, keyed_tokens
 
@@ -426,6 +448,82 @@ def validate_dimension_consistency(context: RunContext, metadata: InfileMetadata
     return issues
 
 
+def _variable_all_zero(ds: Dataset, names: tuple[str, ...]) -> tuple[bool, str | None]:
+    for name in names:
+        if name not in ds.variables:
+            continue
+        data = np.ma.filled(ds.variables[name][:], np.nan).astype(float, copy=False)
+        finite = data[np.isfinite(data)]
+        if finite.size == 0:
+            return False, name
+        return bool(np.allclose(finite, 0.0)), name
+    return False, None
+
+
+def validate_online_profile_content(context: RunContext, metadata: InfileMetadata) -> tuple[list[str], list[str]]:
+    issues: list[str] = []
+    warnings: list[str] = []
+    uv_tides = bool(context.project_params.get("tides", {}).get("uv_tides", False))
+    if uv_tides:
+        for path in _keyed_paths(context, metadata, "TIDENAME"):
+            try:
+                with Dataset(path) as ds:
+                    for name in ("tide_Cmax", "tide_Cmin", "tide_Cangle", "tide_Cphase"):
+                        if name not in ds.variables:
+                            issues.append(f"TIDENAME missing UV tide variable {name}: {path.name}")
+            except Exception as exc:  # noqa: BLE001
+                issues.append(f"cannot inspect TIDENAME NetCDF {path}: {type(exc).__name__}: {exc}")
+
+    for path in _keyed_paths(context, metadata, "ININAME"):
+        try:
+            with Dataset(path) as ds:
+                ok, found = _variable_all_zero(ds, ("dye_01",))
+                if found is None:
+                    issues.append(f"ININAME missing dye_01: {path.name}")
+                elif not ok:
+                    issues.append(f"ININAME dye_01 is not all zero: {path.name}")
+        except Exception as exc:  # noqa: BLE001
+            issues.append(f"cannot inspect ININAME NetCDF {path}: {type(exc).__name__}: {exc}")
+
+    for path in _keyed_paths(context, metadata, "BRYNAME"):
+        try:
+            with Dataset(path) as ds:
+                for edge in ("west", "east", "south", "north"):
+                    ok, found = _variable_all_zero(ds, (f"dye_{edge}_01", f"dye_01_{edge}"))
+                    if found is None:
+                        issues.append(f"BRYNAME missing dye boundary for {edge}: {path.name}")
+                    elif not ok:
+                        issues.append(f"BRYNAME {found} is not all zero: {path.name}")
+        except Exception as exc:  # noqa: BLE001
+            issues.append(f"cannot inspect BRYNAME NetCDF {path}: {type(exc).__name__}: {exc}")
+
+    for key in ("RIVERNAME", "SSFNAME"):
+        for path in _keyed_paths(context, metadata, key):
+            try:
+                with Dataset(path) as ds:
+                    if "river_Vshape" in ds.variables:
+                        profile = np.asarray(ds.variables["river_Vshape"][:], dtype=float)
+                        sums = profile.sum(axis=0)
+                        if not np.allclose(sums, 1.0):
+                            issues.append(f"{key} river_Vshape column sums are not 1: {path.name}")
+                        surface_index = profile.shape[0] - 1
+                        if not np.all(profile[surface_index, :] > 0.0):
+                            warnings.append(f"{key} river_Vshape does not inject at surface index {surface_index}: {path.name}")
+                    else:
+                        issues.append(f"{key} missing river_Vshape: {path.name}")
+            except Exception as exc:  # noqa: BLE001
+                issues.append(f"cannot inspect {key} NetCDF {path}: {type(exc).__name__}: {exc}")
+
+    for key, token, _ in metadata.keyed_tokens:
+        if key not in OUTPUT_FILE_KEYS:
+            continue
+        candidate = Path(token)
+        resolved = candidate if candidate.is_absolute() else (context.paths.run_dir / candidate).resolve()
+        if resolved.exists():
+            warnings.append(f"output file already exists and may be overwritten: {resolved}")
+    return issues, warnings
+
+
 def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileMetadata]:
     issues: list[str] = []
     warnings: list[str] = []
@@ -440,11 +538,24 @@ def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileM
     elif not os.access(binary, os.X_OK):
         issues.append(f"executable is not runnable: {binary}")
 
-    expected_cpp = str(context.project_params.get("case", {}).get("cpp_name") or "").strip()
-    if expected_cpp and not metadata.my_app_cpp:
-        issues.append(f"MyAppCPP missing: case expects {expected_cpp}")
-    if metadata.my_app_cpp and metadata.my_app_cpp != expected_cpp:
-        issues.append(f"MyAppCPP mismatch: infile={metadata.my_app_cpp}, case expects {expected_cpp}")
+    expected_cpp_names: list[str] = []
+    build_config_path = context.config_dir / "roms_build_config.json"
+    if build_config_path.exists():
+        try:
+            build_config = _load_json(build_config_path)
+            variant_cpp = build_config.get("variants", {}).get(context.mode.build_variant, {}).get("roms_application")
+            if variant_cpp:
+                expected_cpp_names.append(str(variant_cpp).strip())
+        except Exception:
+            pass
+    case_cpp = str(context.project_params.get("case", {}).get("cpp_name") or "").strip()
+    if case_cpp:
+        expected_cpp_names.append(case_cpp)
+    expected_cpp_names = [name for index, name in enumerate(expected_cpp_names) if name and name not in expected_cpp_names[:index]]
+    if expected_cpp_names and not metadata.my_app_cpp:
+        issues.append(f"MyAppCPP missing: case expects one of {', '.join(expected_cpp_names)}")
+    if metadata.my_app_cpp and expected_cpp_names and metadata.my_app_cpp not in expected_cpp_names:
+        issues.append(f"MyAppCPP mismatch: infile={metadata.my_app_cpp}, case expects one of {', '.join(expected_cpp_names)}")
     required_np = metadata.required_np
     if required_np is not None and required_np != context.mode.np:
         issues.append(f"parallel mismatch: NtileI*NtileJ={required_np}, configured np={context.mode.np}")
@@ -461,6 +572,9 @@ def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileM
         if not primary.exists() and binary is not None:
             warnings.append(f"using fallback executable path: {binary}")
     issues.extend(validate_dimension_consistency(context, metadata))
+    content_issues, content_warnings = validate_online_profile_content(context, metadata)
+    issues.extend(content_issues)
+    warnings.extend(content_warnings)
     return issues, warnings, metadata
 
 

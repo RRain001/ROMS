@@ -80,19 +80,23 @@ def case_start_datetime() -> datetime:
     return datetime.fromisoformat(params["time"]["start"])
 
 
-def run_infile_name(mode: str, ocean_source: str | None = None) -> str:
+def _profile_suffix(profile: str | None = None) -> str:
+    return f"_{profile}" if profile else ""
+
+
+def run_infile_name(mode: str, ocean_source: str | None = None, profile: str | None = None) -> str:
     naming = load_case_naming()
-    suffix = ""
+    suffix = _profile_suffix(profile)
     if ocean_source and ocean_source != "hycom":
-        suffix = f"_{ocean_source}"
+        suffix = f"{suffix}_{ocean_source}"
     return f"ocean_{naming.roms_prefix}_{mode}{suffix}.in"
 
 
-def output_product_name(kind: str, mode: str, ocean_source: str | None = None) -> str:
+def output_product_name(kind: str, mode: str, ocean_source: str | None = None, profile: str | None = None) -> str:
     naming = load_case_naming()
-    suffix = ""
+    suffix = _profile_suffix(profile)
     if ocean_source and ocean_source != "hycom":
-        suffix = f"_{ocean_source}"
+        suffix = f"{suffix}_{ocean_source}"
     return f"{kind}_{naming.roms_prefix}_{mode}{suffix}.nc"
 
 
@@ -128,18 +132,19 @@ def staged_source_csv_name() -> str:
     return load_case_naming().source_csv_name
 
 
-def roms_input_name(role: str, ocean_source: str | None = None) -> str:
+def roms_input_name(role: str, ocean_source: str | None = None, profile: str | None = None) -> str:
     naming = load_case_naming()
     start_label, window_label = case_time_labels()
     source_suffix = f"_{ocean_source}" if ocean_source and ocean_source != "hycom" else ""
+    profile_suffix = _profile_suffix(profile)
     if role == "ini":
-        return f"roms_ini_{naming.roms_prefix}{source_suffix}_{start_label}.nc"
+        return f"roms_ini_{naming.roms_prefix}{source_suffix}_{start_label}{profile_suffix}.nc"
     if role == "bdy":
-        return f"roms_bdy_{naming.roms_prefix}{source_suffix}_{window_label}.nc"
+        return f"roms_bdy_{naming.roms_prefix}{source_suffix}_{window_label}{profile_suffix}.nc"
     if role == "atm":
         return f"roms_atm_{naming.roms_prefix}_{window_label}.nc"
     if role == "rad":
         return f"roms_rad_{naming.roms_prefix}_{window_label}.nc"
     if role == "tides":
-        return f"roms_tides_{naming.roms_prefix}_{window_label}.nc"
+        return f"roms_tides_{naming.roms_prefix}_{window_label}{profile_suffix}.nc"
     raise ValueError(f"unsupported ROMS input role: {role}")

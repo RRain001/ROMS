@@ -46,6 +46,16 @@
       "fallback_binary_paths": [
         "run/romsM_external"
       ]
+    },
+    "online_my25_uvtide": {
+      "roms_application": "FUKUSHIMA_202401_ONLINE_MY25_UVTIDE",
+      "header_dir": "run",
+      "analytical_dir": "run",
+      "header_name": "fukushima_202401_online_my25_uvtide.h",
+      "executable_name": "romsM_online_my25_uvtide",
+      "fallback_binary_paths": [
+        "run/romsM_online_my25_uvtide"
+      ]
     }
   }
 }

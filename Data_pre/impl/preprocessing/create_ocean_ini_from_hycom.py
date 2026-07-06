@@ -47,6 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--src", default=str(DEFAULT_SRC))
     parser.add_argument("--grid", default=None)
     parser.add_argument("--output", default=str(DEFAULT_OUT))
+    parser.add_argument("--profile", default=None)
     return parser.parse_args()
 
 
@@ -90,6 +91,8 @@ def main() -> None:
         raise SystemExit(f"source file not found: {src_path}")
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     out_path = Path(args.output)
+    if args.profile and args.output == str(DEFAULT_OUT):
+        out_path = ROOT / "input" / roms_input_name("ini", profile=args.profile)
     grid = load_grid(grid_path)
     vertical = load_vertical_config()
     params = load_project_params()
