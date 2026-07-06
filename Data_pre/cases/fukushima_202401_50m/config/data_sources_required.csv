@@ -1,8 +1,0 @@
-priority,category,path,variables,status,note
-1,grid,input/roms_grid_bathy_500m_smoothed.nc,"h mask_rho pm pn angle lon_rho lat_rho",present,"Preferred active pilot grid after smoothing"
-2,ocean_initial,input/roms_ini_fukushima_202401_50m_20240101.nc,"zeta u v ubar vbar temp salt dye_01",missing,"Use ocean analysis/reanalysis at start time"
-3,ocean_boundary,input/roms_bdy_fukushima_202401_50m_202401.nc,"zeta_* u_* v_* ubar_* vbar_* temp_* salt_* dye_01_*",missing,"Open-boundary time series for the active monthly window"
-4,ocean_climatology,input/roms_clm_fukushima_202401_50m_202401.nc,"zeta u v ubar vbar temp salt",optional_missing,"Needed only if selected CPP and *.in options require CLM"
-5,atmosphere,input/roms_atm_fukushima_202401_50m_202401.nc,"Uwind Vwind Pair Tair Qair rain EminusP",missing,"Wind direction/speed must be converted to components"
-6,radiation,input/roms_rad_fukushima_202401_50m_202401.nc,"swrad lwrad lwrad_down",missing,"Coordinate with heat-flux CPP settings"
-7,tides,input/roms_tides_fukushima_202401_50m_202401.nc,"tide_period tide_Eamp tide_Ephase",missing,"Current phase uses SSH_TIDES only; UV_TIDES deferred until TPXO currents are staged"
