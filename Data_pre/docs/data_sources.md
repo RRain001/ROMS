@@ -26,6 +26,8 @@ Raw download coverage rule:
 - Default framework convention: derive the staged raw-download box from `project_parameters.json:domain.*`, then expand by source type.
 - `HYCOM` default margin is `0.08°` on each side because the source grid is relatively fine.
 - `GLORYS12V1` default margin is configured in `glorys12v1_download_config.json` and should normally be larger than the active ROMS grid because the source is daily 1/12-degree data.
+- `GLORYS12V1` boundary staging defaults to `boundary_download_strategy: "domain"`, so the downloader retrieves the buffered active-domain subset and the ROMS boundary generator slices the four open boundaries from that staged file.
+- Set `boundary_download_strategy: "edge_bands"` only when a large domain needs the legacy four-edge strip downloads; in that mode `boundary_band_buffer_points` controls the strip width.
 - `ERA5` default margin is `0.25°` on each side because the source coverage itself is coarser.
 - Use `staged_download_config.json:hycom_bbox_buffer_deg` or `era5_bbox_buffer_deg` to change those defaults when needed.
 - Legacy `bbox_buffer_deg` is still accepted as a shared fallback override for older cases.
