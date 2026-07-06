@@ -44,6 +44,13 @@
       "infile": "ocean_example_region_202401_online_6h_online_my25_uvtide.in",
       "log_file": "online_6h.log"
     },
+    "online_6h_online_my25_uvtide_decay": {
+      "build_variant": "online_my25_uvtide_decay",
+      "binary": "romsM_example_region_202401_online_my25_uvtide_decay",
+      "fallback_binaries": [],
+      "infile": "ocean_example_region_202401_online_6h_online_my25_uvtide_decay.in",
+      "log_file": "online_6h_online_my25_uvtide_decay.log"
+    },
     "online_3d": {
       "build_variant": "online_my25_uvtide",
       "binary": "romsM_example_region_202401_online_my25_uvtide",

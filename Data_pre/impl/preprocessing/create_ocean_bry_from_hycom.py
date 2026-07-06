@@ -13,6 +13,7 @@ from scipy.ndimage import distance_transform_edt
 from scipy.interpolate import RegularGridInterpolator
 
 from case_naming import load_case_naming, roms_input_name, staged_ocean_name
+from radioactive_decay import radioactive_decay_attrs
 from roms_preprocessing_utils import (
     PREPROCESSING_VERSION,
     ROOT,
@@ -369,6 +370,8 @@ def main() -> None:
             ds.grid_source = str(grid_path)
             ds.source_dataset = str(src_path)
             ds.preprocessing_version = PREPROCESSING_VERSION
+            for name, value in radioactive_decay_attrs(params, args.profile).items():
+                setattr(ds, name, value)
 
             selected_times = [times[index] for index in selected]
             create_time_variable(ds, "zeta_time", selected_times, "boundary free-surface time")

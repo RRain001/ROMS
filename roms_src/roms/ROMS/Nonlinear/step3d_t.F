@@ -1798,6 +1798,27 @@
         END DO
       END DO J_LOOP2
 
+# if defined RADIOACTIVE_DECAY && defined T_PASSIVE
+!
+!-----------------------------------------------------------------------
+!  Apply first-order radioactive decay sink to the configured passive
+!  dye tracer.  This is intentionally limited to inert tracer 1
+!  (dye_01) and never touches active temperature/salinity tracers.
+!-----------------------------------------------------------------------
+!
+      IF (NPT.ge.1) THEN
+        itrc=inert(1)
+        cff=EXP(-RADIOACTIVE_DECAY_LAMBDA_S*dt(ng))
+        DO k=1,N(ng)
+          DO j=Jstr,Jend
+            DO i=Istr,Iend
+              t(i,j,k,nnew,itrc)=t(i,j,k,nnew,itrc)*cff
+            END DO
+          END DO
+        END DO
+      END IF
+# endif
+
 # if defined AGE_MEAN && defined T_PASSIVE
 !
 !-----------------------------------------------------------------------

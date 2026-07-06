@@ -14,6 +14,7 @@ from netCDF4 import Dataset
 from case_context import get_case_config_path, get_case_root
 from case_naming import load_case_naming
 from pilot_grid_utils import resolve_active_pilot_grid
+from radioactive_decay import radioactive_decay_attrs
 
 
 ROOT = get_case_root()
@@ -62,6 +63,8 @@ def main() -> None:
         ds.title = f"Static pilot initial conditions for {load_case_naming().title}"
         ds.warning = "Static technical dry-run fields on the active pilot grid; not scientific forcing."
         ds.grid_source = str(grid_path)
+        for name, value in radioactive_decay_attrs(p).items():
+            setattr(ds, name, value)
 
         def var(name: str, dtype: str, dims: tuple[str, ...]):
             return ds.createVariable(name, dtype, dims, zlib=True, complevel=1)

@@ -12,6 +12,22 @@ if str(CORE_DIR) not in sys.path:
 from build_context import build_environment, parse_cli, resolve_binary_candidates, resolve_build_context  # type: ignore  # noqa: E402
 
 
+def cpp_defs(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    defs: list[str] = []
+    for line in path.read_text(errors="ignore").splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("#define"):
+            continue
+        parts = stripped.split(None, 2)
+        if len(parts) == 2:
+            defs.append(parts[1])
+        elif len(parts) == 3:
+            defs.append(f"{parts[1]}={parts[2]}")
+    return defs
+
+
 def main() -> None:
     args = parse_cli(sys.argv[1:])
     context = resolve_build_context(
@@ -27,6 +43,7 @@ def main() -> None:
         "variant": context.variant.name,
         "roms_application": context.variant.roms_application,
         "header": str(context.variant.header_path),
+        "header_cpp_defs": cpp_defs(context.variant.header_path),
         "analytical_dir": str(context.variant.analytical_dir),
         "roms_src": str(context.roms_src),
         "build_dir": str(context.paths.build_dir),

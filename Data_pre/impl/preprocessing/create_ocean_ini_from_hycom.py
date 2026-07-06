@@ -11,6 +11,7 @@ import numpy as np
 from netCDF4 import Dataset, date2num
 
 from case_naming import load_case_naming, roms_input_name, staged_ocean_name
+from radioactive_decay import radioactive_decay_attrs
 from roms_preprocessing_utils import (
     PREPROCESSING_VERSION,
     ROOT,
@@ -166,6 +167,8 @@ def main() -> None:
         ds.grid_source = str(grid_path)
         ds.source_dataset = str(src_path)
         ds.preprocessing_version = PREPROCESSING_VERSION
+        for name, value in radioactive_decay_attrs(params, args.profile).items():
+            setattr(ds, name, value)
         ds.source_time_index = time_index
         ds.source_time = selected_time.isoformat()
         ds.requested_model_start = start_time.isoformat()

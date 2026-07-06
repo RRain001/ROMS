@@ -42,6 +42,14 @@
       "header_name": "fdnpp_202501_online_my25_uvtide.h",
       "executable_name": "romsM_fdnpp_online_my25_uvtide",
       "fallback_binary_paths": []
+    },
+    "online_my25_uvtide_decay": {
+      "roms_application": "FDNPP_202501_ONLINE_MY25_UVTIDE_DECAY",
+      "header_dir": "run",
+      "analytical_dir": "run",
+      "header_name": "fdnpp_202501_online_my25_uvtide_decay.h",
+      "executable_name": "romsM_fdnpp_online_my25_uvtide_decay",
+      "fallback_binary_paths": []
     }
   }
 }

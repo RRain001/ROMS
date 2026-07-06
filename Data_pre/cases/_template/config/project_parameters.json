@@ -88,6 +88,39 @@
     "units_for_inventory": "Bq",
     "units_for_flux": "Bq s-1"
   },
+  "passive_tracer": {
+    "name": "dye_01",
+    "unit": "Bq m-3",
+    "species": "HTO",
+    "radioactive_decay": {
+      "enabled": false,
+      "half_life_years": 12.32,
+      "lambda_s": null,
+      "target_tracer": "dye_01",
+      "apply_to_temp_salt": false
+    }
+  },
+  "profiles": {
+    "online_my25_uvtide": {
+      "passive_tracer": {
+        "radioactive_decay": {
+          "enabled": false
+        }
+      }
+    },
+    "online_my25_uvtide_decay": {
+      "passive_tracer": {
+        "species": "HTO",
+        "radioactive_decay": {
+          "enabled": true,
+          "half_life_years": 12.32,
+          "lambda_s": null,
+          "target_tracer": "dye_01",
+          "apply_to_temp_salt": false
+        }
+      }
+    }
+  },
   "naming": {
     "grid_subset_name": "gebco_example_region_202401.nc",
     "roms_prefix": "example_region_202401",

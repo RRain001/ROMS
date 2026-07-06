@@ -15,6 +15,7 @@ from netCDF4 import Dataset, num2date
 
 from case_naming import load_case_naming, output_product_name, roms_input_name, run_infile_name
 from ocean_source_utils import build_ocean_source_paths, glorys_center_time, load_glorys_config, normalize_ocean_source
+from radioactive_decay import radioactive_decay_config
 from roms_preprocessing_utils import ROOT, load_project_params, resolve_grid_path
 
 
@@ -454,6 +455,20 @@ def base_text(
     text = replace_line(text, "TITLE", title)
     app_cpp = f"{naming.cpp_name}_{profile.upper()}" if profile else naming.cpp_name
     text = replace_line(text, "MyAppCPP", app_cpp)
+    decay_cfg = radioactive_decay_config(params, profile)
+    decay_note = (
+        f"! passive_tracer.name = {decay_cfg['tracer_name']}\n"
+        f"! passive_tracer.unit = {decay_cfg['tracer_unit']}\n"
+        f"! passive_tracer.species = {decay_cfg['species']}\n"
+        f"! radioactive_decay_enabled = {str(bool(decay_cfg['enabled'])).lower()}\n"
+        f"! radioactive_decay_half_life_years = {float(decay_cfg['half_life_years']):.12g}\n"
+        f"! radioactive_decay_lambda_s = {float(decay_cfg['lambda_s']):.15e}\n"
+        f"! radioactive_decay_lambda_source = {decay_cfg['lambda_source']}\n"
+        f"! radioactive_decay_target = {decay_cfg['target_tracer']}\n"
+        f"! radioactive_decay_apply_to_temp_salt = {str(bool(decay_cfg['apply_to_temp_salt'])).lower()}\n"
+        f"! radioactive_decay_year_days = {float(decay_cfg['days_per_year']):.6g}\n"
+    )
+    text = text.replace("! Input variable information file name.", decay_note + "\n! Input variable information file name.", 1)
     lm_value = str(lm) if lm is not None else "UNRESOLVED"
     mm_value = str(mm) if mm is not None else "UNRESOLVED"
     text = replace_line(text, "Lm", f"{lm_value}            ! pilot interior XI points")
