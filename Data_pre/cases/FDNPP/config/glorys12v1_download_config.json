@@ -26,6 +26,7 @@
   "chunk": "month",
   "longitude_buffer_deg": 0.25,
   "latitude_buffer_deg": 0.25,
+  "boundary_download_strategy": "domain",
   "boundary_band_buffer_points": 3,
   "maximum_depth": 6000.0,
   "output_raw_dir": "data/raw/ocean/glorys12v1",
