@@ -52,11 +52,7 @@ def load_case_naming() -> CaseNaming:
     )
 
 
-def case_time_labels() -> tuple[str, str]:
-    params = load_project_params()
-    start = datetime.fromisoformat(params["time"]["start"])
-    stop = datetime.fromisoformat(params["time"]["stop"])
-    start_label = start.strftime("%Y%m%d")
+def _window_label(start: datetime, stop: datetime) -> str:
     if (
         start.month == 1
         and start.day == 1
@@ -64,9 +60,30 @@ def case_time_labels() -> tuple[str, str]:
         and stop.month == 1
         and stop.day <= 2
     ):
-        window_label = f"{start.year:04d}"
-    else:
-        window_label = start.strftime("%Y%m")
+        return f"{start.year:04d}"
+    if (
+        start.day == 1
+        and start.hour == 0
+        and start.minute == 0
+        and start.second == 0
+        and stop.hour == 0
+        and stop.minute == 0
+        and stop.second == 0
+        and (
+            (start.month < 12 and stop.year == start.year and stop.month == start.month + 1 and stop.day == 1)
+            or (start.month == 12 and stop.year == start.year + 1 and stop.month == 1 and stop.day == 1)
+        )
+    ):
+        return start.strftime("%Y%m")
+    return f"{start.strftime('%Y%m%d')}_{stop.strftime('%Y%m%d')}"
+
+
+def case_time_labels(start: datetime | None = None, stop: datetime | None = None) -> tuple[str, str]:
+    params = load_project_params()
+    start = start or datetime.fromisoformat(params["time"]["start"])
+    stop = stop or datetime.fromisoformat(params["time"]["stop"])
+    start_label = start.strftime("%Y%m%d")
+    window_label = _window_label(start, stop)
     return start_label, window_label
 
 
@@ -75,7 +92,9 @@ def bathymetry_subset_path() -> Path:
     return get_case_root() / "data" / "raw" / "bathymetry" / naming.grid_subset_name
 
 
-def case_start_datetime() -> datetime:
+def case_start_datetime(start: datetime | None = None) -> datetime:
+    if start is not None:
+        return start
     params = load_project_params()
     return datetime.fromisoformat(params["time"]["start"])
 
@@ -100,9 +119,9 @@ def output_product_name(kind: str, mode: str, ocean_source: str | None = None, p
     return f"{kind}_{naming.roms_prefix}_{mode}{suffix}.nc"
 
 
-def staged_ocean_name(source: str, role: str) -> str:
+def staged_ocean_name(source: str, role: str, start: datetime | None = None, stop: datetime | None = None) -> str:
     naming = load_case_naming()
-    start_label, window_label = case_time_labels()
+    start_label, window_label = case_time_labels(start=start, stop=stop)
     if role == "initial":
         return f"{source}_initial_{start_label}.nc"
     if role == "boundary":
@@ -112,9 +131,9 @@ def staged_ocean_name(source: str, role: str) -> str:
     raise ValueError(f"unsupported ocean staged role: {role}")
 
 
-def staged_atmosphere_name(kind: str) -> str:
+def staged_atmosphere_name(kind: str, start: datetime | None = None, stop: datetime | None = None) -> str:
     naming = load_case_naming()
-    _, window_label = case_time_labels()
+    _, window_label = case_time_labels(start=start, stop=stop)
     if kind == "atm":
         return f"era5_atm_{naming.roms_prefix}_{window_label}.nc"
     if kind == "rad":
@@ -122,9 +141,9 @@ def staged_atmosphere_name(kind: str) -> str:
     raise ValueError(f"unsupported atmosphere staged kind: {kind}")
 
 
-def staged_tides_name() -> str:
+def staged_tides_name(start: datetime | None = None, stop: datetime | None = None) -> str:
     naming = load_case_naming()
-    _, window_label = case_time_labels()
+    _, window_label = case_time_labels(start=start, stop=stop)
     return f"tpxo9_{naming.roms_prefix}_{window_label}.nc"
 
 
@@ -132,9 +151,15 @@ def staged_source_csv_name() -> str:
     return load_case_naming().source_csv_name
 
 
-def roms_input_name(role: str, ocean_source: str | None = None, profile: str | None = None) -> str:
+def roms_input_name(
+    role: str,
+    ocean_source: str | None = None,
+    profile: str | None = None,
+    start: datetime | None = None,
+    stop: datetime | None = None,
+) -> str:
     naming = load_case_naming()
-    start_label, window_label = case_time_labels()
+    start_label, window_label = case_time_labels(start=start, stop=stop)
     source_suffix = f"_{ocean_source}" if ocean_source and ocean_source != "hycom" else ""
     profile_suffix = _profile_suffix(profile)
     if role == "ini":

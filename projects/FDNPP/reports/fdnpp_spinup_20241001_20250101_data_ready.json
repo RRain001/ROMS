@@ -1,0 +1,700 @@
+{
+  "case_name": "FDNPP",
+  "profile": "online_my25_uvtide",
+  "window": {
+    "start": "2024-10-01T00:00:00",
+    "end": "2025-01-01T00:00:00"
+  },
+  "status": "ready",
+  "file_summaries": {
+    "raw_ini": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/hycom_initial_20241001.nc",
+      "exists": true,
+      "dimensions": {
+        "time": 1,
+        "lat": 26,
+        "lon": 17,
+        "depth": 40
+      },
+      "time_ranges": {
+        "time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2024-10-01T00:00:00",
+          "count": 1
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "zeta": {
+          "nan_count": 79,
+          "finite_count": 363
+        },
+        "u": {
+          "nan_count": 9513,
+          "finite_count": 8167
+        },
+        "v": {
+          "nan_count": 9513,
+          "finite_count": 8167
+        },
+        "temp": {
+          "nan_count": 9513,
+          "finite_count": 8167
+        },
+        "salt": {
+          "nan_count": 9513,
+          "finite_count": 8167
+        }
+      }
+    },
+    "raw_bdy": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/hycom_boundary_20241001_20250101.nc",
+      "exists": true,
+      "dimensions": {
+        "time": 737,
+        "lat": 26,
+        "lon": 17,
+        "depth": 40
+      },
+      "time_ranges": {
+        "time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 737
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "zeta": {
+          "nan_count": 58223,
+          "finite_count": 267531
+        },
+        "u": {
+          "nan_count": 7001629,
+          "finite_count": 6028531
+        },
+        "v": {
+          "nan_count": 7005561,
+          "finite_count": 6024599
+        },
+        "temp": {
+          "nan_count": 7007553,
+          "finite_count": 6022607
+        },
+        "salt": {
+          "nan_count": 7004766,
+          "finite_count": 6025394
+        }
+      }
+    },
+    "raw_atm": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/atmosphere/era5_atm_fdnpp_20241001_20250101.nc",
+      "exists": true,
+      "dimensions": {
+        "time": 2209,
+        "lat": 6,
+        "lon": 7
+      },
+      "time_ranges": {
+        "time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "Uwind": {
+          "nan_count": 61530,
+          "finite_count": 31248
+        },
+        "Vwind": {
+          "nan_count": 61530,
+          "finite_count": 31248
+        },
+        "Pair": {
+          "nan_count": 61530,
+          "finite_count": 31248
+        },
+        "Tair": {
+          "nan_count": 61530,
+          "finite_count": 31248
+        },
+        "Qair": {
+          "nan_count": 61530,
+          "finite_count": 31248
+        },
+        "rain": {
+          "nan_count": 61530,
+          "finite_count": 31248
+        },
+        "EminusP": {
+          "nan_count": 61530,
+          "finite_count": 31248
+        }
+      }
+    },
+    "raw_rad": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/atmosphere/era5_rad_fdnpp_20241001_20250101.nc",
+      "exists": true,
+      "dimensions": {
+        "time": 2209,
+        "lat": 6,
+        "lon": 7
+      },
+      "time_ranges": {
+        "time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "swrad": {
+          "nan_count": 61530,
+          "finite_count": 31248
+        },
+        "lwrad": {
+          "nan_count": 61530,
+          "finite_count": 31248
+        },
+        "lwrad_down": {
+          "nan_count": 61530,
+          "finite_count": 31248
+        }
+      }
+    },
+    "raw_tides": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/tides/tpxo9_fdnpp_202501_online_my25_uvtide.nc",
+      "exists": true,
+      "dimensions": {
+        "tide_period": 15,
+        "lat": 28,
+        "lon": 35
+      },
+      "time_ranges": {},
+      "missing_variables": [],
+      "nan_checks": {
+        "tide_Eamp": {
+          "nan_count": 0,
+          "finite_count": 14700
+        },
+        "tide_Ephase": {
+          "nan_count": 0,
+          "finite_count": 14700
+        },
+        "tide_Cmax": {
+          "nan_count": 0,
+          "finite_count": 14700
+        },
+        "tide_Cmin": {
+          "nan_count": 0,
+          "finite_count": 14700
+        },
+        "tide_Cangle": {
+          "nan_count": 0,
+          "finite_count": 14700
+        },
+        "tide_Cphase": {
+          "nan_count": 0,
+          "finite_count": 14700
+        }
+      }
+    },
+    "ini": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_ini_fdnpp_20241001_online_my25_uvtide.nc",
+      "exists": true,
+      "dimensions": {
+        "ocean_time": 1,
+        "s_rho": 40,
+        "eta_rho": 190,
+        "xi_rho": 201,
+        "eta_u": 190,
+        "xi_u": 200,
+        "eta_v": 189,
+        "xi_v": 201
+      },
+      "time_ranges": {
+        "ocean_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2024-10-01T00:00:00",
+          "count": 1
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "zeta": {
+          "nan_count": 0,
+          "finite_count": 38190
+        },
+        "u": {
+          "nan_count": 0,
+          "finite_count": 1520000
+        },
+        "v": {
+          "nan_count": 0,
+          "finite_count": 1519560
+        },
+        "ubar": {
+          "nan_count": 0,
+          "finite_count": 38000
+        },
+        "vbar": {
+          "nan_count": 0,
+          "finite_count": 37989
+        },
+        "temp": {
+          "nan_count": 0,
+          "finite_count": 1527600
+        },
+        "salt": {
+          "nan_count": 0,
+          "finite_count": 1527600
+        },
+        "dye_01": {
+          "nan_count": 0,
+          "finite_count": 1527600
+        }
+      }
+    },
+    "bdy": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_bdy_fdnpp_20241001_20250101_online_my25_uvtide.nc",
+      "exists": true,
+      "dimensions": {
+        "zeta_time": 737,
+        "v2d_time": 737,
+        "v3d_time": 737,
+        "temp_time": 737,
+        "salt_time": 737,
+        "dye_time": 737,
+        "eta_rho": 190,
+        "xi_rho": 201,
+        "eta_u": 190,
+        "xi_u": 200,
+        "eta_v": 189,
+        "xi_v": 201,
+        "s_rho": 40
+      },
+      "time_ranges": {
+        "zeta_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 737
+        },
+        "v2d_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 737
+        },
+        "v3d_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 737
+        },
+        "temp_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 737
+        },
+        "salt_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 737
+        },
+        "dye_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 737
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "zeta_west": {
+          "nan_count": 0,
+          "finite_count": 140030
+        },
+        "zeta_east": {
+          "nan_count": 0,
+          "finite_count": 140030
+        },
+        "zeta_south": {
+          "nan_count": 0,
+          "finite_count": 148137
+        },
+        "zeta_north": {
+          "nan_count": 0,
+          "finite_count": 148137
+        },
+        "ubar_west": {
+          "nan_count": 0,
+          "finite_count": 140030
+        },
+        "ubar_east": {
+          "nan_count": 0,
+          "finite_count": 140030
+        },
+        "ubar_south": {
+          "nan_count": 0,
+          "finite_count": 147400
+        },
+        "ubar_north": {
+          "nan_count": 0,
+          "finite_count": 147400
+        },
+        "vbar_west": {
+          "nan_count": 0,
+          "finite_count": 139293
+        },
+        "vbar_east": {
+          "nan_count": 0,
+          "finite_count": 139293
+        },
+        "vbar_south": {
+          "nan_count": 0,
+          "finite_count": 148137
+        },
+        "vbar_north": {
+          "nan_count": 0,
+          "finite_count": 148137
+        },
+        "u_west": {
+          "nan_count": 0,
+          "finite_count": 5601200
+        },
+        "u_east": {
+          "nan_count": 0,
+          "finite_count": 5601200
+        },
+        "u_south": {
+          "nan_count": 0,
+          "finite_count": 5896000
+        },
+        "u_north": {
+          "nan_count": 0,
+          "finite_count": 5896000
+        },
+        "v_west": {
+          "nan_count": 0,
+          "finite_count": 5571720
+        },
+        "v_east": {
+          "nan_count": 0,
+          "finite_count": 5571720
+        },
+        "v_south": {
+          "nan_count": 0,
+          "finite_count": 5925480
+        },
+        "v_north": {
+          "nan_count": 0,
+          "finite_count": 5925480
+        },
+        "temp_west": {
+          "nan_count": 0,
+          "finite_count": 5601200
+        },
+        "temp_east": {
+          "nan_count": 0,
+          "finite_count": 5601200
+        },
+        "temp_south": {
+          "nan_count": 0,
+          "finite_count": 5925480
+        },
+        "temp_north": {
+          "nan_count": 0,
+          "finite_count": 5925480
+        },
+        "salt_west": {
+          "nan_count": 0,
+          "finite_count": 5601200
+        },
+        "salt_east": {
+          "nan_count": 0,
+          "finite_count": 5601200
+        },
+        "salt_south": {
+          "nan_count": 0,
+          "finite_count": 5925480
+        },
+        "salt_north": {
+          "nan_count": 0,
+          "finite_count": 5925480
+        },
+        "dye_west_01": {
+          "nan_count": 0,
+          "finite_count": 5601200
+        },
+        "dye_east_01": {
+          "nan_count": 0,
+          "finite_count": 5601200
+        },
+        "dye_south_01": {
+          "nan_count": 0,
+          "finite_count": 5925480
+        },
+        "dye_north_01": {
+          "nan_count": 0,
+          "finite_count": 5925480
+        }
+      }
+    },
+    "atm": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_atm_fdnpp_20241001_20250101.nc",
+      "exists": true,
+      "dimensions": {
+        "wind_time": 2209,
+        "pair_time": 2209,
+        "tair_time": 2209,
+        "qair_time": 2209,
+        "rain_time": 2209,
+        "swf_time": 2209,
+        "eta_rho": 190,
+        "xi_rho": 201
+      },
+      "time_ranges": {
+        "wind_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        },
+        "pair_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        },
+        "tair_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        },
+        "qair_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        },
+        "rain_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        },
+        "swf_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "Uwind": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        },
+        "Vwind": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        },
+        "Pair": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        },
+        "Tair": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        },
+        "Qair": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        },
+        "rain": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        },
+        "EminusP": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        },
+        "swflux": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        }
+      }
+    },
+    "rad": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_rad_fdnpp_20241001_20250101.nc",
+      "exists": true,
+      "dimensions": {
+        "srf_time": 2209,
+        "lrf_time": 2209,
+        "eta_rho": 190,
+        "xi_rho": 201
+      },
+      "time_ranges": {
+        "srf_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        },
+        "lrf_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "swrad": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        },
+        "lwrad": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        },
+        "lwrad_down": {
+          "nan_count": 0,
+          "finite_count": 84361710
+        }
+      }
+    },
+    "tides": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_tides_fdnpp_20241001_20250101_online_my25_uvtide.nc",
+      "exists": true,
+      "dimensions": {
+        "tide_period": 15,
+        "eta_rho": 190,
+        "xi_rho": 201
+      },
+      "time_ranges": {},
+      "missing_variables": [],
+      "nan_checks": {
+        "tide_Eamp": {
+          "nan_count": 0,
+          "finite_count": 572850
+        },
+        "tide_Ephase": {
+          "nan_count": 0,
+          "finite_count": 572850
+        },
+        "tide_Cmax": {
+          "nan_count": 0,
+          "finite_count": 572850
+        },
+        "tide_Cmin": {
+          "nan_count": 0,
+          "finite_count": 572850
+        },
+        "tide_Cangle": {
+          "nan_count": 0,
+          "finite_count": 572850
+        },
+        "tide_Cphase": {
+          "nan_count": 0,
+          "finite_count": 572850
+        }
+      }
+    },
+    "river": {
+      "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_rivers_fdnpp_spinup_zero_source_online_my25_uvtide.nc",
+      "exists": true,
+      "dimensions": {
+        "s_rho": 40,
+        "river": 1,
+        "river_time": 2209
+      },
+      "time_ranges": {
+        "river_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 2209
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "river_transport": {
+          "nan_count": 0,
+          "finite_count": 2209
+        },
+        "river_dye_01": {
+          "nan_count": 0,
+          "finite_count": 88360
+        },
+        "river_temp": {
+          "nan_count": 0,
+          "finite_count": 88360
+        },
+        "river_salt": {
+          "nan_count": 0,
+          "finite_count": 88360
+        },
+        "river_Vshape": {
+          "nan_count": 0,
+          "finite_count": 40
+        }
+      }
+    }
+  },
+  "grid_checks": {
+    "grid_path": "/home/lhy/ROMS/projects/FDNPP/input/roms_grid_bathy_500m_maskclean_smoothed.nc",
+    "grid_dimensions": {
+      "xi_rho": 201,
+      "eta_rho": 190,
+      "xi_u": 200,
+      "eta_u": 190,
+      "xi_v": 201,
+      "eta_v": 189,
+      "xi_psi": 200,
+      "eta_psi": 189
+    },
+    "vertical_N": 40
+  },
+  "river_checks": {
+    "source_is_zero": true,
+    "dye_nan_count": 0,
+    "dye_min": 0.0,
+    "dye_max": 0.0,
+    "release_Bq_s": 0.0,
+    "source_mode": "zero_release_spinup",
+    "transport_min": 1.0,
+    "transport_max": 1.0,
+    "vshape_column_sums": [
+      1.0
+    ],
+    "surface_only": true
+  },
+  "tide_checks": {
+    "uv_complete": true,
+    "missing_variables": [],
+    "zero_phase_date": 20241001.0
+  },
+  "overwrite_checks": {
+    "preserved_paths": {
+      "ini": "/home/lhy/ROMS/projects/FDNPP/input/roms_ini_fdnpp_20250101_online_my25_uvtide.nc",
+      "bdy": "/home/lhy/ROMS/projects/FDNPP/input/roms_bdy_fdnpp_202501_online_my25_uvtide.nc",
+      "tides": "/home/lhy/ROMS/projects/FDNPP/input/roms_tides_fdnpp_202501_online_my25_uvtide.nc",
+      "river": "/home/lhy/ROMS/projects/FDNPP/input/roms_rivers_production_online_my25_uvtide.nc",
+      "atm": "/home/lhy/ROMS/projects/FDNPP/input/roms_atm_fdnpp_202501.nc",
+      "rad": "/home/lhy/ROMS/projects/FDNPP/input/roms_rad_fdnpp_202501.nc"
+    },
+    "preserved_exist": {
+      "ini": true,
+      "bdy": true,
+      "tides": true,
+      "river": true,
+      "atm": true,
+      "rad": true
+    },
+    "collisions": {
+      "ini": false,
+      "bdy": false,
+      "tides": false,
+      "river": false,
+      "atm": false,
+      "rad": false
+    }
+  },
+  "blocking_issues": [],
+  "can_generate_run_mode": true,
+  "next_step": "Generate and validate online_spinup_3mo_my25_uvtide run mode wiring."
+}

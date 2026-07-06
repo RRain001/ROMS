@@ -64,6 +64,13 @@
       "fallback_binaries": [],
       "infile": "ocean_fdnpp_online_month_online_my25_uvtide.in",
       "log_file": "online_month.log"
+    },
+    "online_spinup_3mo_my25_uvtide": {
+      "build_variant": "online_my25_uvtide",
+      "binary": "romsM_fdnpp_online_my25_uvtide",
+      "fallback_binaries": [],
+      "infile": "ocean_fdnpp_online_spinup_3mo_online_my25_uvtide.in",
+      "log_file": "online_spinup_3mo_my25_uvtide.log"
     }
   }
 }

@@ -39,7 +39,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pilot", choices=["1day", "month", "month_or_year"], default=None)
     parser.add_argument(
         "--mode",
-        choices=["smoke", "pilot_1day", "pilot_month", "online_6h", "online_3d", "online_month", "both", "pilot"],
+        choices=[
+            "smoke",
+            "pilot_1day",
+            "pilot_month",
+            "online_6h",
+            "online_3d",
+            "online_month",
+            "online_spinup_3mo",
+            "both",
+            "pilot",
+        ],
         default="both",
     )
     parser.add_argument("--forcing-mode", choices=["analytical", "external"], default="analytical")
@@ -429,6 +439,10 @@ def base_text(
         stop = boundary_stop
         title = f"{naming.title} online MY25/UV tide month{source_label}"
         out_prefix = "online_month"
+    elif mode == "online_spinup_3mo":
+        stop = boundary_stop
+        title = f"{naming.title} online MY25/UV tide 3-month spin-up{source_label}"
+        out_prefix = "online_spinup_3mo"
     elif mode == "pilot_month":
         stop = boundary_stop
         title = f"{naming.title} pilot{source_label}"

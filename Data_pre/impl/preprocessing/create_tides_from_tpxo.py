@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import json
 from pathlib import Path
 
@@ -23,10 +24,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--src", default=str(DEFAULT_SRC))
     parser.add_argument("--grid", default=None)
     parser.add_argument("--output", default=str(DEFAULT_OUT))
+    parser.add_argument("--start", default=None, help="Optional window start used for default naming and zero-phase date")
+    parser.add_argument("--stop", default=None, help="Optional window stop used for default naming")
+    parser.add_argument("--zero-phase-date", default=None, help="Optional YYYYMMDD or ISO date/datetime override")
     parser.add_argument("--require-uv", action="store_true", help="Require tide_Cmax/Cmin/Cangle/Cphase for UV_TIDES")
     parser.add_argument("--profile", default=None, help="Optional profile label used in blocked reports")
     parser.add_argument("--report-dir", default=str(ROOT / "reports"))
     return parser.parse_args()
+
+
+def parse_zero_phase_date(value: str | None) -> float:
+    if value is None:
+        return float(case_start_datetime().strftime("%Y%m%d"))
+    cleaned = value.strip()
+    if len(cleaned) == 8 and cleaned.isdigit():
+        return float(cleaned)
+    return float(case_start_datetime(start=datetime.fromisoformat(cleaned)).strftime("%Y%m%d"))
 
 
 def write_blocked_report(report_dir: Path, profile: str | None, src_path: Path, missing: list[str]) -> None:
@@ -59,8 +72,14 @@ def main() -> None:
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     out_path = Path(args.output)
     if args.profile and args.output == str(DEFAULT_OUT):
-        out_path = ROOT / "input" / roms_input_name("tides", profile=args.profile)
+        out_path = ROOT / "input" / roms_input_name(
+            "tides",
+            profile=args.profile,
+            start=datetime.fromisoformat(args.start) if args.start else None,
+            stop=datetime.fromisoformat(args.stop) if args.stop else None,
+        )
     grid = load_grid(grid_path)
+    zero_phase_date = parse_zero_phase_date(args.zero_phase_date or args.start)
 
     with Dataset(src_path) as src:
         lon, lat, lon_name, lat_name = get_rectilinear_lon_lat(src)
@@ -113,7 +132,7 @@ def main() -> None:
             tide_period_var.units = "hours"
             tide_period_var[:] = tide_period
             zero_phase = ds.createVariable("zero_phase_date", "f8")
-            zero_phase.assignValue(float(case_start_datetime().strftime("%Y%m%d")))
+            zero_phase.assignValue(zero_phase_date)
 
             outputs = {
                 name: ds.createVariable(name, "f8", ("tide_period", "eta_rho", "xi_rho"), zlib=True, complevel=1)

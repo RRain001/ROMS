@@ -325,7 +325,12 @@ def main() -> None:
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     out_path = Path(args.output)
     if args.profile and args.output == str(DEFAULT_OUT):
-        out_path = ROOT / "input" / roms_input_name("bdy", profile=args.profile)
+        out_path = ROOT / "input" / roms_input_name(
+            "bdy",
+            profile=args.profile,
+            start=datetime.fromisoformat(args.start) if args.start else None,
+            stop=datetime.fromisoformat(args.stop) if args.stop else None,
+        )
     grid = load_grid(grid_path)
     vertical = load_vertical_config()
     z_r, _, hz = sigma_depths(grid.h, vertical)
@@ -392,6 +397,7 @@ def main() -> None:
             temp_vars = {edge: var(f"temp_{edge}", ("temp_time", "s_rho", "eta_rho" if edge in {"west", "east"} else "xi_rho")) for edge in ("west", "east", "south", "north")}
             salt_vars = {edge: var(f"salt_{edge}", ("salt_time", "s_rho", "eta_rho" if edge in {"west", "east"} else "xi_rho")) for edge in ("west", "east", "south", "north")}
             dye_vars = {edge: var(f"dye_{edge}_01", ("dye_time", "s_rho", "eta_rho" if edge in {"west", "east"} else "xi_rho")) for edge in ("west", "east", "south", "north")}
+            last_valid_state: dict[str, dict[str, np.ndarray]] = {}
 
             for out_index, time_index in enumerate(selected):
                 zeta_src = read_dimensional_variable(src, zeta_name, lon_name, lat_name, None, time_index)
@@ -440,6 +446,28 @@ def main() -> None:
                         edge_v,
                         geometry,
                     )
+                    try:
+                        if edge == "west":
+                            temp_edge = state["temp_rho"][:, :, 0]
+                            salt_edge = state["salt_rho"][:, :, 0]
+                        elif edge == "east":
+                            temp_edge = state["temp_rho"][:, :, -1]
+                            salt_edge = state["salt_rho"][:, :, -1]
+                        elif edge == "south":
+                            temp_edge = state["temp_rho"][:, 0, :]
+                            salt_edge = state["salt_rho"][:, 0, :]
+                        else:
+                            temp_edge = state["temp_rho"][:, -1, :]
+                            salt_edge = state["salt_rho"][:, -1, :]
+                        ensure_reasonable_temp_salt(temp_edge, salt_edge, f"{edge} {times[time_index].isoformat()}")
+                    except SystemExit as exc:
+                        if edge not in last_valid_state:
+                            raise
+                        print(
+                            f"warning: {exc}; "
+                            f"reusing previous valid {edge} boundary state at {times[time_index].isoformat()}"
+                        )
+                        state = {name: np.array(values, copy=True) for name, values in last_valid_state[edge].items()}
                     if edge == "west":
                         temp_edge = state["temp_rho"][:, :, 0]
                         salt_edge = state["salt_rho"][:, :, 0]
@@ -453,6 +481,7 @@ def main() -> None:
                         temp_edge = state["temp_rho"][:, -1, :]
                         salt_edge = state["salt_rho"][:, -1, :]
                     ensure_reasonable_temp_salt(temp_edge, salt_edge, f"{edge} {times[time_index].isoformat()}")
+                    last_valid_state[edge] = {name: np.array(values, copy=True) for name, values in state.items()}
                     print_summary(f"{edge} temp {times[time_index].isoformat()}", temp_edge)
                     print_summary(f"{edge} salt {times[time_index].isoformat()}", salt_edge)
                     if edge == "west":

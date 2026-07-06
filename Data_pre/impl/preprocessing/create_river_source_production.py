@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +13,7 @@ from netCDF4 import Dataset
 
 from case_naming import load_case_naming
 from pilot_grid_utils import locate_source_on_grid
+from radioactive_decay import radioactive_decay_attrs
 from roms_preprocessing_utils import ROOT, load_project_params, load_vertical_config, resolve_grid_path, to_mjd
 
 
@@ -26,6 +27,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--discharge-csv", default=str(DEFAULT_CSV))
     parser.add_argument("--output", default=str(DEFAULT_OUT))
     parser.add_argument("--profile", default=None)
+    parser.add_argument("--start", default=None)
+    parser.add_argument("--stop", default=None)
+    parser.add_argument("--carrier-transport", type=float, default=None)
+    parser.add_argument("--scenario-tag", default=None)
+    parser.add_argument("--zero-release", action="store_true")
     return parser.parse_args()
 
 
@@ -50,6 +56,25 @@ def read_discharge_csv(path: Path) -> tuple[list[datetime], np.ndarray, str]:
     return times, values, scenario_tag
 
 
+def synthetic_discharge_series(
+    *,
+    start: datetime,
+    stop: datetime,
+    step_hours: int,
+    discharge_m3_s: float,
+    scenario_tag: str,
+) -> tuple[list[datetime], np.ndarray, str]:
+    if discharge_m3_s <= 0:
+        raise SystemExit("carrier transport must be positive")
+    step = timedelta(hours=step_hours)
+    times: list[datetime] = []
+    current = start
+    while current <= stop:
+        times.append(current)
+        current += step
+    return times, np.full(len(times), discharge_m3_s, dtype=float), scenario_tag
+
+
 def main() -> None:
     args = parse_args()
     params = load_project_params()
@@ -59,18 +84,36 @@ def main() -> None:
         out_path = out_path.with_name(f"{out_path.stem}_{args.profile}{out_path.suffix}")
     discharge_path = Path(args.discharge_csv)
     vertical = load_vertical_config()
-    times, discharge, scenario_tag = read_discharge_csv(discharge_path)
+    start_time = datetime.fromisoformat(args.start or params["time"]["start"])
+    stop_time = datetime.fromisoformat(args.stop or params["time"]["stop"])
+    if args.start or args.stop or args.zero_release or not discharge_path.exists():
+        scenario_tag = args.scenario_tag or ("spinup_zero_source" if args.zero_release else "synthetic_constant_transport")
+        transport = args.carrier_transport or float(params["source"].get("nominal_discharge_m3_s", 1.0))
+        times, discharge, scenario_tag = synthetic_discharge_series(
+            start=start_time,
+            stop=stop_time,
+            step_hours=int(params["time"]["source_interval_hours"]),
+            discharge_m3_s=transport,
+            scenario_tag=scenario_tag,
+        )
+    else:
+        times, discharge, scenario_tag = read_discharge_csv(discharge_path)
     placement = locate_source_on_grid(grid_path, params["domain"]["source_lon"], params["domain"]["source_lat"])
     release_bq_s = params["source"]["annual_release_TBq_per_year"] * 1e12 / (
         params["source"]["calendar_year_days"] * 24 * 3600
     )
-    concentration = release_bq_s / discharge
+    if args.zero_release:
+        concentration = np.zeros_like(discharge)
+    else:
+        concentration = release_bq_s / discharge
     scenario_key = scenario_tag.lower()
     if scenario_key == "derived_release_carrier":
         discharge_note = (
             "river_transport = 1 m3/s numerical carrier; not measured discharge; "
             "derived from annual HTO release rate"
         )
+    elif scenario_key == "spinup_zero_source":
+        discharge_note = "spin-up carrier transport retained; dye source concentration forced to zero"
     elif scenario_key == "scenario_baseline":
         discharge_note = "scenario, not measured"
     else:
@@ -90,14 +133,16 @@ def main() -> None:
         ds.not_measured_discharge = "true" if scenario_key in {"derived_release_carrier", "scenario_baseline"} else "false"
         ds.annual_release_TBq_per_year = float(params["source"]["annual_release_TBq_per_year"])
         ds.annual_release_TBq_per_year_note = "case-specific source value from project_parameters.json"
-        ds.release_rate_note = "derived from annual HTO release rate"
-        ds.release_Bq_s = release_bq_s
+        ds.release_rate_note = "zero release for spin-up" if args.zero_release else "derived from annual HTO release rate"
+        ds.release_Bq_s = 0.0 if args.zero_release else release_bq_s
         ds.source_profile = args.profile or "default"
-        ds.source_mode = params["source"].get("release_mode", "constant_rate")
+        ds.source_mode = "zero_release_spinup" if args.zero_release else params["source"].get("release_mode", "constant_rate")
         ds.source_vertical_location = "surface_layer"
         ds.s_rho_surface_index_zero_based = int(vertical.N - 1)
         ds.river_Vshape_sum_expected = 1.0
         ds.tracer_meaning = "dye_01 represents dissolved passive tracer concentration increment"
+        for name, value in radioactive_decay_attrs(params, args.profile).items():
+            setattr(ds, name, value)
         ds.configured_source_lon = placement.configured_lon
         ds.configured_source_lat = placement.configured_lat
         ds.nearest_source_xi = placement.nearest_xi

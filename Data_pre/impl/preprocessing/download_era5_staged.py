@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -14,7 +14,7 @@ import zipfile
 import numpy as np
 import xarray as xr
 
-from case_naming import load_case_naming
+from case_naming import load_case_naming, staged_atmosphere_name
 from staged_data_utils import (
     ROOT,
     candidate_first,
@@ -37,6 +37,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--credentials-file", default=None)
     parser.add_argument("--atm-output", default=None)
     parser.add_argument("--rad-output", default=None)
+    parser.add_argument("--start", default=None)
+    parser.add_argument("--stop", default=None)
     parser.add_argument("--trust-env-proxy", action="store_true")
     return parser.parse_args()
 
@@ -193,10 +195,24 @@ def main() -> None:
     config = load_download_config(args.config)
     bbox = get_bbox(config, source="era5")
     window = get_time_window(config)
+    start = datetime.fromisoformat(args.start) if args.start else window.start
+    stop = datetime.fromisoformat(args.stop) if args.stop else window.stop
+    if start > stop:
+        raise SystemExit("start must not be later than stop")
     credentials_file = args.credentials_file or config["era5"]["credentials_file"]
     url, key = parse_era5_credentials(credentials_file)
-    atm_output = Path(args.atm_output) if args.atm_output else config_path_to_abs(config, "era5_atm")
-    rad_output = Path(args.rad_output) if args.rad_output else config_path_to_abs(config, "era5_rad")
+    if args.atm_output:
+        atm_output = Path(args.atm_output)
+    elif args.start or args.stop:
+        atm_output = ROOT / "data" / "raw" / "atmosphere" / staged_atmosphere_name("atm", start=start, stop=stop)
+    else:
+        atm_output = config_path_to_abs(config, "era5_atm")
+    if args.rad_output:
+        rad_output = Path(args.rad_output)
+    elif args.start or args.stop:
+        rad_output = ROOT / "data" / "raw" / "atmosphere" / staged_atmosphere_name("rad", start=start, stop=stop)
+    else:
+        rad_output = config_path_to_abs(config, "era5_rad")
 
     if not args.trust_env_proxy:
         for name in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "all_proxy"):
@@ -210,8 +226,8 @@ def main() -> None:
         ) from exc
 
     client = cdsapi.Client(url=url, key=key, quiet=False, progress=True)
-    atm_requests = build_requests(window, bbox, list(config["era5"]["atm_variables"]))
-    rad_requests = build_requests(window, bbox, list(config["era5"]["rad_variables"]))
+    atm_requests = build_requests(type(window)(start=start, stop=stop), bbox, list(config["era5"]["atm_variables"]))
+    rad_requests = build_requests(type(window)(start=start, stop=stop), bbox, list(config["era5"]["rad_variables"]))
 
     with TemporaryDirectory(prefix="era5_stage_") as tmpdir:
         tmpdir_path = Path(tmpdir)

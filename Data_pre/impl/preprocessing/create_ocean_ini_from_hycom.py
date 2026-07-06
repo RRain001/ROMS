@@ -47,6 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--src", default=str(DEFAULT_SRC))
     parser.add_argument("--grid", default=None)
+    parser.add_argument("--start", default=None)
     parser.add_argument("--output", default=str(DEFAULT_OUT))
     parser.add_argument("--profile", default=None)
     return parser.parse_args()
@@ -93,11 +94,11 @@ def main() -> None:
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     out_path = Path(args.output)
     if args.profile and args.output == str(DEFAULT_OUT):
-        out_path = ROOT / "input" / roms_input_name("ini", profile=args.profile)
+        out_path = ROOT / "input" / roms_input_name("ini", profile=args.profile, start=datetime.fromisoformat(args.start) if args.start else None)
     grid = load_grid(grid_path)
     vertical = load_vertical_config()
     params = load_project_params()
-    start_time = datetime.fromisoformat(params["time"]["start"])
+    start_time = datetime.fromisoformat(args.start or params["time"]["start"])
     z_r, _, hz = sigma_depths(grid.h, vertical)
     mask_rho = grid.mask_rho == 1
     mask_u = mask_rho[:, :-1] & mask_rho[:, 1:]
