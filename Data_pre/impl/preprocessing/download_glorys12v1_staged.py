@@ -433,16 +433,24 @@ def write_boundary_product(
     out_path: Path,
     config: dict,
     requested_window: TimeWindow,
-    edge_boxes: dict[str, BoundingBox],
+    bbox: BoundingBox | None = None,
+    edge_boxes: dict[str, BoundingBox] | None = None,
 ) -> None:
     boundary = dedupe_times(ds)
     boundary.attrs["title"] = f"{load_case_naming().title} staged GLORYS12V1 boundary subset"
     boundary.attrs["source"] = "GLORYS12V1 / GLOBAL_MULTIYEAR_PHY_001_030"
     boundary.attrs["dataset_id"] = config["dataset_id_daily"]
+    boundary.attrs["boundary_download_strategy"] = config["boundary_download_strategy"]
     boundary.attrs["source_time_start_requested"] = requested_window.start.isoformat()
     boundary.attrs["source_time_end_requested"] = requested_window.stop.isoformat()
-    for edge_name, bbox in edge_boxes.items():
-        boundary.attrs[f"source_edge_{edge_name}_bbox"] = f"{bbox.west},{bbox.east},{bbox.south},{bbox.north}"
+    if bbox is not None:
+        boundary.attrs["requested_bbox"] = f"{bbox.west},{bbox.east},{bbox.south},{bbox.north}"
+    if edge_boxes is not None:
+        for edge_name, edge_bbox_value in edge_boxes.items():
+            boundary.attrs[f"source_edge_{edge_name}_bbox"] = (
+                f"{edge_bbox_value.west},{edge_bbox_value.east},"
+                f"{edge_bbox_value.south},{edge_bbox_value.north}"
+            )
     safe_to_netcdf(boundary, out_path)
 
 
@@ -542,9 +550,12 @@ def main() -> None:
     paths = build_glorys_paths(config, start=window.start, stop=window.stop)
     grid = load_grid(resolve_grid_path(args.grid, prefer_smoothed=True))
     bbox = active_grid_bbox(grid, float(config["longitude_buffer_deg"]), float(config["latitude_buffer_deg"]))
-    boundary_boxes = {
-        edge: edge_bbox(grid, edge, int(config["boundary_band_buffer_points"])) for edge in EDGE_NAMES
-    }
+    boundary_strategy = config["boundary_download_strategy"]
+    boundary_boxes = {}
+    if boundary_strategy == "edge_bands":
+        boundary_boxes = {
+            edge: edge_bbox(grid, edge, int(config["boundary_band_buffer_points"])) for edge in EDGE_NAMES
+        }
     raw_dir = Path(paths.staged_boundary).parent
     required = list(config["variables_3d"]) + list(config["variables_2d"])
 
@@ -553,6 +564,7 @@ def main() -> None:
 
     base_windows = split_monthly(window) if str(config["chunk"]).lower() == "month" else [window]
 
+    initial_merged: xr.Dataset | None = None
     if args.mode in {"initial", "both"}:
         area = "initial"
         chunk_paths = existing_chunk_paths(raw_dir, area)
@@ -582,37 +594,68 @@ def main() -> None:
         print(f"wrote {paths.staged_initial}")
 
     if args.mode in {"boundary", "both"}:
-        edge_datasets: dict[str, xr.Dataset] = {}
-        for edge_name in EDGE_NAMES:
-            area = f"boundary/{edge_name}"
-            chunk_paths = existing_chunk_paths(raw_dir, area)
-            if not args.merge_only:
-                chunk_paths = []
-                for item in base_windows:
-                    chunk_paths.extend(
-                        ensure_window_downloaded(
-                            args.command,
-                            config,
-                            boundary_boxes[edge_name],
-                            raw_dir,
-                            area,
-                            item,
-                            resume=args.resume,
-                            overwrite=args.overwrite,
-                        )
-                    )
+        if boundary_strategy == "domain":
+            if initial_merged is not None:
+                boundary = initial_merged
             else:
-                if not chunk_paths:
-                    raise SystemExit(f"no existing chunks found for merge-only area {area}")
-                for path in chunk_paths:
-                    if not valid_netcdf(path, required):
-                        raise SystemExit(f"missing or invalid chunk for merge-only: {path}")
-            edge_ds = load_chunk_datasets(chunk_paths, config)
-            edge_ds.attrs["source_edge"] = edge_name
-            edge_datasets[edge_name] = edge_ds
-        boundary = merge_boundary_edges(edge_datasets)
-        write_boundary_product(boundary, paths.staged_boundary, config, window, boundary_boxes)
-        print(f"wrote {paths.staged_boundary}")
+                area = "boundary/domain"
+                chunk_paths = existing_chunk_paths(raw_dir, area)
+                if not args.merge_only:
+                    chunk_paths = []
+                    for item in base_windows:
+                        chunk_paths.extend(
+                            ensure_window_downloaded(
+                                args.command,
+                                config,
+                                bbox,
+                                raw_dir,
+                                area,
+                                item,
+                                resume=args.resume,
+                                overwrite=args.overwrite,
+                            )
+                        )
+                else:
+                    if not chunk_paths:
+                        raise SystemExit(f"no existing chunks found for merge-only area {area}")
+                    for path in chunk_paths:
+                        if not valid_netcdf(path, required):
+                            raise SystemExit(f"missing or invalid chunk for merge-only: {path}")
+                boundary = load_chunk_datasets(chunk_paths, config)
+            write_boundary_product(boundary, paths.staged_boundary, config, window, bbox=bbox)
+            print(f"wrote {paths.staged_boundary}")
+        else:
+            edge_datasets: dict[str, xr.Dataset] = {}
+            for edge_name in EDGE_NAMES:
+                area = f"boundary/{edge_name}"
+                chunk_paths = existing_chunk_paths(raw_dir, area)
+                if not args.merge_only:
+                    chunk_paths = []
+                    for item in base_windows:
+                        chunk_paths.extend(
+                            ensure_window_downloaded(
+                                args.command,
+                                config,
+                                boundary_boxes[edge_name],
+                                raw_dir,
+                                area,
+                                item,
+                                resume=args.resume,
+                                overwrite=args.overwrite,
+                            )
+                        )
+                else:
+                    if not chunk_paths:
+                        raise SystemExit(f"no existing chunks found for merge-only area {area}")
+                    for path in chunk_paths:
+                        if not valid_netcdf(path, required):
+                            raise SystemExit(f"missing or invalid chunk for merge-only: {path}")
+                edge_ds = load_chunk_datasets(chunk_paths, config)
+                edge_ds.attrs["source_edge"] = edge_name
+                edge_datasets[edge_name] = edge_ds
+            boundary = merge_boundary_edges(edge_datasets)
+            write_boundary_product(boundary, paths.staged_boundary, config, window, edge_boxes=boundary_boxes)
+            print(f"wrote {paths.staged_boundary}")
 
     if paths.staged_static is not None and paths.staged_static.exists():
         print(f"static={paths.staged_static}")

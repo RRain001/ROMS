@@ -86,6 +86,7 @@ def load_glorys_config(path: str | Path | None = None) -> dict:
     config.setdefault("source_name", "glorys12v1")
     config.setdefault("output_raw_dir", "data/raw/ocean/glorys12v1")
     config.setdefault("output_input_dir", "input")
+    config.setdefault("boundary_download_strategy", "domain")
     config["_config_path"] = str(config_path)
 
     required = [
@@ -96,12 +97,23 @@ def load_glorys_config(path: str | Path | None = None) -> dict:
         "static_variables",
         "longitude_buffer_deg",
         "latitude_buffer_deg",
-        "boundary_band_buffer_points",
         "maximum_depth",
     ]
     missing = [key for key in required if key not in config]
     if missing:
         raise SystemExit(f"GLORYS12V1 config {config_path} is missing required keys: {', '.join(missing)}")
+    valid_boundary_strategies = {"domain", "edge_bands"}
+    if config["boundary_download_strategy"] not in valid_boundary_strategies:
+        choices = ", ".join(sorted(valid_boundary_strategies))
+        raise SystemExit(
+            f"GLORYS12V1 config {config_path} has invalid boundary_download_strategy "
+            f"{config['boundary_download_strategy']!r}; expected one of: {choices}"
+        )
+    if config["boundary_download_strategy"] == "edge_bands" and "boundary_band_buffer_points" not in config:
+        raise SystemExit(
+            f"GLORYS12V1 config {config_path} is missing required key for edge_bands strategy: "
+            "boundary_band_buffer_points"
+        )
     if "dataset_id_static" not in config:
         static_parts = config.get("static_dataset_parts")
         if not static_parts:
