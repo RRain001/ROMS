@@ -43,6 +43,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--src", default=None)
     parser.add_argument("--grid", default=None)
     parser.add_argument("--output", default=None)
+    parser.add_argument("--profile", default=None)
     parser.add_argument("--time", default=None)
     return parser.parse_args()
 
@@ -70,7 +71,7 @@ def interpolate_3d(lon, lat, depth, values, target_lon, target_lat, target_z):
 def main() -> None:
     args = parse_args()
     config = load_glorys_config(args.config)
-    default_paths = build_glorys_paths(config)
+    default_paths = build_glorys_paths(config, profile=args.profile)
     src_path = Path(args.src) if args.src else default_paths.staged_initial
     out_path = Path(args.output) if args.output else default_paths.roms_ini
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)

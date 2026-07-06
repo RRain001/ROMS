@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 from pathlib import Path
 import re
 
@@ -222,9 +221,7 @@ def main() -> None:
         bry_path = Path(args.bry or ROOT / "input" / roms_input_name("bdy", profile=profile))
     else:
         config = load_glorys_config(args.config)
-        start = datetime.fromisoformat("2024-01-01T12:00:00")
-        stop = datetime.fromisoformat("2024-02-01T12:00:00")
-        defaults = build_glorys_paths(config, start=start, stop=stop)
+        defaults = build_glorys_paths(config, profile=profile)
         ini_path = Path(args.ini or defaults.roms_ini)
         bry_path = Path(args.bry or defaults.roms_bdy)
     river_path = Path(args.river) if args.river else ROOT / "input" / (f"roms_rivers_production_{profile}.nc" if profile else "roms_rivers_production.nc")

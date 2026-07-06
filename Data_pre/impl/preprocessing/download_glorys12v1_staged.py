@@ -15,7 +15,7 @@ from netCDF4 import Dataset
 import xarray as xr
 
 from case_naming import load_case_naming
-from ocean_source_utils import build_glorys_paths, load_glorys_config
+from ocean_source_utils import build_glorys_paths, glorys_time_window, load_glorys_config
 from roms_preprocessing_utils import load_grid, resolve_grid_path
 from staged_data_utils import BoundingBox, ensure_parent
 
@@ -446,42 +446,92 @@ def write_boundary_product(
     safe_to_netcdf(boundary, out_path)
 
 
+def static_download_requests(config: dict) -> list[dict]:
+    configured = config.get("static_dataset_parts")
+    if isinstance(configured, list):
+        requests = configured
+    elif isinstance(configured, dict):
+        requests = []
+        for name, item in configured.items():
+            if not isinstance(item, dict):
+                continue
+            request = dict(item)
+            request.setdefault("name", name)
+            requests.append(request)
+    else:
+        static_variables = list(config["static_variables"])
+        default_variables = [name for name in static_variables if name != "mdt"]
+        requests = []
+        if default_variables:
+            requests.append(
+                {
+                    "name": "default",
+                    "dataset_id": config["dataset_id_static"],
+                    "variables": default_variables,
+                    "output_name": "static_default.nc",
+                }
+            )
+        if "mdt" in static_variables:
+            requests.append(
+                {
+                    "name": "mdt",
+                    "dataset_id": config["dataset_id_static"],
+                    "dataset_part": "mdt",
+                    "variables": ["mdt"],
+                    "output_name": "static_mdt.nc",
+                }
+            )
+
+    normalized: list[dict] = []
+    for index, request in enumerate(requests):
+        variables = list(request.get("variables", []))
+        if not variables:
+            raise SystemExit("GLORYS static dataset part is missing variables")
+        name = str(request.get("name") or f"part{index + 1}")
+        normalized.append(
+            {
+                "name": name,
+                "dataset_id": request.get("dataset_id", config.get("dataset_id_static")),
+                "dataset_part": request.get("dataset_part"),
+                "variables": variables,
+                "output_name": request.get("output_name", f"static_{name}.nc"),
+            }
+        )
+    return normalized
+
+
 def write_static_product(command: str, config: dict, bbox: BoundingBox, out_path: Path, overwrite: bool) -> None:
     if out_path.exists() and not overwrite:
         return
     ensure_parent(out_path)
-    window = TimeWindow(datetime.fromisoformat(config["time_start"]), datetime.fromisoformat(config["time_stop"]))
+    start, stop = glorys_time_window(config)
+    window = TimeWindow(start, stop)
+    requests = static_download_requests(config)
     with TemporaryDirectory(dir=str(out_path.parent)) as tmp:
         tmp_dir = Path(tmp)
-        default_path = run_subset_command(
-            command,
-            config["dataset_id_static"],
-            ["mask", "deptho"],
-            bbox,
-            window,
-            tmp_dir,
-            "static_default.nc",
-            None,
-            with_time=False,
-        )
-        mdt_path = run_subset_command(
-            command,
-            config["dataset_id_static"],
-            ["mdt"],
-            bbox,
-            window,
-            tmp_dir,
-            "static_mdt.nc",
-            None,
-            with_time=False,
-            dataset_part="mdt",
-        )
-        with xr.open_dataset(default_path, engine="netcdf4") as ds_default, xr.open_dataset(
-            mdt_path, engine="netcdf4"
-        ) as ds_mdt:
-            merged = xr.merge([ds_default.load(), ds_mdt.load()], compat="override")
+        datasets: list[xr.Dataset] = []
+        for request in requests:
+            if not request["dataset_id"]:
+                raise SystemExit(f"GLORYS static dataset part {request['name']!r} is missing dataset_id")
+            path = run_subset_command(
+                command,
+                str(request["dataset_id"]),
+                request["variables"],
+                bbox,
+                window,
+                tmp_dir,
+                str(request["output_name"]),
+                None,
+                with_time=False,
+                dataset_part=request["dataset_part"],
+            )
+            with xr.open_dataset(path, engine="netcdf4") as ds:
+                datasets.append(ds.load())
+        if not datasets:
+            raise SystemExit("no GLORYS static dataset parts configured")
+        merged = xr.merge(datasets, compat="override")
     merged.attrs["source"] = "GLORYS12V1 / GLOBAL_MULTIYEAR_PHY_001_030"
-    merged.attrs["dataset_id"] = config["dataset_id_static"]
+    merged.attrs["dataset_id"] = ",".join(str(request["dataset_id"]) for request in requests)
     safe_to_netcdf(xarray_sorted(merged), out_path)
 
 

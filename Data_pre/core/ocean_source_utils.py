@@ -46,17 +46,81 @@ def normalize_ocean_source(name: str | None) -> str:
     return source
 
 
+def resolve_glorys_config_path(path: str | Path | None = None) -> Path:
+    checked: list[Path] = []
+    if path is None:
+        checked.append(DEFAULT_GLORYS_CONFIG)
+    else:
+        candidate = Path(path)
+        if candidate.is_absolute():
+            checked.append(candidate)
+        else:
+            checked.extend([get_case_config_path(str(candidate)), ROOT / candidate])
+
+    for candidate in checked:
+        if candidate.exists():
+            return candidate
+
+    checked_text = "\n".join(f"- {candidate}" for candidate in checked)
+    raise SystemExit(f"GLORYS12V1 config not found; checked:\n{checked_text}")
+
+
+def default_project_start_stop() -> tuple[datetime, datetime]:
+    params = load_project_params()
+    time_cfg = params["time"]
+    return datetime.fromisoformat(time_cfg["start"]), datetime.fromisoformat(time_cfg["stop"])
+
+
 def load_glorys_config(path: str | Path | None = None) -> dict:
-    config_path = Path(path) if path else DEFAULT_GLORYS_CONFIG
-    if not config_path.is_absolute():
-        config_candidate = get_case_config_path(str(config_path))
-        config_path = config_candidate if config_candidate.exists() else (ROOT / config_path)
-    return json.loads(config_path.read_text())
+    config_path = resolve_glorys_config_path(path)
+    try:
+        config = json.loads(config_path.read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"invalid GLORYS12V1 config JSON: {config_path}: {exc}") from exc
+
+    project_start, project_stop = default_project_start_stop()
+    config.setdefault("time_start", project_start.isoformat())
+    config.setdefault("time_stop", project_stop.isoformat())
+    config.setdefault("time_mean_center", "12:00:00")
+    config.setdefault("chunk", "month")
+    config.setdefault("source_name", "glorys12v1")
+    config.setdefault("output_raw_dir", "data/raw/ocean/glorys12v1")
+    config.setdefault("output_input_dir", "input")
+    config["_config_path"] = str(config_path)
+
+    required = [
+        "product_id",
+        "dataset_id_daily",
+        "variables_3d",
+        "variables_2d",
+        "static_variables",
+        "longitude_buffer_deg",
+        "latitude_buffer_deg",
+        "boundary_band_buffer_points",
+        "maximum_depth",
+    ]
+    missing = [key for key in required if key not in config]
+    if missing:
+        raise SystemExit(f"GLORYS12V1 config {config_path} is missing required keys: {', '.join(missing)}")
+    if "dataset_id_static" not in config:
+        static_parts = config.get("static_dataset_parts")
+        if not static_parts:
+            raise SystemExit(
+                f"GLORYS12V1 config {config_path} must define dataset_id_static or static_dataset_parts"
+            )
+    return config
 
 
 def ensure_abs_under_root(path_like: str | Path) -> Path:
     path = Path(path_like)
     return path if path.is_absolute() else ROOT / path
+
+
+def glorys_path_override(config: dict, key: str, default: Path) -> Path:
+    paths = config.get("paths", {})
+    if isinstance(paths, dict) and paths.get(key):
+        return ensure_abs_under_root(paths[key])
+    return default
 
 
 def monthly_or_annual_label(start: datetime, stop: datetime) -> str:
@@ -71,39 +135,42 @@ def monthly_or_annual_label(start: datetime, stop: datetime) -> str:
     return start.strftime("%Y%m")
 
 
+def glorys_time_window(config: dict) -> tuple[datetime, datetime]:
+    return datetime.fromisoformat(config["time_start"]), datetime.fromisoformat(config["time_stop"])
+
+
 def glorys_center_time(config: dict, when: datetime | None = None) -> datetime:
-    base = when or datetime.fromisoformat(config["time_start"])
+    start, _ = glorys_time_window(config)
+    base = when or start
     hh, mm, ss = [int(item) for item in str(config["time_mean_center"]).split(":")]
     return datetime(base.year, base.month, base.day, hh, mm, ss)
-
-
-def default_project_start_stop() -> tuple[datetime, datetime]:
-    params = load_project_params()
-    time_cfg = params["time"]
-    return datetime.fromisoformat(time_cfg["start"]), datetime.fromisoformat(time_cfg["stop"])
 
 
 def build_glorys_paths(
     config: dict,
     start: datetime | None = None,
     stop: datetime | None = None,
+    profile: str | None = None,
 ) -> OceanSourcePaths:
-    project_start, project_stop = default_project_start_stop()
-    start_dt = start or project_start
-    stop_dt = stop or project_stop
+    config_start, config_stop = glorys_time_window(config)
+    start_dt = start or config_start
+    stop_dt = stop or config_stop
     raw_dir = ensure_abs_under_root(config["output_raw_dir"])
     input_dir = ensure_abs_under_root(config["output_input_dir"])
-    label = monthly_or_annual_label(start_dt, stop_dt)
-    initial_dt = glorys_center_time(config, start_dt)
     source = normalize_ocean_source(config.get("source_name", "glorys12v1"))
+    staged_initial = raw_dir / staged_ocean_name(source, "initial", start=start_dt, stop=stop_dt)
+    staged_boundary = raw_dir / staged_ocean_name(source, "boundary", start=start_dt, stop=stop_dt)
+    staged_static = raw_dir / staged_ocean_name(source, "static")
+    roms_ini = input_dir / roms_input_name("ini", source, profile=profile, start=start_dt, stop=stop_dt)
+    roms_bdy = input_dir / roms_input_name("bdy", source, profile=profile, start=start_dt, stop=stop_dt)
     return OceanSourcePaths(
         ocean_source=source,
-        config_path=DEFAULT_GLORYS_CONFIG,
-        staged_initial=raw_dir / staged_ocean_name(source, "initial"),
-        staged_boundary=raw_dir / staged_ocean_name(source, "boundary"),
-        staged_static=raw_dir / staged_ocean_name(source, "static"),
-        roms_ini=input_dir / roms_input_name("ini", source),
-        roms_bdy=input_dir / roms_input_name("bdy", source),
+        config_path=Path(config["_config_path"]) if config.get("_config_path") else DEFAULT_GLORYS_CONFIG,
+        staged_initial=glorys_path_override(config, "staged_initial", staged_initial),
+        staged_boundary=glorys_path_override(config, "staged_boundary", staged_boundary),
+        staged_static=glorys_path_override(config, "staged_static", staged_static),
+        roms_ini=glorys_path_override(config, "roms_ini", roms_ini),
+        roms_bdy=glorys_path_override(config, "roms_bdy", roms_bdy),
         pilot_1day_infile=ROOT / "run" / run_infile_name("pilot_1day", source),
         pilot_month_infile=ROOT / "run" / run_infile_name("pilot", source),
         pilot_1day_log=ROOT / "output" / f"pilot_1day_{source}_run.log",
@@ -119,6 +186,7 @@ def build_ocean_source_paths(
     config: dict | None = None,
     start: datetime | None = None,
     stop: datetime | None = None,
+    profile: str | None = None,
 ) -> OceanSourcePaths:
     source = normalize_ocean_source(ocean_source)
     if source == "hycom":
@@ -137,4 +205,4 @@ def build_ocean_source_paths(
             pilot_1day_run_script=ROOT / "run" / "run_pilot_1day.sh",
             pilot_month_run_script=ROOT / "run" / "run_pilot.sh",
         )
-    return build_glorys_paths(config or load_glorys_config(), start=start, stop=stop)
+    return build_glorys_paths(config or load_glorys_config(), start=start, stop=stop, profile=profile)

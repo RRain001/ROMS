@@ -14,7 +14,7 @@ from netCDF4 import Dataset
 
 from case_context import get_case_config_path
 from case_naming import load_case_naming, staged_atmosphere_name, staged_ocean_name, staged_source_csv_name, staged_tides_name
-from ocean_source_utils import build_glorys_paths, glorys_center_time, load_glorys_config, normalize_ocean_source
+from ocean_source_utils import build_glorys_paths, glorys_center_time, glorys_time_window, load_glorys_config, normalize_ocean_source
 from roms_preprocessing_utils import load_grid, resolve_grid_path
 from staged_data_utils import ROOT, candidate_first, config_path_to_abs, get_bbox, get_time_window, load_download_config
 
@@ -264,8 +264,7 @@ def glorys_validation_window(config: dict):
     boundary_coverage = read_time_coverage(paths.staged_boundary)
     if boundary_coverage is not None:
         return type("Window", (), {"start": boundary_coverage[0], "stop": boundary_coverage[1]})()
-    start_base = datetime.fromisoformat(config["time_start"])
-    stop_base = datetime.fromisoformat(config["time_stop"])
+    start_base, stop_base = glorys_time_window(config)
     start = glorys_center_time(config, start_base)
     stop = glorys_center_time(config, stop_base)
     return type("Window", (), {"start": start, "stop": stop})()

@@ -12,7 +12,14 @@ from netCDF4 import Dataset
 from scipy.ndimage import distance_transform_edt
 
 from case_naming import load_case_naming
-from ocean_source_utils import MJD_CALENDAR, MJD_UNITS, build_glorys_paths, load_glorys_config
+from ocean_source_utils import (
+    MJD_CALENDAR,
+    MJD_UNITS,
+    build_glorys_paths,
+    glorys_center_time,
+    glorys_time_window,
+    load_glorys_config,
+)
 from roms_preprocessing_utils import (
     create_time_variable,
     depth_average,
@@ -43,10 +50,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", default=None)
     parser.add_argument("--src", default=None)
     parser.add_argument("--grid", default=None)
-    parser.add_argument("--start", default="2024-01-01T12:00:00")
-    parser.add_argument("--stop", default="2024-02-01T12:00:00")
+    parser.add_argument("--start", default=None)
+    parser.add_argument("--stop", default=None)
     parser.add_argument("--output", default=None)
+    parser.add_argument("--profile", default=None)
     return parser.parse_args()
+
+
+def boundary_window(config: dict, args: argparse.Namespace) -> tuple[datetime, datetime]:
+    config_start, config_stop = glorys_time_window(config)
+    start = datetime.fromisoformat(args.start) if args.start else glorys_center_time(config, config_start)
+    stop = datetime.fromisoformat(args.stop) if args.stop else glorys_center_time(config, config_stop)
+    if stop < start:
+        raise SystemExit("stop must not be earlier than start")
+    return start, stop
+
+
+def path_window(config: dict, args: argparse.Namespace) -> tuple[datetime, datetime]:
+    config_start, config_stop = glorys_time_window(config)
+    start = datetime.fromisoformat(args.start) if args.start else config_start
+    stop = datetime.fromisoformat(args.stop) if args.stop else config_stop
+    return start, stop
 
 
 def source_depth_to_z(depth: np.ndarray) -> np.ndarray:
@@ -233,9 +257,9 @@ def assert_boundary_quality(ds: Dataset) -> None:
 def main() -> None:
     args = parse_args()
     config = load_glorys_config(args.config)
-    requested_start = datetime.fromisoformat(args.start)
-    requested_stop = datetime.fromisoformat(args.stop)
-    default_paths = build_glorys_paths(config, start=requested_start, stop=requested_stop)
+    requested_start, requested_stop = boundary_window(config, args)
+    name_start, name_stop = path_window(config, args)
+    default_paths = build_glorys_paths(config, start=name_start, stop=name_stop, profile=args.profile)
     src_path = Path(args.src) if args.src else default_paths.staged_boundary
     out_path = Path(args.output) if args.output else default_paths.roms_bdy
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
@@ -243,6 +267,7 @@ def main() -> None:
     if not src_path.exists():
         raise SystemExit(f"source file not found: {src_path}")
 
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     grid = load_grid(grid_path)
     vertical = load_vertical_config()
     z_r, _, hz = sigma_depths(grid.h, vertical)

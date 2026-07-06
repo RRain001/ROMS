@@ -25,6 +25,7 @@ Raw download coverage rule:
 - Ocean and atmosphere downloads should usually use a coverage box larger than the scientific study region.
 - Default framework convention: derive the staged raw-download box from `project_parameters.json:domain.*`, then expand by source type.
 - `HYCOM` default margin is `0.08°` on each side because the source grid is relatively fine.
+- `GLORYS12V1` default margin is configured in `glorys12v1_download_config.json` and should normally be larger than the active ROMS grid because the source is daily 1/12-degree data.
 - `ERA5` default margin is `0.25°` on each side because the source coverage itself is coarser.
 - Use `staged_download_config.json:hycom_bbox_buffer_deg` or `era5_bbox_buffer_deg` to change those defaults when needed.
 - Legacy `bbox_buffer_deg` is still accepted as a shared fallback override for older cases.
@@ -40,3 +41,11 @@ The public entrypoints are grouped under `scripts/` by source family and workflo
 - source staging: `scripts/source/stage_*.py`
 
 Download completion inside `Data_pre` is not the final goal by itself. Raw products must still pass staged validation and then be converted into ROMS-ready files.
+
+GLORYS12V1 notes:
+
+- HYCOM is the default ocean source. GLORYS12V1 is used only through GLORYS-specific scripts or `--ocean-source glorys12v1`.
+- The GLORYS downloader uses the `copernicusmarine` CLI and the `GLOBAL_MULTIYEAR_PHY_001_030` product by default.
+- `time_start` and `time_stop` may be omitted from `glorys12v1_download_config.json`; in that case the case time window from `project_parameters.json` is used.
+- Staged GLORYS files live under `data/raw/ocean/glorys12v1` by default and are converted to source-suffixed ROMS files such as `roms_ini_<prefix>_glorys12v1_<date>.nc` and `roms_bdy_<prefix>_glorys12v1_<window>.nc`.
+- Legacy GLORYS products can be bridged with explicit `paths.staged_initial`, `paths.staged_boundary`, `paths.staged_static`, `paths.roms_ini`, or `paths.roms_bdy` overrides in `glorys12v1_download_config.json`; new workflows should prefer canonical names.
