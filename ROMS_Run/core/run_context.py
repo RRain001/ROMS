@@ -28,6 +28,7 @@ for path in (DATA_PRE_CORE, ROMS_BUILD_CORE):
 
 from case_context import export_case_context, resolve_case_context  # type: ignore  # noqa: E402
 from case_naming import run_infile_name  # type: ignore  # noqa: E402
+from formal_online_workflow import load_formal_online_workflow, parse_formal_online_mode, spinup_restart_name  # type: ignore  # noqa: E402
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -524,6 +525,55 @@ def validate_online_profile_content(context: RunContext, metadata: InfileMetadat
     return issues, warnings
 
 
+def validate_formal_online_content(context: RunContext, metadata: InfileMetadata) -> tuple[list[str], list[str]]:
+    issues: list[str] = []
+    warnings: list[str] = []
+    formal = parse_formal_online_mode(context.mode.name, context.project_params)
+    if not formal or not context.mode.infile.exists():
+        return issues, warnings
+    workflow = load_formal_online_workflow(context.project_params)
+    text = context.mode.infile.read_text(errors="ignore")
+    dt = _parse_scalar(text, "DT")
+    try:
+        dt_seconds = float(str(dt).replace("d0", "").replace("D0", ""))
+    except (TypeError, ValueError):
+        dt_seconds = float(context.project_params.get("time", {}).get("pilot_dt_seconds", 60.0))
+    restart_steps = str(max(1, int(round(5 * 24 * 3600 / dt_seconds))))
+    if formal["phase"] == "spinup":
+        if _parse_scalar(text, "NHIS") != "0":
+            issues.append("formal spin-up must disable history output (NHIS=0)")
+        if _parse_scalar(text, "NAVG") != "0":
+            issues.append("formal spin-up must disable average output (NAVG=0)")
+        if _parse_scalar(text, "NDIA") != "0":
+            issues.append("formal spin-up must disable diagnostics (NDIA=0)")
+        if _parse_scalar(text, "NRST") != restart_steps:
+            issues.append(f"formal spin-up restart interval must be 5 d (NRST={restart_steps})")
+    else:
+        hourly_steps = str(max(1, int(round(3600 / dt_seconds))))
+        daily_steps = str(max(1, int(round(24 * 3600 / dt_seconds))))
+        expected_ini = f"../output/{spinup_restart_name(context.project_params.get('naming', {}).get('roms_prefix', context.case_name), workflow)}"
+        if _parse_scalar(text, "NRREC") not in {"-1", "1"}:
+            issues.append("formal production must hot start from restart (NRREC=-1 or 1)")
+        if _parse_scalar(text, "ININAME") != expected_ini:
+            issues.append(f"formal production ININAME must be {expected_ini}")
+        if _parse_scalar(text, "NHIS") != hourly_steps:
+            issues.append("formal production history interval must be 1 h")
+        if _parse_scalar(text, "NAVG") != daily_steps:
+            issues.append("formal production average interval must be 24 h")
+        if _parse_scalar(text, "NDIA") != "0":
+            issues.append("formal production diagnostics must be disabled (NDIA=0)")
+        if _parse_scalar(text, "NRST") != restart_steps:
+            issues.append(f"formal production restart interval must be 5 d (NRST={restart_steps})")
+    for key, token, _ in metadata.keyed_tokens:
+        if key not in OUTPUT_FILE_KEYS:
+            continue
+        candidate = Path(token)
+        resolved = candidate if candidate.is_absolute() else (context.paths.run_dir / candidate).resolve()
+        if resolved.exists():
+            warnings.append(f"formal output target already exists and may be overwritten: {resolved}")
+    return issues, warnings
+
+
 def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileMetadata]:
     issues: list[str] = []
     warnings: list[str] = []
@@ -575,6 +625,9 @@ def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileM
     content_issues, content_warnings = validate_online_profile_content(context, metadata)
     issues.extend(content_issues)
     warnings.extend(content_warnings)
+    formal_issues, formal_warnings = validate_formal_online_content(context, metadata)
+    issues.extend(formal_issues)
+    warnings.extend(formal_warnings)
     return issues, warnings, metadata
 
 

@@ -12,6 +12,7 @@ import numpy as np
 from netCDF4 import Dataset
 
 from case_naming import load_case_naming
+from formal_online_workflow import load_formal_online_workflow, spinup_zero_source_name
 from pilot_grid_utils import locate_source_on_grid
 from radioactive_decay import radioactive_decay_attrs
 from roms_preprocessing_utils import ROOT, load_project_params, load_vertical_config, resolve_grid_path, to_mjd
@@ -32,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--carrier-transport", type=float, default=None)
     parser.add_argument("--scenario-tag", default=None)
     parser.add_argument("--zero-release", action="store_true")
+    parser.add_argument("--formal-spinup", action="store_true", help="Generate the configured formal spin-up zero-source file")
     return parser.parse_args()
 
 
@@ -78,9 +80,17 @@ def synthetic_discharge_series(
 def main() -> None:
     args = parse_args()
     params = load_project_params()
+    workflow = load_formal_online_workflow(params)
+    naming = load_case_naming()
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     out_path = Path(args.output)
-    if args.profile and args.output == str(DEFAULT_OUT):
+    if args.formal_spinup:
+        args.zero_release = True
+        args.start = args.start or workflow.spinup_start.isoformat()
+        args.stop = args.stop or workflow.spinup_end.isoformat()
+        args.scenario_tag = args.scenario_tag or "spinup_zero_source"
+        out_path = ROOT / "input" / spinup_zero_source_name(naming.roms_prefix, workflow)
+    if args.profile and args.output == str(DEFAULT_OUT) and not args.formal_spinup:
         out_path = out_path.with_name(f"{out_path.stem}_{args.profile}{out_path.suffix}")
     discharge_path = Path(args.discharge_csv)
     vertical = load_vertical_config()

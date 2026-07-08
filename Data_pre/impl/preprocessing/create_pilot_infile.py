@@ -14,9 +14,15 @@ import numpy as np
 from netCDF4 import Dataset, num2date
 
 from case_naming import load_case_naming, output_product_name, roms_input_name, run_infile_name
+from formal_online_workflow import (
+    load_formal_online_workflow,
+    parse_formal_online_mode,
+    spinup_restart_name,
+    spinup_zero_source_name,
+)
 from ocean_source_utils import build_ocean_source_paths, glorys_center_time, load_glorys_config, normalize_ocean_source
 from radioactive_decay import radioactive_decay_config
-from roms_preprocessing_utils import ROOT, load_project_params, resolve_grid_path
+from roms_preprocessing_utils import ROOT, load_project_params, resolve_grid_path, to_mjd
 
 
 RUN_DIR = ROOT / "run"
@@ -56,22 +62,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--config", default=None)
     parser.add_argument("--pilot", choices=["1day", "month", "month_or_year"], default=None)
-    parser.add_argument(
-        "--mode",
-        choices=[
-            "smoke",
-            "pilot_1day",
-            "pilot_month",
-            "online_6h",
-            "online_3d",
-            "online_7d",
-            "online_month",
-            "online_spinup_3mo",
-            "both",
-            "pilot",
-        ],
-        default="both",
-    )
+    parser.add_argument("--mode", default="both")
     parser.add_argument("--forcing-mode", choices=["analytical", "external"], default="analytical")
     parser.add_argument("--ini-path", default=None)
     parser.add_argument("--bry-path", default=None)
@@ -245,6 +236,49 @@ def apply_light_month_output_profile(text: str, dt_seconds: float, *, avg_temp_s
     return text
 
 
+def apply_formal_spinup_output_profile(text: str, dt_seconds: float) -> str:
+    restart_steps = max(1, int(round(5 * 24 * 3600 / dt_seconds)))
+    text = replace_line(text, "NHIS", "0")
+    text = replace_line(text, "NDEFHIS", "0")
+    text = replace_line(text, "NAVG", "0")
+    text = replace_line(text, "NDEFAVG", "0")
+    text = replace_line(text, "NDIA", "0")
+    text = replace_line(text, "NDEFDIA", "0")
+    text = replace_line(text, "NQCK", "0")
+    text = replace_line(text, "NDEFXTR", "0")
+    text = replace_line(text, "NXTR", "0")
+    text = replace_line(text, "NRST", str(restart_steps))
+    text = replace_switch_block(text, "Hout(", "F")
+    text = replace_switch_block(text, "Aout(", "F")
+    text = replace_switch_block(text, "Dout(", "F")
+    return text
+
+
+def apply_formal_production_output_profile(text: str, dt_seconds: float) -> str:
+    hourly_steps = max(1, int(round(3600 / dt_seconds)))
+    daily_steps = max(1, int(round(24 * 3600 / dt_seconds)))
+    restart_steps = max(1, int(round(5 * 24 * 3600 / dt_seconds)))
+    text = replace_line(text, "NHIS", str(hourly_steps))
+    text = replace_line(text, "NAVG", str(daily_steps))
+    text = replace_line(text, "NDIA", "0")
+    text = replace_line(text, "NDEFDIA", "0")
+    text = replace_line(text, "NQCK", "0")
+    text = replace_line(text, "NDEFXTR", "0")
+    text = replace_line(text, "NXTR", "0")
+    text = replace_line(text, "NRST", str(restart_steps))
+    text = replace_switch_block(text, "Hout(", "F")
+    text = replace_switch_block(text, "Aout(", "F")
+    text = replace_switch_block(text, "Dout(", "F")
+    text = replace_line(text, "Hout(idFsur)", "T")
+    text = replace_line(text, "Hout(idTvar)", "F F")
+    text = replace_line(text, "Hout(inert)", "F")
+    for key in ("Aout(idUvel)", "Aout(idVvel)", "Aout(idUbar)", "Aout(idVbar)", "Aout(inert)"):
+        text = replace_line(text, key, "T")
+    text = replace_line(text, "Aout(idFsur)", "F")
+    text = replace_line(text, "Aout(idTvar)", "F F")
+    return text
+
+
 def pick_stable_dt(default_dt: float) -> float:
     for audit_json in AUDIT_JSON_CANDIDATES:
         if not audit_json.exists():
@@ -258,16 +292,32 @@ def pick_stable_dt(default_dt: float) -> float:
     return default_dt
 
 
-def active_profile(args: argparse.Namespace, mode: str | None = None) -> str | None:
+def active_profile(args: argparse.Namespace, mode: str | None = None, params: dict | None = None) -> str | None:
     if args.profile:
         return args.profile
+    if mode and params:
+        formal = parse_formal_online_mode(mode, params)
+        if formal:
+            return str(formal["profile"])
     if mode and mode.startswith("online_"):
         return "online_my25_uvtide"
     return None
 
 
-def forcing_paths(args: argparse.Namespace, forcing_mode: str, mode: str | None = None) -> dict[str, str]:
-    profile = active_profile(args, mode)
+def forcing_paths(
+    args: argparse.Namespace,
+    forcing_mode: str,
+    mode: str | None = None,
+    params: dict | None = None,
+    *,
+    start: datetime | None = None,
+    stop: datetime | None = None,
+) -> dict[str, str]:
+    profile = active_profile(args, mode, params)
+    naming = load_case_naming()
+    workflow = load_formal_online_workflow(params or load_project_params())
+    formal = parse_formal_online_mode(mode or "", params or {}) if mode and params else None
+    file_profile = workflow.profile if formal else profile
     if forcing_mode == "analytical":
         return {
             "ini": "../input/roms_ini_pilot.nc",
@@ -292,20 +342,27 @@ def forcing_paths(args: argparse.Namespace, forcing_mode: str, mode: str | None 
     atm_default = f"../input/{roms_input_name('atm')}"
     rad_default = f"../input/{roms_input_name('rad')}"
     river_default = "../input/roms_rivers_production.nc"
-    if profile:
-        river_default = f"../input/roms_rivers_production_{profile}.nc"
-    ini_default = f"../input/{roms_input_name('ini', ocean_source=ocean_source, profile=profile)}"
-    bry_default = f"../input/{roms_input_name('bdy', ocean_source=ocean_source, profile=profile)}"
+    if file_profile:
+        river_default = f"../input/roms_rivers_production_{file_profile}.nc"
+    if formal and formal["phase"] == "spinup":
+        river_default = f"../input/{spinup_zero_source_name(naming.roms_prefix, workflow)}"
+    ini_default = f"../input/{roms_input_name('ini', ocean_source=ocean_source, profile=file_profile, start=start, stop=stop)}"
+    bry_default = f"../input/{roms_input_name('bdy', ocean_source=ocean_source, profile=file_profile, start=start, stop=stop)}"
+    if start and stop:
+        atm_default = f"../input/{roms_input_name('atm', start=start, stop=stop)}"
+        rad_default = f"../input/{roms_input_name('rad', start=start, stop=stop)}"
     if ocean_source == "glorys12v1":
         ini_default = relative_to_run(source_paths.roms_ini)
         bry_default = relative_to_run(source_paths.roms_bdy)
+    if formal and formal["phase"] == "production":
+        ini_default = f"../output/{spinup_restart_name(naming.roms_prefix, workflow)}"
     return {
         "ini": args.ini_path or ini_default,
         "bry": args.bry_path or bry_default,
         "clm": args.clm_path or args.ini_path or relative_to_run(source_paths.roms_ini),
         "nud": "none",
         "river": args.river_path or river_default,
-        "tides": args.tides_path or f"../input/{roms_input_name('tides', profile=profile)}",
+        "tides": args.tides_path or f"../input/{roms_input_name('tides', profile=file_profile, start=start, stop=stop)}",
         "frc_files": [
             f"     FRCNAME == {args.atm_path or atm_default} \\",
             f"                {args.rad_path or rad_default}",
@@ -495,48 +552,63 @@ def base_text(
     ocean_source = normalize_ocean_source(args.ocean_source)
     output_profile = output_profile_name(args, mode)
     glorys_paths = glorys_source_paths_for_args(args)
-    profile = active_profile(args, mode)
-    forcing = forcing_paths(args, forcing_mode, mode)
+    formal = parse_formal_online_mode(mode, params)
+    workflow = load_formal_online_workflow(params)
+    profile = active_profile(args, mode, params)
     ntile_i, ntile_j = tile_layout(params)
-    start = external_model_start(params, forcing_mode, forcing["ini"])
-    if forcing_mode == "external" and ocean_source == "glorys12v1":
-        ini_path = (RUN_DIR / forcing["ini"]).resolve()
-        if not ini_path.exists():
-            start = glorys_center_time(load_glorys_config(args.config), start)
-    boundary_stop = external_model_stop(params, forcing_mode, forcing["bry"])
     source_label = f" ({ocean_source})" if forcing_mode == "external" and ocean_source != "hycom" else ""
-    if mode == "pilot_1day":
-        stop = min(start + timedelta(days=1), boundary_stop)
-        title = f"{naming.title} 1-day pilot{source_label}"
-        out_prefix = "pilot_1day"
-    elif mode == "online_6h":
-        stop = min(start + timedelta(hours=6), boundary_stop)
-        title = f"{naming.title} online MY25/UV tide 6-hour check{source_label}"
-        out_prefix = "online_6h"
-    elif mode == "online_3d":
-        stop = min(start + timedelta(days=3), boundary_stop)
-        title = f"{naming.title} online MY25/UV tide 3-day check{source_label}"
-        out_prefix = "online_3d"
-    elif mode == "online_7d":
-        stop = min(start + timedelta(days=7), boundary_stop)
-        title = f"{naming.title} online MY25/UV tide 7-day check{source_label}"
-        out_prefix = "online_7d"
-    elif mode == "online_month":
-        stop = boundary_stop
-        title = f"{naming.title} online MY25/UV tide month{source_label}"
-        out_prefix = "online_month"
-    elif mode == "online_spinup_3mo":
-        stop = boundary_stop
-        title = f"{naming.title} online MY25/UV tide 3-month spin-up{source_label}"
-        out_prefix = "online_spinup_3mo"
-    elif mode == "pilot_month":
-        stop = boundary_stop
-        title = f"{naming.title} pilot{source_label}"
-        out_prefix = "pilot"
+    if formal and formal["phase"] == "spinup":
+        start = workflow.spinup_start
+        stop = workflow.spinup_end
+        title = f"{naming.title} online passive tracer {workflow.spinup_duration_months}-month spin-up{source_label}"
+        out_prefix = workflow.spinup_mode
+    elif formal and formal["phase"] == "production":
+        start = workflow.production_start
+        stop = workflow.production_end
+        decay_label = " decay" if formal.get("decay") else ""
+        title = f"{naming.title} online passive tracer production {workflow.production_duration_label}{decay_label} from spin-up{source_label}"
+        out_prefix = workflow.production_decay_mode if formal.get("decay") else workflow.production_mode
     else:
-        stop = start + timedelta(seconds=dt_seconds * 5)
-        title = f"{naming.title} smoke run"
-        out_prefix = "smoke"
+        forcing_preview = forcing_paths(args, forcing_mode, mode, params)
+        start = external_model_start(params, forcing_mode, forcing_preview["ini"])
+        if forcing_mode == "external" and ocean_source == "glorys12v1":
+            ini_path = (RUN_DIR / forcing_preview["ini"]).resolve()
+            if not ini_path.exists():
+                start = glorys_center_time(load_glorys_config(args.config), start)
+        boundary_stop = external_model_stop(params, forcing_mode, forcing_preview["bry"])
+        if mode == "pilot_1day":
+            stop = min(start + timedelta(days=1), boundary_stop)
+            title = f"{naming.title} 1-day pilot{source_label}"
+            out_prefix = "pilot_1day"
+        elif mode == "online_6h":
+            stop = min(start + timedelta(hours=6), boundary_stop)
+            title = f"{naming.title} online MY25/UV tide 6-hour check{source_label}"
+            out_prefix = "online_6h"
+        elif mode == "online_3d":
+            stop = min(start + timedelta(days=3), boundary_stop)
+            title = f"{naming.title} online MY25/UV tide 3-day check{source_label}"
+            out_prefix = "online_3d"
+        elif mode == "online_7d":
+            stop = min(start + timedelta(days=7), boundary_stop)
+            title = f"{naming.title} online MY25/UV tide 7-day check{source_label}"
+            out_prefix = "online_7d"
+        elif mode == "online_month":
+            stop = boundary_stop
+            title = f"{naming.title} online MY25/UV tide month{source_label}"
+            out_prefix = "online_month"
+        elif mode == "online_spinup_3mo":
+            stop = boundary_stop
+            title = f"{naming.title} online MY25/UV tide 3-month spin-up{source_label}"
+            out_prefix = "online_spinup_3mo"
+        elif mode == "pilot_month":
+            stop = boundary_stop
+            title = f"{naming.title} pilot{source_label}"
+            out_prefix = "pilot"
+        else:
+            stop = start + timedelta(seconds=dt_seconds * 5)
+            title = f"{naming.title} smoke run"
+            out_prefix = "smoke"
+    forcing = forcing_paths(args, forcing_mode, mode, params, start=start, stop=stop)
 
     seconds = int((stop - start).total_seconds())
     ntimes = max(1, int(round(seconds / dt_seconds)))
@@ -586,6 +658,8 @@ def base_text(
     text = replace_line(text, "NDTFAST", str(int(time_cfg["pilot_ndtfast"])))
     if forcing_mode == "external":
         dstart_value = external_model_start_value(forcing_mode, forcing["ini"])
+        if dstart_value is None and formal:
+            dstart_value = float(to_mjd([start])[0])
         text = replace_line(
             text,
             "DSTART",
@@ -598,6 +672,7 @@ def base_text(
     text = replace_line(text, "NTIMES_ANA", str(ntimes))
     text = replace_line(text, "NTIMES_FCT", str(ntimes))
     text = replace_line(text, "NRST", str(nrst))
+    text = replace_line(text, "NRREC", "-1" if formal and formal["phase"] == "production" else "0")
     text = replace_line(text, "NINFO", "1" if mode == "smoke" else str(nhis))
     text = replace_line(text, "NHIS", str(nhis))
     text = replace_line(text, "NXTR", "0" if mode in {"smoke", "pilot_1day"} else str(nhis))
@@ -697,19 +772,26 @@ def base_text(
         text = replace_line(text, "OBCFAC", "0.0d0                      ! nondimensional")
 
     source_for_name = None if out_prefix == "smoke" else ocean_source
-    text = replace_line(text, "RSTNAME", f"../output/{output_product_name('rst', out_prefix, source_for_name, profile)}")
-    text = replace_line(text, "HISNAME", f"../output/{output_product_name('his', out_prefix, source_for_name, profile)}")
-    text = replace_line(text, "AVGNAME", f"../output/{output_product_name('avg', out_prefix, source_for_name, profile)}")
-    text = replace_line(text, "DIANAME", f"../output/{output_product_name('dia', out_prefix, source_for_name, profile)}")
-    text = replace_line(text, "XTRNAME", f"../output/{output_product_name('xtr', 'pilot', source_for_name, profile)}")
-    text = replace_line(text, "QCKNAME", f"../output/{output_product_name('qck', 'pilot', source_for_name, profile)}")
+    product_profile = None if formal else profile
+    text = replace_line(text, "RSTNAME", f"../output/{output_product_name('rst', out_prefix, source_for_name, product_profile)}")
+    text = replace_line(text, "HISNAME", f"../output/{output_product_name('his', out_prefix, source_for_name, product_profile)}")
+    text = replace_line(text, "AVGNAME", f"../output/{output_product_name('avg', out_prefix, source_for_name, product_profile)}")
+    text = replace_line(text, "DIANAME", f"../output/{output_product_name('dia', out_prefix, source_for_name, product_profile)}")
+    text = replace_line(text, "XTRNAME", f"../output/{output_product_name('xtr', 'pilot', source_for_name, product_profile)}")
+    text = replace_line(text, "QCKNAME", f"../output/{output_product_name('qck', 'pilot', source_for_name, product_profile)}")
+    if formal and formal["phase"] == "spinup":
+        text = apply_formal_spinup_output_profile(text, dt_seconds)
+    elif formal and formal["phase"] == "production":
+        text = apply_formal_production_output_profile(text, dt_seconds)
     if output_profile == "light_month":
         text = apply_light_month_output_profile(text, dt_seconds, avg_temp_salt=args.avg_temp_salt)
     return text
 
 
 def output_path_for_mode(mode: str, ocean_source: str, args: argparse.Namespace) -> Path:
-    profile = active_profile(args, mode)
+    params = load_project_params()
+    formal = parse_formal_online_mode(mode, params)
+    profile = None if formal else active_profile(args, mode, params)
     if mode.startswith("online_"):
         return RUN_DIR / run_infile_name(mode, None if ocean_source == "hycom" else ocean_source, profile)
     if mode == "smoke":
