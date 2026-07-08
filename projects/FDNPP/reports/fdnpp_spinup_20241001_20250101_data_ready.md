@@ -19,18 +19,11 @@
   time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (2209 records)
   dims: `time=2209, lat=6, lon=7`
 - raw_tides: `/home/lhy/ROMS/projects/FDNPP/data/raw/tides/tpxo9_fdnpp_20241001_20250101.nc`
-  missing_variables: `tide_Eamp, tide_Ephase, tide_Cmax, tide_Cmin, tide_Cangle, tide_Cphase`
+  dims: `tide_period=15, lat=28, lon=35`
 - ini: `/home/lhy/ROMS/projects/FDNPP/input/roms_ini_fdnpp_20241001_online_my25_uvtide.nc`
-  ocean_time: `2024-10-01T00:00:00` -> `2024-10-01T00:00:00` (1 records)
-  dims: `ocean_time=1, s_rho=40, eta_rho=190, xi_rho=201, eta_u=190, xi_u=200, eta_v=189, xi_v=201`
+  missing_variables: `zeta, u, v, ubar, vbar, temp, salt, dye_01`
 - bdy: `/home/lhy/ROMS/projects/FDNPP/input/roms_bdy_fdnpp_20241001_20250101_online_my25_uvtide.nc`
-  zeta_time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (737 records)
-  v2d_time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (737 records)
-  v3d_time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (737 records)
-  temp_time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (737 records)
-  salt_time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (737 records)
-  dye_time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (737 records)
-  dims: `zeta_time=737, v2d_time=737, v3d_time=737, temp_time=737, salt_time=737, dye_time=737, eta_rho=190, xi_rho=201, eta_u=190, xi_u=200, eta_v=189, xi_v=201, s_rho=40`
+  missing_variables: `zeta_west, zeta_east, zeta_south, zeta_north, ubar_west, ubar_east, ubar_south, ubar_north, vbar_west, vbar_east, vbar_south, vbar_north, u_west, u_east, u_south, u_north, v_west, v_east, v_south, v_north, temp_west, temp_east, temp_south, temp_north, salt_west, salt_east, salt_south, salt_north, dye_west_01, dye_east_01, dye_south_01, dye_north_01`
 - atm: `/home/lhy/ROMS/projects/FDNPP/input/roms_atm_fdnpp_20241001_20250101.nc`
   wind_time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (2209 records)
   pair_time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (2209 records)
@@ -67,14 +60,52 @@
 - raw_bdy: missing variable vo
 - raw_bdy: missing variable thetao
 - raw_bdy: missing variable so
-- raw_tides: missing variable tide_Eamp
-- raw_tides: missing variable tide_Ephase
-- raw_tides: missing variable tide_Cmax
-- raw_tides: missing variable tide_Cmin
-- raw_tides: missing variable tide_Cangle
-- raw_tides: missing variable tide_Cphase
+- ini: missing variable zeta
+- ini: missing variable u
+- ini: missing variable v
+- ini: missing variable ubar
+- ini: missing variable vbar
+- ini: missing variable temp
+- ini: missing variable salt
+- ini: missing variable dye_01
+- bdy: missing variable zeta_west
+- bdy: missing variable zeta_east
+- bdy: missing variable zeta_south
+- bdy: missing variable zeta_north
+- bdy: missing variable ubar_west
+- bdy: missing variable ubar_east
+- bdy: missing variable ubar_south
+- bdy: missing variable ubar_north
+- bdy: missing variable vbar_west
+- bdy: missing variable vbar_east
+- bdy: missing variable vbar_south
+- bdy: missing variable vbar_north
+- bdy: missing variable u_west
+- bdy: missing variable u_east
+- bdy: missing variable u_south
+- bdy: missing variable u_north
+- bdy: missing variable v_west
+- bdy: missing variable v_east
+- bdy: missing variable v_south
+- bdy: missing variable v_north
+- bdy: missing variable temp_west
+- bdy: missing variable temp_east
+- bdy: missing variable temp_south
+- bdy: missing variable temp_north
+- bdy: missing variable salt_west
+- bdy: missing variable salt_east
+- bdy: missing variable salt_south
+- bdy: missing variable salt_north
+- bdy: missing variable dye_west_01
+- bdy: missing variable dye_east_01
+- bdy: missing variable dye_south_01
+- bdy: missing variable dye_north_01
+- roms_ini_fdnpp_20241001_online_my25_uvtide.nc: missing time variable ocean_time
 - glorys12v1_initial_20241001.nc: missing time variable time
+- roms_bdy_fdnpp_20241001_20250101_online_my25_uvtide.nc: missing time variable zeta_time
 - glorys12v1_boundary_20241001_20250101.nc: missing time variable time
+- ini: missing file /home/lhy/ROMS/projects/FDNPP/input/roms_ini_fdnpp_20241001_online_my25_uvtide.nc
+- bdy: missing file /home/lhy/ROMS/projects/FDNPP/input/roms_bdy_fdnpp_20241001_20250101_online_my25_uvtide.nc
 
 ## Next Step
 
