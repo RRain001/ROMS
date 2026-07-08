@@ -8,12 +8,24 @@ from datetime import datetime
 import json
 from pathlib import Path
 import re
+import sys
 from typing import Any
 
 import numpy as np
 from netCDF4 import Dataset, num2date
 
-from case_naming import load_case_naming, output_product_name, roms_input_name, run_infile_name
+DATA_PRE_ROOT = Path(__file__).resolve().parents[2]
+CORE_DIR = DATA_PRE_ROOT / "core"
+if str(CORE_DIR) not in sys.path:
+    sys.path.insert(0, str(CORE_DIR))
+
+from case_context import export_case_context, parse_case_args, resolve_case_context
+
+case_name, case_root, remaining_args = parse_case_args(sys.argv[1:])
+export_case_context(resolve_case_context(case_name=case_name, case_root=case_root))
+sys.argv = [sys.argv[0]] + remaining_args
+
+from case_naming import load_case_naming, roms_input_name, run_infile_name, staged_tides_name
 from formal_online_workflow import (
     RESTART_OPTIONAL_TURBULENCE_VARIABLES,
     expected_restart_variables,
@@ -21,7 +33,25 @@ from formal_online_workflow import (
     spinup_restart_name,
     spinup_zero_source_name,
 )
-from roms_preprocessing_utils import ROOT, load_project_params, to_builtin, to_mjd
+from roms_preprocessing_utils import ROOT, load_project_params, to_builtin
+
+
+OUTPUT_KEY_LABELS = {
+    "Hout(idFsur)": "zeta",
+    "Hout(idUvel)": "u",
+    "Hout(idVvel)": "v",
+    "Hout(idUbar)": "ubar",
+    "Hout(idVbar)": "vbar",
+    "Hout(idTvar)": "temp/salt",
+    "Hout(inert)": "dye_01",
+    "Aout(idFsur)": "zeta",
+    "Aout(idUvel)": "u",
+    "Aout(idVvel)": "v",
+    "Aout(idUbar)": "ubar",
+    "Aout(idVbar)": "vbar",
+    "Aout(idTvar)": "temp/salt",
+    "Aout(inert)": "dye_01",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -47,6 +77,33 @@ def _scalar(text: str, key: str) -> str | None:
 def _flag(text: str, key: str) -> str | None:
     value = _scalar(text, key)
     return value.upper() if value else None
+
+
+def _flags_are_enabled(value: str | None) -> bool:
+    return bool(value and any(item.upper() == "T" for item in value.split()))
+
+
+def _switch_flags(text: str, prefix: str) -> dict[str, str]:
+    switches: dict[str, str] = {}
+    pattern = re.compile(rf"^\s*({re.escape(prefix)}\([^)]+\))\s*=+\s*([^\n!]+)", re.MULTILINE)
+    for match in pattern.finditer(text):
+        switches[match.group(1)] = match.group(2).strip()
+    return switches
+
+
+def _enabled_output_variables(text: str, prefix: str) -> dict[str, Any]:
+    switches = _switch_flags(text, prefix)
+    enabled_keys = [key for key, value in sorted(switches.items()) if _flags_are_enabled(value)]
+    labels = []
+    for key in enabled_keys:
+        label = OUTPUT_KEY_LABELS.get(key, key)
+        if label not in labels:
+            labels.append(label)
+    return {
+        "enabled_keys": enabled_keys,
+        "enabled_variables": labels,
+        "switches": switches,
+    }
 
 
 def _decode_first_last(ds: Dataset, name: str) -> tuple[datetime | None, datetime | None]:
@@ -98,6 +155,19 @@ def _river_zero(path: Path) -> dict[str, Any]:
     return result
 
 
+def _netcdf_missing_variables(path: Path, variables: tuple[str, ...]) -> dict[str, Any]:
+    result: dict[str, Any] = {"path": str(path), "exists": path.exists(), "missing_variables": list(variables)}
+    if not path.exists():
+        return result
+    try:
+        with Dataset(path) as ds:
+            present = set(ds.variables)
+        result["missing_variables"] = [name for name in variables if name not in present]
+    except Exception as exc:  # noqa: BLE001
+        result["error"] = f"{type(exc).__name__}: {exc}"
+    return result
+
+
 def _infile_checks(path: Path, *, phase: str, dt_seconds: float, expected_ini: str | None = None) -> dict[str, Any]:
     result: dict[str, Any] = {"path": str(path), "exists": path.exists(), "issues": []}
     if not path.exists():
@@ -116,6 +186,9 @@ def _infile_checks(path: Path, *, phase: str, dt_seconds: float, expected_ini: s
     nrst = _scalar(text, "NRST")
     nrrec = _scalar(text, "NRREC")
     ini = _scalar(text, "ININAME")
+    history_outputs = _enabled_output_variables(text, "Hout")
+    average_outputs = _enabled_output_variables(text, "Aout")
+    diagnostics_outputs = _enabled_output_variables(text, "Dout")
     result.update(
         {
             "NHIS": nhis,
@@ -125,6 +198,17 @@ def _infile_checks(path: Path, *, phase: str, dt_seconds: float, expected_ini: s
             "NRREC": nrrec,
             "DT": raw_dt,
             "ININAME": ini,
+            "SSFNAME": _scalar(text, "SSFNAME"),
+            "RSTNAME": _scalar(text, "RSTNAME"),
+            "HISNAME": _scalar(text, "HISNAME"),
+            "AVGNAME": _scalar(text, "AVGNAME"),
+            "DIANAME": _scalar(text, "DIANAME"),
+            "history_will_write": nhis not in {None, "0"},
+            "average_will_write": navg not in {None, "0"},
+            "diagnostics_will_write": ndia not in {None, "0"},
+            "history_outputs": history_outputs,
+            "average_outputs": average_outputs,
+            "diagnostics_outputs": diagnostics_outputs,
             "Hout_idFsur": _flag(text, "Hout(idFsur)"),
             "Hout_inert": _flag(text, "Hout(inert)"),
             "Aout_idUvel": _flag(text, "Aout(idUvel)"),
@@ -144,6 +228,10 @@ def _infile_checks(path: Path, *, phase: str, dt_seconds: float, expected_ini: s
             result["issues"].append("spin-up diagnostics is not off (NDIA != 0)")
         if nrst != restart_5d:
             result["issues"].append(f"spin-up restart interval is not 5 d (NRST {nrst}, expected {restart_5d})")
+        if result["history_outputs"]["enabled_keys"]:
+            result["issues"].append("spin-up has enabled history variables despite NHIS=0")
+        if result["diagnostics_outputs"]["enabled_keys"]:
+            result["issues"].append("spin-up has enabled diagnostics variables despite NDIA=0")
     else:
         hourly = str(max(1, int(round(3600 / dt_seconds))))
         daily = str(max(1, int(round(24 * 3600 / dt_seconds))))
@@ -153,15 +241,24 @@ def _infile_checks(path: Path, *, phase: str, dt_seconds: float, expected_ini: s
             result["issues"].append(f"production ININAME {ini} does not match expected {expected_ini}")
         if nhis != hourly:
             result["issues"].append(f"production history interval is not 1 h (NHIS {nhis}, expected {hourly})")
-        if result["Hout_idFsur"] != "T" or result["Hout_inert"] != "F":
-            result["issues"].append("production history is not limited to zeta")
+        if result["history_outputs"]["enabled_variables"] != ["zeta"]:
+            result["issues"].append(
+                f"production history is not limited to zeta: {result['history_outputs']['enabled_variables']}"
+            )
         if navg != daily:
             result["issues"].append(f"production average interval is not 24 h (NAVG {navg}, expected {daily})")
+        expected_average = ["u", "v", "ubar", "vbar", "dye_01"]
+        if sorted(result["average_outputs"]["enabled_variables"]) != sorted(expected_average):
+            result["issues"].append(
+                f"production average variables mismatch: {result['average_outputs']['enabled_variables']}"
+            )
         for key in ("Aout_idUvel", "Aout_idVvel", "Aout_idUbar", "Aout_idVbar", "Aout_inert"):
             if result[key] != "T":
                 result["issues"].append(f"production average missing expected {key}")
         if ndia != "0":
             result["issues"].append("production diagnostics is not off (NDIA != 0)")
+        if result["diagnostics_outputs"]["enabled_keys"]:
+            result["issues"].append("production has enabled diagnostics variables despite NDIA=0")
         if nrst != restart_5d:
             result["issues"].append(f"production restart interval is not 5 d (NRST {nrst}, expected {restart_5d})")
     return result
@@ -192,6 +289,22 @@ def _restart_checks(path: Path, production_start: datetime) -> dict[str, Any]:
     return result
 
 
+def _production_output_signature(check: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "DT": check.get("DT"),
+        "NHIS": check.get("NHIS"),
+        "NAVG": check.get("NAVG"),
+        "NDIA": check.get("NDIA"),
+        "NRST": check.get("NRST"),
+        "NRREC": check.get("NRREC"),
+        "ININAME": check.get("ININAME"),
+        "SSFNAME": check.get("SSFNAME"),
+        "history_outputs": check.get("history_outputs", {}).get("enabled_variables", []),
+        "average_outputs": check.get("average_outputs", {}).get("enabled_variables", []),
+        "diagnostics_outputs": check.get("diagnostics_outputs", {}).get("enabled_variables", []),
+    }
+
+
 def _audit_payload(params: dict[str, Any]) -> dict[str, Any]:
     hardcoded_hits: list[str] = []
     for path in (Path("Data_pre"), Path("ROMS_Run"), Path("ROMS_Build")):
@@ -219,6 +332,9 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _write_md(path: Path, payload: dict[str, Any]) -> None:
     wf = payload["workflow"]
+    spinup = payload["checks"]["spinup_infile"]
+    production = payload["checks"]["production_infile"]
+    decay = payload["checks"]["decay_production_infile"]
     lines = [
         "# Formal Online Passive Tracer Workflow",
         "",
@@ -230,6 +346,8 @@ def _write_md(path: Path, payload: dict[str, Any]) -> None:
         f"- production_end: `{wf['production_end']}`",
         "- spin-up is hydrodynamic adjustment before formal online tracer production.",
         "- formal production source and optional radioactive decay are enabled only in production.",
+        "- workflow genericized: `true`",
+        f"- FDNPP role: `{payload['fdnpp_role']}`",
         "",
         "## History And Restart",
         "",
@@ -243,11 +361,46 @@ def _write_md(path: Path, payload: dict[str, Any]) -> None:
         f"- production no-decay: `{wf['production_mode']}`",
         f"- production decay: `{wf['production_decay_mode']}`",
         "",
+        "## Actual Spin-up Output",
+        "",
+        f"- infile: `{spinup['path']}`",
+        f"- NHIS: `{spinup.get('NHIS')}`",
+        f"- NAVG: `{spinup.get('NAVG')}`",
+        f"- NRST: `{spinup.get('NRST')}`",
+        f"- NDIA: `{spinup.get('NDIA')}`",
+        f"- history_will_write: `{spinup.get('history_will_write')}`",
+        f"- history variables enabled: `{', '.join(spinup['history_outputs']['enabled_variables']) or 'none'}`",
+        f"- diagnostics_will_write: `{spinup.get('diagnostics_will_write')}`",
+        f"- diagnostics variables enabled: `{', '.join(spinup['diagnostics_outputs']['enabled_variables']) or 'none'}`",
+        f"- source file: `{spinup.get('SSFNAME')}`",
+        f"- restart file: `{spinup.get('RSTNAME')}`",
+        "",
+        "## Actual Production Output",
+        "",
+        f"- no-decay infile: `{production['path']}`",
+        f"- decay infile: `{decay['path']}`",
+        f"- NHIS: `{production.get('NHIS')}`",
+        f"- NAVG: `{production.get('NAVG')}`",
+        f"- NRST: `{production.get('NRST')}`",
+        f"- NDIA: `{production.get('NDIA')}`",
+        f"- NRREC: `{production.get('NRREC')}`",
+        f"- ININAME: `{production.get('ININAME')}`",
+        f"- history variables enabled: `{', '.join(production['history_outputs']['enabled_variables']) or 'none'}`",
+        f"- average variables enabled: `{', '.join(production['average_outputs']['enabled_variables']) or 'none'}`",
+        f"- diagnostics_will_write: `{production.get('diagnostics_will_write')}`",
+        f"- diagnostics variables enabled: `{', '.join(production['diagnostics_outputs']['enabled_variables']) or 'none'}`",
+        f"- no-decay/decay output config identical: `{payload['production']['no_decay_decay_output_config_identical']}`",
+        "- hourly `dye_01`: `disabled`",
+        "- supported visualization: `daily mean plume maps / daily mean animation`",
+        "- unsupported visualization: `hourly dye_01 plume animation`",
+        "",
         "## Validation",
         "",
         f"- status: `{payload['status']}`",
         f"- validation phase: `{payload['validation_phase']}`",
         f"- no-decay and decay production supported: `{payload['production']['decay_supported']}`",
+        f"- output_config_can_be_modified_now: `{payload['output_config_can_be_modified_now']}`",
+        f"- spinup_can_run_now: `{payload['spinup_can_run_now']}`",
         "",
         "## Current Flow Audit",
         "",
@@ -260,6 +413,12 @@ def _write_md(path: Path, payload: dict[str, Any]) -> None:
         lines.extend(f"- {issue}" for issue in payload["blocking_issues"])
     else:
         lines.append("- none")
+    lines.extend(["", "## Spin-up Input Data Blocking Issues", ""])
+    if payload["spinup_input_data_blocking_issues"]:
+        lines.extend(f"- {issue}" for issue in payload["spinup_input_data_blocking_issues"])
+    else:
+        lines.append("- none")
+    lines.extend(["", "## Next Step", "", f"- {payload['next_step']}"])
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -285,6 +444,7 @@ def main() -> None:
         "spinup_rad": input_dir / roms_input_name("rad", start=workflow.spinup_start, stop=workflow.spinup_end),
         "spinup_source": input_dir / spinup_zero_source_name(naming.roms_prefix, workflow),
         "production_source": input_dir / f"roms_rivers_production_{workflow.profile}.nc",
+        "raw_tides": ROOT / "data" / "raw" / "tides" / staged_tides_name(start=workflow.spinup_start, stop=workflow.spinup_end),
     }
     checks = {
         "spinup_ini": _time_coverage(paths["spinup_ini"], "ocean_time", workflow.spinup_start, workflow.spinup_start),
@@ -292,6 +452,10 @@ def main() -> None:
         "spinup_atm": _time_coverage(paths["spinup_atm"], "wind_time", workflow.spinup_start, workflow.spinup_end),
         "spinup_rad": _time_coverage(paths["spinup_rad"], "srf_time", workflow.spinup_start, workflow.spinup_end),
         "spinup_source": _river_zero(paths["spinup_source"]),
+        "raw_tides": _netcdf_missing_variables(
+            paths["raw_tides"],
+            ("tide_Eamp", "tide_Ephase", "tide_Cmax", "tide_Cmin", "tide_Cangle", "tide_Cphase"),
+        ),
         "spinup_infile": _infile_checks(spinup_infile, phase="spinup", dt_seconds=dt_seconds),
         "production_infile": _infile_checks(prod_infile, phase="production", dt_seconds=dt_seconds, expected_ini=expected_ini),
         "decay_production_infile": _infile_checks(decay_infile, phase="production", dt_seconds=dt_seconds, expected_ini=expected_ini),
@@ -304,14 +468,29 @@ def main() -> None:
         elif label == "spinup_source":
             if check["exists"] and not check["source_is_zero"]:
                 blocking.append("spinup_source: source is not zero")
+        elif label == "raw_tides":
+            continue
         elif check["exists"] and not check["covers"]:
             blocking.append(f"{label}: time coverage does not span expected window")
     if args.phase == "post-spinup":
         blocking.extend(f"restart: {issue}" for issue in restart_checks["issues"])
+    spinup_input_data_blocking: list[str] = []
+    for variable in checks["raw_tides"].get("missing_variables", []):
+        spinup_input_data_blocking.append(f"raw_tides missing {variable}")
+    production_signature = _production_output_signature(checks["production_infile"])
+    decay_signature = _production_output_signature(checks["decay_production_infile"])
+    output_config_identical = production_signature == decay_signature
+    output_config_ready = not any(
+        checks[label]["issues"]
+        for label in ("spinup_infile", "production_infile", "decay_production_infile")
+    ) and output_config_identical
     payload = {
         "case_name": naming.case_name,
         "validation_phase": args.phase,
-        "status": "ready" if not blocking else "blocked",
+        "status": "ready" if output_config_ready and not blocking else "blocked",
+        "fdnpp_role": "configuration instance only; shared workflow logic is case-driven",
+        "output_config_can_be_modified_now": True,
+        "spinup_can_run_now": False if spinup_input_data_blocking else not blocking,
         "workflow": {
             "enabled": workflow.enabled,
             "profile": workflow.profile,
@@ -335,12 +514,22 @@ def main() -> None:
             "source_expected": str(paths["production_source"]),
             "decay_supported": decay_infile.exists() or workflow.production_decay_mode,
             "no_decay_decay_difference": "build/profile decay switch only; input/output policy and spin-up restart path are shared",
+            "no_decay_output_signature": production_signature,
+            "decay_output_signature": decay_signature,
+            "no_decay_decay_output_config_identical": output_config_identical,
         },
         "current_audit": _audit_payload(params),
         "blocking_issues": blocking,
+        "spinup_input_data_blocking_issues": spinup_input_data_blocking,
+        "next_step": (
+            "Fix spin-up tide staging for formal online workflow"
+            if spinup_input_data_blocking
+            else "Run post-spinup validation after formal spin-up produces its final restart"
+        ),
         "notes": [
             "Spin-up history is not used for hot start; production starts from final restart.",
             "If restart is absent, pre-run validation reports expected paths; post-spinup validation requires file content.",
+            "The formal production output plan supports daily mean dye_01 maps/animations, not hourly dye_01 plume animation.",
         ],
     }
     reports_dir = ROOT / "reports"
