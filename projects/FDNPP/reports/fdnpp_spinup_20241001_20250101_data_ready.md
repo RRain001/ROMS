@@ -3,8 +3,8 @@
 - case: `FDNPP`
 - profile: `online_my25_uvtide`
 - window: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00`
-- status: `ready`
-- can_generate_online_spinup_3mo_my25_uvtide: `True`
+- status: `blocked`
+- can_generate_spinup_run_mode: `False`
 
 ## Inputs
 
@@ -20,8 +20,8 @@
 - raw_rad: `/home/lhy/ROMS/projects/FDNPP/data/raw/atmosphere/era5_rad_fdnpp_20241001_20250101.nc`
   time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (2209 records)
   dims: `time=2209, lat=6, lon=7`
-- raw_tides: `/home/lhy/ROMS/projects/FDNPP/data/raw/tides/tpxo9_fdnpp_202501_online_my25_uvtide.nc`
-  dims: `tide_period=15, lat=28, lon=35`
+- raw_tides: `/home/lhy/ROMS/projects/FDNPP/data/raw/tides/tpxo9_fdnpp_20241001_20250101.nc`
+  missing_variables: `tide_Eamp, tide_Ephase, tide_Cmax, tide_Cmin, tide_Cangle, tide_Cphase`
 - ini: `/home/lhy/ROMS/projects/FDNPP/input/roms_ini_fdnpp_20241001_online_my25_uvtide.nc`
   ocean_time: `2024-10-01T00:00:00` -> `2024-10-01T00:00:00` (1 records)
   dims: `ocean_time=1, s_rho=40, eta_rho=190, xi_rho=201, eta_u=190, xi_u=200, eta_v=189, xi_v=201`
@@ -47,7 +47,7 @@
   dims: `srf_time=2209, lrf_time=2209, eta_rho=190, xi_rho=201`
 - tides: `/home/lhy/ROMS/projects/FDNPP/input/roms_tides_fdnpp_20241001_20250101_online_my25_uvtide.nc`
   dims: `tide_period=15, eta_rho=190, xi_rho=201`
-- river: `/home/lhy/ROMS/projects/FDNPP/input/roms_rivers_fdnpp_spinup_zero_source_online_my25_uvtide.nc`
+- river: `/home/lhy/ROMS/projects/FDNPP/input/roms_rivers_fdnpp_online_spinup_3mo_my25_uvtide_zero_source.nc`
   river_time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (2209 records)
   dims: `s_rho=40, river=1, river_time=2209`
 
@@ -59,8 +59,13 @@
 
 ## Blocking Issues
 
-- none
+- raw_tides: missing variable tide_Eamp
+- raw_tides: missing variable tide_Ephase
+- raw_tides: missing variable tide_Cmax
+- raw_tides: missing variable tide_Cmin
+- raw_tides: missing variable tide_Cangle
+- raw_tides: missing variable tide_Cphase
 
 ## Next Step
 
-- Generate and validate online_spinup_3mo_my25_uvtide run mode wiring.
+- Resolve the blocking issues above before creating online_spinup_3mo_my25_uvtide.

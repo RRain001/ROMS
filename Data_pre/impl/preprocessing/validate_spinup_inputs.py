@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate FDNPP spin-up input products and write readiness reports."""
+"""Validate case-driven spin-up input products and write readiness reports."""
 
 from __future__ import annotations
 
@@ -12,17 +12,18 @@ from typing import Any
 import numpy as np
 from netCDF4 import Dataset, num2date
 
-from case_naming import load_case_naming, roms_input_name, staged_atmosphere_name, staged_ocean_name
-from roms_preprocessing_utils import ROOT, load_vertical_config, resolve_grid_path
+from case_naming import load_case_naming, roms_input_name, staged_atmosphere_name, staged_ocean_name, staged_tides_name
+from formal_online_workflow import load_formal_online_workflow, spinup_zero_source_name
+from roms_preprocessing_utils import ROOT, load_project_params, load_vertical_config, resolve_grid_path
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--grid", default=None)
     parser.add_argument("--case-name", default=None)
-    parser.add_argument("--profile", required=True)
-    parser.add_argument("--start", required=True)
-    parser.add_argument("--end", required=True)
+    parser.add_argument("--profile", default=None)
+    parser.add_argument("--start", default=None)
+    parser.add_argument("--end", default=None)
     parser.add_argument("--ocean-source", default="hycom")
     parser.add_argument("--raw-ini", default=None)
     parser.add_argument("--raw-bdy", default=None)
@@ -73,20 +74,21 @@ def _format_label(start: datetime, end: datetime) -> str:
     return f"{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}"
 
 
-def _expected_paths(start: datetime, end: datetime, profile: str) -> dict[str, Path]:
+def _expected_paths(start: datetime, end: datetime, profile: str, ocean_source: str) -> dict[str, Path]:
     naming = load_case_naming()
+    workflow = load_formal_online_workflow(load_project_params())
     return {
-        "raw_ini": ROOT / "data" / "raw" / "ocean" / staged_ocean_name("hycom", "initial", start=start, stop=end),
-        "raw_bdy": ROOT / "data" / "raw" / "ocean" / staged_ocean_name("hycom", "boundary", start=start, stop=end),
+        "raw_ini": ROOT / "data" / "raw" / "ocean" / staged_ocean_name(ocean_source, "initial", start=start, stop=end),
+        "raw_bdy": ROOT / "data" / "raw" / "ocean" / staged_ocean_name(ocean_source, "boundary", start=start, stop=end),
         "raw_atm": ROOT / "data" / "raw" / "atmosphere" / staged_atmosphere_name("atm", start=start, stop=end),
         "raw_rad": ROOT / "data" / "raw" / "atmosphere" / staged_atmosphere_name("rad", start=start, stop=end),
-        "raw_tides": ROOT / "data" / "raw" / "tides" / f"tpxo9_{naming.roms_prefix}_202501_{profile}.nc",
+        "raw_tides": ROOT / "data" / "raw" / "tides" / staged_tides_name(start=start, stop=end),
         "ini": ROOT / "input" / roms_input_name("ini", profile=profile, start=start, stop=end),
         "bdy": ROOT / "input" / roms_input_name("bdy", profile=profile, start=start, stop=end),
         "atm": ROOT / "input" / roms_input_name("atm", start=start, stop=end),
         "rad": ROOT / "input" / roms_input_name("rad", start=start, stop=end),
         "tides": ROOT / "input" / roms_input_name("tides", profile=profile, start=start, stop=end),
-        "river": ROOT / "input" / f"roms_rivers_{naming.roms_prefix}_spinup_zero_source_{profile}.nc",
+        "river": ROOT / "input" / spinup_zero_source_name(naming.roms_prefix, workflow),
     }
 
 
@@ -242,13 +244,15 @@ def _tide_checks(path: Path, expected_zero_phase_date: float) -> tuple[list[str]
 
 def _overwrite_checks(paths: dict[str, Path]) -> tuple[list[str], dict[str, Any]]:
     naming = load_case_naming()
+    params = load_project_params()
+    workflow = load_formal_online_workflow(params)
     preserved = {
-        "ini": ROOT / "input" / f"roms_ini_{naming.roms_prefix}_20250101_online_my25_uvtide.nc",
-        "bdy": ROOT / "input" / f"roms_bdy_{naming.roms_prefix}_202501_online_my25_uvtide.nc",
-        "tides": ROOT / "input" / f"roms_tides_{naming.roms_prefix}_202501_online_my25_uvtide.nc",
-        "river": ROOT / "input" / "roms_rivers_production_online_my25_uvtide.nc",
-        "atm": ROOT / "input" / f"roms_atm_{naming.roms_prefix}_202501.nc",
-        "rad": ROOT / "input" / f"roms_rad_{naming.roms_prefix}_202501.nc",
+        "ini": ROOT / "input" / roms_input_name("ini", profile=workflow.profile, start=workflow.production_start, stop=workflow.production_end),
+        "bdy": ROOT / "input" / roms_input_name("bdy", profile=workflow.profile, start=workflow.production_start, stop=workflow.production_end),
+        "tides": ROOT / "input" / roms_input_name("tides", profile=workflow.profile, start=workflow.production_start, stop=workflow.production_end),
+        "river": ROOT / "input" / f"roms_rivers_production_{workflow.profile}.nc",
+        "atm": ROOT / "input" / roms_input_name("atm", start=workflow.production_start, stop=workflow.production_end),
+        "rad": ROOT / "input" / roms_input_name("rad", start=workflow.production_start, stop=workflow.production_end),
     }
     issues: list[str] = []
     details = {
@@ -261,7 +265,7 @@ def _overwrite_checks(paths: dict[str, Path]) -> tuple[list[str], dict[str, Any]
         collision = paths[key].resolve() == preserved[preserved_key].resolve()
         details["collisions"][key] = collision
         if collision:
-            issues.append(f"{key}: spin-up output path collides with preserved January 2025 file")
+            issues.append(f"{key}: spin-up output path collides with production input file")
     return issues, details
 
 
@@ -290,13 +294,13 @@ def _write_reports(payload: dict[str, Any], md_path: Path, json_path: Path) -> N
     json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False, default=_to_builtin) + "\n", encoding="utf-8")
 
     lines = [
-        "# FDNPP Spin-up Data Ready Report",
+        f"# {payload['case_name']} Spin-up Data Ready Report",
         "",
         f"- case: `{payload['case_name']}`",
         f"- profile: `{payload['profile']}`",
         f"- window: `{payload['window']['start']}` -> `{payload['window']['end']}`",
         f"- status: `{payload['status']}`",
-        f"- can_generate_online_spinup_3mo_my25_uvtide: `{payload['can_generate_run_mode']}`",
+        f"- can_generate_spinup_run_mode: `{payload['can_generate_run_mode']}`",
         "",
         "## Inputs",
         "",
@@ -344,14 +348,17 @@ def _write_reports(payload: dict[str, Any], md_path: Path, json_path: Path) -> N
 
 def main() -> None:
     args = parse_args()
-    start = datetime.fromisoformat(args.start)
-    end = datetime.fromisoformat(args.end)
+    params = load_project_params()
+    workflow = load_formal_online_workflow(params)
+    start = datetime.fromisoformat(args.start) if args.start else workflow.spinup_start
+    end = datetime.fromisoformat(args.end) if args.end else workflow.spinup_end
+    profile = args.profile or workflow.profile
     if start >= end:
         raise SystemExit("start must be earlier than end")
 
     label = _format_label(start, end)
     reports_dir = ROOT / "reports"
-    expected = _expected_paths(start, end, args.profile)
+    expected = _expected_paths(start, end, profile, args.ocean_source)
     paths = {
         "raw_ini": Path(args.raw_ini) if args.raw_ini else expected["raw_ini"],
         "raw_bdy": Path(args.raw_bdy) if args.raw_bdy else expected["raw_bdy"],
@@ -365,8 +372,8 @@ def main() -> None:
         "tides": Path(args.tides) if args.tides else expected["tides"],
         "river": Path(args.river) if args.river else expected["river"],
     }
-    report_json = Path(args.report_json) if args.report_json else reports_dir / f"fdnpp_spinup_{label}_data_ready.json"
-    report_md = Path(args.report_md) if args.report_md else reports_dir / f"fdnpp_spinup_{label}_data_ready.md"
+    report_json = Path(args.report_json) if args.report_json else reports_dir / f"{load_case_naming().roms_prefix}_spinup_{label}_data_ready.json"
+    report_md = Path(args.report_md) if args.report_md else reports_dir / f"{load_case_naming().roms_prefix}_spinup_{label}_data_ready.md"
 
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     file_summaries = {
@@ -421,7 +428,7 @@ def main() -> None:
     can_generate_run_mode = not issues
     payload = {
         "case_name": load_case_naming().case_name,
-        "profile": args.profile,
+        "profile": profile,
         "window": {"start": start.isoformat(), "end": end.isoformat()},
         "status": "ready" if can_generate_run_mode else "blocked",
         "file_summaries": file_summaries,
@@ -432,9 +439,9 @@ def main() -> None:
         "blocking_issues": issues,
         "can_generate_run_mode": can_generate_run_mode,
         "next_step": (
-            "Generate and validate online_spinup_3mo_my25_uvtide run mode wiring."
+            f"Generate and validate {workflow.spinup_mode} run mode wiring."
             if can_generate_run_mode
-            else "Resolve the blocking issues above before creating online_spinup_3mo_my25_uvtide."
+            else f"Resolve the blocking issues above before creating {workflow.spinup_mode}."
         ),
     }
     _write_reports(payload, report_md, report_json)

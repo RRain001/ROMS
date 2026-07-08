@@ -5,7 +5,7 @@
     "start": "2024-10-01T00:00:00",
     "end": "2025-01-01T00:00:00"
   },
-  "status": "ready",
+  "status": "blocked",
   "file_summaries": {
     "raw_ini": {
       "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/hycom_initial_20241001.nc",
@@ -166,41 +166,19 @@
       }
     },
     "raw_tides": {
-      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/tides/tpxo9_fdnpp_202501_online_my25_uvtide.nc",
-      "exists": true,
-      "dimensions": {
-        "tide_period": 15,
-        "lat": 28,
-        "lon": 35
-      },
+      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/tides/tpxo9_fdnpp_20241001_20250101.nc",
+      "exists": false,
+      "dimensions": {},
       "time_ranges": {},
-      "missing_variables": [],
-      "nan_checks": {
-        "tide_Eamp": {
-          "nan_count": 0,
-          "finite_count": 14700
-        },
-        "tide_Ephase": {
-          "nan_count": 0,
-          "finite_count": 14700
-        },
-        "tide_Cmax": {
-          "nan_count": 0,
-          "finite_count": 14700
-        },
-        "tide_Cmin": {
-          "nan_count": 0,
-          "finite_count": 14700
-        },
-        "tide_Cangle": {
-          "nan_count": 0,
-          "finite_count": 14700
-        },
-        "tide_Cphase": {
-          "nan_count": 0,
-          "finite_count": 14700
-        }
-      }
+      "missing_variables": [
+        "tide_Eamp",
+        "tide_Ephase",
+        "tide_Cmax",
+        "tide_Cmin",
+        "tide_Cangle",
+        "tide_Cphase"
+      ],
+      "nan_checks": {}
     },
     "ini": {
       "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_ini_fdnpp_20241001_online_my25_uvtide.nc",
@@ -596,7 +574,7 @@
       }
     },
     "river": {
-      "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_rivers_fdnpp_spinup_zero_source_online_my25_uvtide.nc",
+      "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_rivers_fdnpp_online_spinup_3mo_my25_uvtide_zero_source.nc",
       "exists": true,
       "dimensions": {
         "s_rho": 40,
@@ -671,19 +649,19 @@
   "overwrite_checks": {
     "preserved_paths": {
       "ini": "/home/lhy/ROMS/projects/FDNPP/input/roms_ini_fdnpp_20250101_online_my25_uvtide.nc",
-      "bdy": "/home/lhy/ROMS/projects/FDNPP/input/roms_bdy_fdnpp_202501_online_my25_uvtide.nc",
-      "tides": "/home/lhy/ROMS/projects/FDNPP/input/roms_tides_fdnpp_202501_online_my25_uvtide.nc",
+      "bdy": "/home/lhy/ROMS/projects/FDNPP/input/roms_bdy_fdnpp_2025_online_my25_uvtide.nc",
+      "tides": "/home/lhy/ROMS/projects/FDNPP/input/roms_tides_fdnpp_2025_online_my25_uvtide.nc",
       "river": "/home/lhy/ROMS/projects/FDNPP/input/roms_rivers_production_online_my25_uvtide.nc",
-      "atm": "/home/lhy/ROMS/projects/FDNPP/input/roms_atm_fdnpp_202501.nc",
-      "rad": "/home/lhy/ROMS/projects/FDNPP/input/roms_rad_fdnpp_202501.nc"
+      "atm": "/home/lhy/ROMS/projects/FDNPP/input/roms_atm_fdnpp_2025.nc",
+      "rad": "/home/lhy/ROMS/projects/FDNPP/input/roms_rad_fdnpp_2025.nc"
     },
     "preserved_exist": {
       "ini": true,
-      "bdy": true,
-      "tides": true,
+      "bdy": false,
+      "tides": false,
       "river": true,
-      "atm": true,
-      "rad": true
+      "atm": false,
+      "rad": false
     },
     "collisions": {
       "ini": false,
@@ -694,7 +672,14 @@
       "rad": false
     }
   },
-  "blocking_issues": [],
-  "can_generate_run_mode": true,
-  "next_step": "Generate and validate online_spinup_3mo_my25_uvtide run mode wiring."
+  "blocking_issues": [
+    "raw_tides: missing variable tide_Eamp",
+    "raw_tides: missing variable tide_Ephase",
+    "raw_tides: missing variable tide_Cmax",
+    "raw_tides: missing variable tide_Cmin",
+    "raw_tides: missing variable tide_Cangle",
+    "raw_tides: missing variable tide_Cphase"
+  ],
+  "can_generate_run_mode": false,
+  "next_step": "Resolve the blocking issues above before creating online_spinup_3mo_my25_uvtide."
 }
