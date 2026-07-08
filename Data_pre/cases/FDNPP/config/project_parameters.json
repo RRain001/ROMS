@@ -112,7 +112,7 @@
     }
   },
   "ocean": {
-    "default_source": "hycom"
+    "default_source": "glorys12v1"
   },
   "run": {
     "ntile_i": 7,

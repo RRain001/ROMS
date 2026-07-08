@@ -46,7 +46,7 @@ Download completion inside `Data_pre` is not the final goal by itself. Raw produ
 
 GLORYS12V1 notes:
 
-- HYCOM is the default ocean source. GLORYS12V1 is used only through GLORYS-specific scripts or `--ocean-source glorys12v1`.
+- GLORYS12V1 is the default ocean source. HYCOM is used only through HYCOM-specific scripts or `--ocean-source hycom`.
 - The GLORYS downloader uses the `copernicusmarine` CLI and the `GLOBAL_MULTIYEAR_PHY_001_030` product by default.
 - `time_start` and `time_stop` may be omitted from `glorys12v1_download_config.json`; in that case the case time window from `project_parameters.json` is used.
 - Staged GLORYS files live under `data/raw/ocean/glorys12v1` by default and are converted to source-suffixed ROMS files such as `roms_ini_<prefix>_glorys12v1_<date>.nc` and `roms_bdy_<prefix>_glorys12v1_<window>.nc`.

@@ -18,7 +18,7 @@ from roms_preprocessing_utils import ROOT, load_vertical_config, resolve_grid_pa
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--grid", default=None)
-    parser.add_argument("--ocean-source", default="hycom")
+    parser.add_argument("--ocean-source", default=None)
     parser.add_argument("--config", default=None)
     parser.add_argument("--profile", default=None)
     parser.add_argument("--require-uv-tides", action="store_true")

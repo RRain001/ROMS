@@ -40,7 +40,7 @@ def scalar_var(ds: Dataset, name: str, default: float) -> float:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ocean-source", default="hycom")
+    parser.add_argument("--ocean-source", default=None)
     parser.add_argument("--profile", default=PROFILE)
     return parser.parse_args()
 

@@ -14,6 +14,7 @@ from netCDF4 import Dataset, num2date
 
 from case_naming import load_case_naming, roms_input_name, staged_atmosphere_name, staged_ocean_name, staged_tides_name
 from formal_online_workflow import load_formal_online_workflow, spinup_zero_source_name
+from ocean_source_utils import build_glorys_paths, load_glorys_config, normalize_ocean_source
 from roms_preprocessing_utils import ROOT, load_project_params, load_vertical_config, resolve_grid_path
 
 
@@ -24,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--profile", default=None)
     parser.add_argument("--start", default=None)
     parser.add_argument("--end", default=None)
-    parser.add_argument("--ocean-source", default="hycom")
+    parser.add_argument("--ocean-source", default=None)
     parser.add_argument("--raw-ini", default=None)
     parser.add_argument("--raw-bdy", default=None)
     parser.add_argument("--raw-atm", default=None)
@@ -77,9 +78,16 @@ def _format_label(start: datetime, end: datetime) -> str:
 def _expected_paths(start: datetime, end: datetime, profile: str, ocean_source: str) -> dict[str, Path]:
     naming = load_case_naming()
     workflow = load_formal_online_workflow(load_project_params())
+    if ocean_source == "glorys12v1":
+        ocean_paths = build_glorys_paths(load_glorys_config(), start=start, stop=end, profile=profile)
+        raw_ini = ocean_paths.staged_initial
+        raw_bdy = ocean_paths.staged_boundary
+    else:
+        raw_ini = ROOT / "data" / "raw" / "ocean" / staged_ocean_name(ocean_source, "initial", start=start, stop=end)
+        raw_bdy = ROOT / "data" / "raw" / "ocean" / staged_ocean_name(ocean_source, "boundary", start=start, stop=end)
     return {
-        "raw_ini": ROOT / "data" / "raw" / "ocean" / staged_ocean_name(ocean_source, "initial", start=start, stop=end),
-        "raw_bdy": ROOT / "data" / "raw" / "ocean" / staged_ocean_name(ocean_source, "boundary", start=start, stop=end),
+        "raw_ini": raw_ini,
+        "raw_bdy": raw_bdy,
         "raw_atm": ROOT / "data" / "raw" / "atmosphere" / staged_atmosphere_name("atm", start=start, stop=end),
         "raw_rad": ROOT / "data" / "raw" / "atmosphere" / staged_atmosphere_name("rad", start=start, stop=end),
         "raw_tides": ROOT / "data" / "raw" / "tides" / staged_tides_name(start=start, stop=end),
@@ -90,6 +98,12 @@ def _expected_paths(start: datetime, end: datetime, profile: str, ocean_source: 
         "tides": ROOT / "input" / roms_input_name("tides", profile=profile, start=start, stop=end),
         "river": ROOT / "input" / spinup_zero_source_name(naming.roms_prefix, workflow),
     }
+
+
+def _raw_ocean_requirements(ocean_source: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    if ocean_source == "glorys12v1":
+        return ("time",), ("zos", "uo", "vo", "thetao", "so")
+    return ("time",), ("zeta", "u", "v", "temp", "salt")
 
 
 def _decode_times(ds: Dataset, variable_name: str) -> list[datetime]:
@@ -358,7 +372,8 @@ def main() -> None:
 
     label = _format_label(start, end)
     reports_dir = ROOT / "reports"
-    expected = _expected_paths(start, end, profile, args.ocean_source)
+    ocean_source = normalize_ocean_source(args.ocean_source)
+    expected = _expected_paths(start, end, profile, ocean_source)
     paths = {
         "raw_ini": Path(args.raw_ini) if args.raw_ini else expected["raw_ini"],
         "raw_bdy": Path(args.raw_bdy) if args.raw_bdy else expected["raw_bdy"],
@@ -376,9 +391,10 @@ def main() -> None:
     report_md = Path(args.report_md) if args.report_md else reports_dir / f"{load_case_naming().roms_prefix}_spinup_{label}_data_ready.md"
 
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
+    raw_ocean_time_vars, raw_ocean_vars = _raw_ocean_requirements(ocean_source)
     file_summaries = {
-        "raw_ini": _file_summary(paths["raw_ini"], ("time",), ("zeta", "u", "v", "temp", "salt")),
-        "raw_bdy": _file_summary(paths["raw_bdy"], ("time",), ("zeta", "u", "v", "temp", "salt")),
+        "raw_ini": _file_summary(paths["raw_ini"], raw_ocean_time_vars, raw_ocean_vars),
+        "raw_bdy": _file_summary(paths["raw_bdy"], raw_ocean_time_vars, raw_ocean_vars),
         "raw_atm": _file_summary(paths["raw_atm"], ("time",), ("Uwind", "Vwind", "Pair", "Tair", "Qair", "rain", "EminusP")),
         "raw_rad": _file_summary(paths["raw_rad"], ("time",), ("swrad", "lwrad", "lwrad_down")),
         "raw_tides": _file_summary(paths["raw_tides"], tuple(), ("tide_Eamp", "tide_Ephase", "tide_Cmax", "tide_Cmin", "tide_Cangle", "tide_Cphase")),

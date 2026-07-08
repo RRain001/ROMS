@@ -141,7 +141,7 @@ def glorys_requirements(config_path: str | None) -> list[Requirement]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", default=None, help="Optional legacy manifest override")
-    parser.add_argument("--ocean-source", default="hycom")
+    parser.add_argument("--ocean-source", default=None)
     parser.add_argument("--config", default=None)
     args = parser.parse_args()
 

@@ -37,8 +37,13 @@ class OceanSourcePaths:
     pilot_month_run_script: Path | None
 
 
+def default_ocean_source() -> str:
+    params = load_project_params()
+    return str(params.get("ocean", {}).get("default_source", "glorys12v1"))
+
+
 def normalize_ocean_source(name: str | None) -> str:
-    source = (name or "hycom").strip().lower()
+    source = (name or default_ocean_source()).strip().lower()
     if source not in SUPPORTED_OCEAN_SOURCES:
         raise SystemExit(
             f"unsupported ocean source {name!r}; expected one of {', '.join(SUPPORTED_OCEAN_SOURCES)}"
@@ -193,7 +198,7 @@ def build_glorys_paths(
 
 
 def build_ocean_source_paths(
-    ocean_source: str,
+    ocean_source: str | None,
     *,
     config: dict | None = None,
     start: datetime | None = None,

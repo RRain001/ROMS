@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", default=None)
     parser.add_argument("--manifest", default=None, help="Optional legacy manifest override")
     parser.add_argument("--skip-categories", default="")
-    parser.add_argument("--ocean-source", default="hycom")
+    parser.add_argument("--ocean-source", default=None)
     return parser.parse_args()
 
 

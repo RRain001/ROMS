@@ -22,7 +22,7 @@ used as the source of truth.
 
 - case name: `FDNPP`
 - research domain: `140.88-142.00E`, `37.00-37.84N`
-- default ocean source: HYCOM
+- default ocean source: GLORYS12V1
 - active vertical levels: `N=40`
 - build jobs: `56`
 - MPI ranks: `56`
@@ -97,7 +97,7 @@ Run from `/home/lhy/ROMS`:
 
 ```bash
 python3 Data_pre/scripts/validation/validate_formal_online_workflow.py --case-name FDNPP --profile online_my25_uvtide --phase pre-run
-python3 Data_pre/scripts/validation/validate_spinup_inputs.py --case-name FDNPP --ocean-source hycom
+python3 Data_pre/scripts/validation/validate_spinup_inputs.py --case-name FDNPP
 python3 ROMS_Run/scripts/checks/validate_run_prereqs.py --case-name FDNPP --mode online_spinup_3mo_my25_uvtide
 python3 ROMS_Run/scripts/checks/validate_run_prereqs.py --case-name FDNPP --mode online_production_1y_my25_uvtide_from_spinup
 python3 ROMS_Run/scripts/checks/validate_run_prereqs.py --case-name FDNPP --mode online_production_1y_my25_uvtide_decay_from_spinup

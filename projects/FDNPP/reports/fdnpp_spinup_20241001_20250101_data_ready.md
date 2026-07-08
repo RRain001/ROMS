@@ -8,12 +8,10 @@
 
 ## Inputs
 
-- raw_ini: `/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/hycom_initial_20241001.nc`
-  time: `2024-10-01T00:00:00` -> `2024-10-01T00:00:00` (1 records)
-  dims: `time=1, lat=26, lon=17, depth=40`
-- raw_bdy: `/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/hycom_boundary_20241001_20250101.nc`
-  time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (737 records)
-  dims: `time=737, lat=26, lon=17, depth=40`
+- raw_ini: `/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/glorys12v1/glorys12v1_initial_20241001.nc`
+  missing_variables: `zos, uo, vo, thetao, so`
+- raw_bdy: `/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/glorys12v1/glorys12v1_boundary_20241001_20250101.nc`
+  missing_variables: `zos, uo, vo, thetao, so`
 - raw_atm: `/home/lhy/ROMS/projects/FDNPP/data/raw/atmosphere/era5_atm_fdnpp_20241001_20250101.nc`
   time: `2024-10-01T00:00:00` -> `2025-01-01T00:00:00` (2209 records)
   dims: `time=2209, lat=6, lon=7`
@@ -59,12 +57,24 @@
 
 ## Blocking Issues
 
+- raw_ini: missing variable zos
+- raw_ini: missing variable uo
+- raw_ini: missing variable vo
+- raw_ini: missing variable thetao
+- raw_ini: missing variable so
+- raw_bdy: missing variable zos
+- raw_bdy: missing variable uo
+- raw_bdy: missing variable vo
+- raw_bdy: missing variable thetao
+- raw_bdy: missing variable so
 - raw_tides: missing variable tide_Eamp
 - raw_tides: missing variable tide_Ephase
 - raw_tides: missing variable tide_Cmax
 - raw_tides: missing variable tide_Cmin
 - raw_tides: missing variable tide_Cangle
 - raw_tides: missing variable tide_Cphase
+- glorys12v1_initial_20241001.nc: missing time variable time
+- glorys12v1_boundary_20241001_20250101.nc: missing time variable time
 
 ## Next Step
 

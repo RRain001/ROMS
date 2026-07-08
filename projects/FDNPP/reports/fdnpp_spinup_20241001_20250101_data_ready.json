@@ -8,84 +8,32 @@
   "status": "blocked",
   "file_summaries": {
     "raw_ini": {
-      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/hycom_initial_20241001.nc",
-      "exists": true,
-      "dimensions": {
-        "time": 1,
-        "lat": 26,
-        "lon": 17,
-        "depth": 40
-      },
-      "time_ranges": {
-        "time": {
-          "start": "2024-10-01T00:00:00",
-          "end": "2024-10-01T00:00:00",
-          "count": 1
-        }
-      },
-      "missing_variables": [],
-      "nan_checks": {
-        "zeta": {
-          "nan_count": 79,
-          "finite_count": 363
-        },
-        "u": {
-          "nan_count": 9513,
-          "finite_count": 8167
-        },
-        "v": {
-          "nan_count": 9513,
-          "finite_count": 8167
-        },
-        "temp": {
-          "nan_count": 9513,
-          "finite_count": 8167
-        },
-        "salt": {
-          "nan_count": 9513,
-          "finite_count": 8167
-        }
-      }
+      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/glorys12v1/glorys12v1_initial_20241001.nc",
+      "exists": false,
+      "dimensions": {},
+      "time_ranges": {},
+      "missing_variables": [
+        "zos",
+        "uo",
+        "vo",
+        "thetao",
+        "so"
+      ],
+      "nan_checks": {}
     },
     "raw_bdy": {
-      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/hycom_boundary_20241001_20250101.nc",
-      "exists": true,
-      "dimensions": {
-        "time": 737,
-        "lat": 26,
-        "lon": 17,
-        "depth": 40
-      },
-      "time_ranges": {
-        "time": {
-          "start": "2024-10-01T00:00:00",
-          "end": "2025-01-01T00:00:00",
-          "count": 737
-        }
-      },
-      "missing_variables": [],
-      "nan_checks": {
-        "zeta": {
-          "nan_count": 58223,
-          "finite_count": 267531
-        },
-        "u": {
-          "nan_count": 7001629,
-          "finite_count": 6028531
-        },
-        "v": {
-          "nan_count": 7005561,
-          "finite_count": 6024599
-        },
-        "temp": {
-          "nan_count": 7007553,
-          "finite_count": 6022607
-        },
-        "salt": {
-          "nan_count": 7004766,
-          "finite_count": 6025394
-        }
-      }
+      "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/glorys12v1/glorys12v1_boundary_20241001_20250101.nc",
+      "exists": false,
+      "dimensions": {},
+      "time_ranges": {},
+      "missing_variables": [
+        "zos",
+        "uo",
+        "vo",
+        "thetao",
+        "so"
+      ],
+      "nan_checks": {}
     },
     "raw_atm": {
       "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/atmosphere/era5_atm_fdnpp_20241001_20250101.nc",
@@ -673,12 +621,24 @@
     }
   },
   "blocking_issues": [
+    "raw_ini: missing variable zos",
+    "raw_ini: missing variable uo",
+    "raw_ini: missing variable vo",
+    "raw_ini: missing variable thetao",
+    "raw_ini: missing variable so",
+    "raw_bdy: missing variable zos",
+    "raw_bdy: missing variable uo",
+    "raw_bdy: missing variable vo",
+    "raw_bdy: missing variable thetao",
+    "raw_bdy: missing variable so",
     "raw_tides: missing variable tide_Eamp",
     "raw_tides: missing variable tide_Ephase",
     "raw_tides: missing variable tide_Cmax",
     "raw_tides: missing variable tide_Cmin",
     "raw_tides: missing variable tide_Cangle",
-    "raw_tides: missing variable tide_Cphase"
+    "raw_tides: missing variable tide_Cphase",
+    "glorys12v1_initial_20241001.nc: missing time variable time",
+    "glorys12v1_boundary_20241001_20250101.nc: missing time variable time"
   ],
   "can_generate_run_mode": false,
   "next_step": "Resolve the blocking issues above before creating online_spinup_3mo_my25_uvtide."

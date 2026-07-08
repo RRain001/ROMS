@@ -78,7 +78,7 @@ def load_project_params() -> dict:
             "source_timeseries_name": f"{slug}_source_hourly.csv",
         }
     params.setdefault("ocean", {})
-    params["ocean"].setdefault("default_source", "hycom")
+    params["ocean"].setdefault("default_source", "glorys12v1")
     params.setdefault("vertical", {})
     params["vertical"].setdefault("N", 30)
     params["vertical"].setdefault("theta_s", 7.0)

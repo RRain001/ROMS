@@ -39,7 +39,7 @@ AUDIT_JSON_CANDIDATES = [
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--grid", default=None)
-    parser.add_argument("--ocean-source", default="hycom")
+    parser.add_argument("--ocean-source", default=None)
     parser.add_argument("--profile", default=None, help="Optional profile suffix such as online_my25_uvtide")
     parser.add_argument(
         "--output-profile",
