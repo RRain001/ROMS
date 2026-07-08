@@ -307,9 +307,15 @@ def _production_output_signature(check: dict[str, Any]) -> dict[str, Any]:
 
 def _audit_payload(params: dict[str, Any]) -> dict[str, Any]:
     hardcoded_hits: list[str] = []
+    validator_impl = Path("Data_pre/impl/preprocessing/validate_formal_online_workflow.py")
     for path in (Path("Data_pre"), Path("ROMS_Run"), Path("ROMS_Build")):
         for item in path.rglob("*"):
             if item.is_file() and item.suffix in {".py", ".json", ".md"}:
+                parts = item.parts
+                if item == validator_impl:
+                    continue
+                if len(parts) >= 3 and parts[0] == "Data_pre" and parts[1] == "cases":
+                    continue
                 text = item.read_text(errors="ignore")
                 if "online_spinup_3mo_my25_uvtide" in text or "FDNPP Spin-up" in text:
                     hardcoded_hits.append(str(item))

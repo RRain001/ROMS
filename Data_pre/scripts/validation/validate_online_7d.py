@@ -10,4 +10,4 @@ from entrypoint_runner import run_entrypoint
 
 
 if __name__ == "__main__":
-    run_entrypoint('validate_online_7d.py')
+    run_entrypoint('case_tools/fdnpp/validate_online_7d.py')

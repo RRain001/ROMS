@@ -10,4 +10,5 @@ from entrypoint_runner import run_entrypoint
 
 
 if __name__ == "__main__":
-    run_entrypoint('compare_decay_vs_nodecay.py')
+    # Compatibility alias for the FDNPP decay/no-decay comparison entrypoint.
+    run_entrypoint('case_tools/fdnpp/compare_decay_vs_nodecay.py')

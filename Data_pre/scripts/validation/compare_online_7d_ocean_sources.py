@@ -10,4 +10,4 @@ from entrypoint_runner import run_entrypoint
 
 
 if __name__ == "__main__":
-    run_entrypoint('compare_online_7d_ocean_sources.py')
+    run_entrypoint('case_tools/fdnpp/compare_online_7d_ocean_sources.py')

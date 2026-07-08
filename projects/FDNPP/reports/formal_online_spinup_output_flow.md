@@ -71,7 +71,7 @@
 - zero_source_spinup_supported: `true`
 - restart_hotstart_supported: `true`
 - formal_minimal_output_supported: `true`
-- case_specific_hardcoding_found: `True`
+- case_specific_hardcoding_found: `False`
 - note: `FDNPP may appear in case config/docs; shared workflow logic is case-driven.`
 
 ## Blocking Issues

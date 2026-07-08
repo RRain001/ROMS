@@ -1059,12 +1059,8 @@
     "zero_source_spinup_supported": "true",
     "restart_hotstart_supported": "true",
     "formal_minimal_output_supported": "true",
-    "case_specific_hardcoding_found": true,
-    "case_specific_hardcoding_remaining": [
-      "Data_pre/cases/FDNPP/config/roms_run_config.json",
-      "Data_pre/cases/_template/config/roms_run_config.json",
-      "Data_pre/impl/preprocessing/validate_formal_online_workflow.py"
-    ],
+    "case_specific_hardcoding_found": false,
+    "case_specific_hardcoding_remaining": [],
     "note": "FDNPP may appear in case config/docs; shared workflow logic is case-driven."
   },
   "blocking_issues": [],
