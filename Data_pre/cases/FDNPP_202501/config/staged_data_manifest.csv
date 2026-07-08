@@ -1,0 +1,8 @@
+category,required,path,variables,note
+bathymetry,true,data/raw/bathymetry/gebco_fdnpp.nc,"lon lat elevation","GEBCO-style elevation, positive land and negative ocean"
+ocean_initial,true,data/raw/ocean/hycom_initial_20250101.nc,"zeta u v temp salt","HYCOM-like source data before ROMS interpolation"
+ocean_boundary,true,data/raw/ocean/hycom_boundary_202501.nc,"zeta u v temp salt","Open-boundary source data covering the active monthly case window"
+atmosphere,true,data/raw/atmosphere/era5_atm_fdnpp_202501.nc,"Uwind Vwind Pair Tair Qair rain","ERA5 atmospheric forcing source or preprocessed ROMS forcing"
+radiation,true,data/raw/atmosphere/era5_rad_fdnpp_202501.nc,"swrad lwrad lwrad_down","Radiation forcing source or preprocessed ROMS forcing"
+tides,true,data/raw/tides/tpxo9_fdnpp_202501.nc,"tide_period tide_Eamp tide_Ephase","TPXO-derived staged tidal elevation amplitudes/phases"
+source_discharge,true,data/raw/source/fdnpp_source_discharge.csv,"time discharge_m3_s scenario","Numerical carrier discharge for converting annual release to Bq/m3"
