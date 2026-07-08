@@ -20,8 +20,6 @@
   "variables_3d": ["thetao", "so", "uo", "vo"],
   "variables_2d": ["zos"],
   "static_variables": ["mask", "deptho", "mdt"],
-  "time_start": "2025-01-01T00:00:00",
-  "time_stop": "2025-01-09T00:00:00",
   "time_mean_center": "12:00:00",
   "chunk": "month",
   "longitude_buffer_deg": 0.25,

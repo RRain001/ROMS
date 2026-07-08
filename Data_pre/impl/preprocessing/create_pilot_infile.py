@@ -35,6 +35,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--grid", default=None)
     parser.add_argument("--ocean-source", default="hycom")
     parser.add_argument("--profile", default=None, help="Optional profile suffix such as online_my25_uvtide")
+    parser.add_argument(
+        "--output-profile",
+        choices=["light_month"],
+        default=None,
+        help="Optional output layout profile for generated monthly comparison cases",
+    )
+    parser.add_argument(
+        "--avg-temp-salt",
+        dest="avg_temp_salt",
+        action="store_true",
+        default=True,
+        help="When using --output-profile light_month, keep daily average temp/salt output",
+    )
+    parser.add_argument(
+        "--no-avg-temp-salt",
+        dest="avg_temp_salt",
+        action="store_false",
+        help="When using --output-profile light_month, disable daily average temp/salt output",
+    )
     parser.add_argument("--config", default=None)
     parser.add_argument("--pilot", choices=["1day", "month", "month_or_year"], default=None)
     parser.add_argument(
@@ -169,6 +188,61 @@ def replace_nffiles_block(text: str, nfiles: int, file_lines: list[str]) -> str:
     pattern = r"(^\s*FRCNAME\s*==.*?)(?=^\s*DAINAME\s*==)"
     replacement = "\n".join(file_lines).rstrip() + "\n\n"
     return re.sub(pattern, replacement, text, flags=re.MULTILINE | re.DOTALL)
+
+
+def replace_switch_block(text: str, prefix: str, value: str) -> str:
+    replacement_value = value.upper()
+    updated_lines: list[str] = []
+    for raw_line in text.splitlines():
+        line = raw_line
+        stripped = line.lstrip()
+        if stripped.startswith(prefix):
+            comment = ""
+            body = line
+            if "!" in line:
+                body, comment = line.split("!", 1)
+                comment = "!" + comment
+            match = re.match(r"^(\s*[^=]+==)\s*([TF](?:\s+[TF])*)\s*$", body.rstrip())
+            if match:
+                current_values = match.group(2).split()
+                new_values = " ".join([replacement_value] * len(current_values))
+                line = f"{match.group(1)} {new_values}"
+                if comment:
+                    line += comment
+        updated_lines.append(line)
+    return "\n".join(updated_lines) + "\n"
+
+
+def output_profile_name(args: argparse.Namespace, mode: str) -> str | None:
+    if args.output_profile == "light_month" and mode == "online_month":
+        return args.output_profile
+    return None
+
+
+def apply_light_month_output_profile(text: str, dt_seconds: float, *, avg_temp_salt: bool) -> str:
+    hourly_steps = max(1, int(round(3600 / dt_seconds)))
+    daily_steps = max(1, int(round(24 * 3600 / dt_seconds)))
+
+    text = replace_line(text, "NHIS", str(hourly_steps))
+    text = replace_line(text, "NAVG", str(daily_steps))
+    text = replace_line(text, "NDIA", "0")
+    text = replace_line(text, "NDEFDIA", "0")
+    text = replace_line(text, "NQCK", "0")
+    text = replace_line(text, "NDEFXTR", "0")
+    text = replace_line(text, "NXTR", "0")
+
+    text = replace_switch_block(text, "Hout(", "F")
+    text = replace_switch_block(text, "Aout(", "F")
+    text = replace_switch_block(text, "Dout(", "F")
+
+    for key in ("Hout(idUbar)", "Hout(idVbar)", "Hout(idFsur)", "Hout(inert)"):
+        text = replace_line(text, key, "T")
+    for key in ("Aout(idUvel)", "Aout(idVvel)", "Aout(idUbar)", "Aout(idVbar)", "Aout(idFsur)", "Aout(inert)"):
+        text = replace_line(text, key, "T")
+
+    text = replace_line(text, "Hout(idTvar)", "F F")
+    text = replace_line(text, "Aout(idTvar)", "T T" if avg_temp_salt else "F F")
+    return text
 
 
 def pick_stable_dt(default_dt: float) -> float:
@@ -419,6 +493,7 @@ def base_text(
     source_cfg = params.get("source", {})
     naming = load_case_naming()
     ocean_source = normalize_ocean_source(args.ocean_source)
+    output_profile = output_profile_name(args, mode)
     glorys_paths = glorys_source_paths_for_args(args)
     profile = active_profile(args, mode)
     forcing = forcing_paths(args, forcing_mode, mode)
@@ -628,6 +703,8 @@ def base_text(
     text = replace_line(text, "DIANAME", f"../output/{output_product_name('dia', out_prefix, source_for_name, profile)}")
     text = replace_line(text, "XTRNAME", f"../output/{output_product_name('xtr', 'pilot', source_for_name, profile)}")
     text = replace_line(text, "QCKNAME", f"../output/{output_product_name('qck', 'pilot', source_for_name, profile)}")
+    if output_profile == "light_month":
+        text = apply_light_month_output_profile(text, dt_seconds, avg_temp_salt=args.avg_temp_salt)
     return text
 
 

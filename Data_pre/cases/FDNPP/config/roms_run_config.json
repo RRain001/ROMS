@@ -79,6 +79,13 @@
       "infile": "ocean_fdnpp_online_month_online_my25_uvtide.in",
       "log_file": "online_month.log"
     },
+    "online_month_glorys12v1": {
+      "build_variant": "online_my25_uvtide",
+      "binary": "romsM_fdnpp_online_my25_uvtide",
+      "fallback_binaries": [],
+      "infile": "ocean_fdnpp_online_month_online_my25_uvtide_glorys12v1.in",
+      "log_file": "online_month_glorys12v1.log"
+    },
     "online_spinup_3mo_my25_uvtide": {
       "build_variant": "online_my25_uvtide",
       "binary": "romsM_fdnpp_online_my25_uvtide",
