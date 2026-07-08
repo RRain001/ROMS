@@ -51,27 +51,29 @@ NetCDF attributes.
 Current status:
 
 - workflow layer: ready
-- pre-run validation: passed
-- output configuration: confirmed for generated `.in` files
+- pre-run validation: pending re-run on the rebuilt active case
+- output configuration: carried into the rebuilt active case
 - zero-source spin-up source: generated
 - production hot start: configured to use the final spin-up restart
-- spin-up input data: blocked by tide staging
+- spin-up tide staging: generated with UV ellipse variables
+- remaining data blocker: missing GLORYS staged ocean files and production-year ERA5 staged files in the rebuilt active case
 
-Do not claim the 3-month spin-up is runnable until the tide staging blocker below
-is resolved.
+Do not claim the rebuilt active case is data-ready until the ocean/atmosphere
+downloads below are completed.
 
-## Tide Staging Blocker
+## Current Data Blocker
 
 Current blocking issue:
 
 ```text
-raw_tides missing tide_Eamp/tide_Ephase/tide_Cmax/tide_Cmin/tide_Cangle/tide_Cphase
+missing GLORYS staged ocean data for 2024-10-01 to 2025-01-01 and 2025-01-01 to 2026-01-01,
+plus missing ERA5 staged atmosphere/radiation data for 2025-01-01 to 2026-01-01
 ```
 
 Follow-up task:
 
 ```text
-Fix spin-up tide staging for formal online workflow
+Download the remaining GLORYS and ERA5 datasets for the rebuilt active FDNPP case
 ```
 
 ## Output Contract
@@ -111,9 +113,8 @@ python3 ROMS_Run/scripts/checks/validate_run_prereqs.py --case-name FDNPP --mode
 
 Expected today:
 
-- formal workflow pre-run validation passes
-- run prerequisite checks pass for configuration/files that already exist
-- `validate_spinup_inputs.py` remains blocked by the raw tide variable issue
+- tide/source/local spin-up atmosphere inputs can be regenerated in the rebuilt case
+- `validate_spinup_inputs.py` remains blocked until the missing GLORYS/ERA5 staged data is downloaded
 
 ## Build And Run
 

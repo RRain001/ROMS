@@ -2,14 +2,14 @@
   "case": {
     "name": "FDNPP",
     "slug": "fdnpp",
-    "title": "FDNPP January 2025 ROMS case",
+    "title": "FDNPP formal 2025 production ROMS case",
     "cpp_name": "FDNPP_202501",
-    "description": "FDNPP HTO-like passive tracer ROMS case for January 2025"
+    "description": "FDNPP HTO-like passive tracer ROMS case with 2024-10 to 2025-01 spin-up and 2025 production"
   },
   "project": {
     "name": "FDNPP",
-    "description": "FDNPP HTO-like passive tracer ROMS case for January 2025",
-    "created": "2026-06-29"
+    "description": "FDNPP HTO-like passive tracer ROMS case with 2024-10 to 2025-01 spin-up and 2025 production",
+    "created": "2026-07-08"
   },
   "domain": {
     "lon_min": 140.88,
@@ -23,7 +23,7 @@
   },
   "time": {
     "start": "2025-01-01T00:00:00",
-    "stop": "2025-02-01T00:00:00",
+    "stop": "2026-01-01T00:00:00",
     "source_interval_hours": 1,
     "pilot_dt_seconds": 60,
     "pilot_ndtfast": 20,

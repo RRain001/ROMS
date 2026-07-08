@@ -3,7 +3,7 @@
   "era5_bbox_buffer_deg": 0.25,
   "time": {
     "start": "2025-01-01T00:00:00",
-    "stop": "2025-02-01T00:00:00"
+    "stop": "2026-01-01T00:00:00"
   },
   "hycom": {
     "source": "auto",
@@ -30,10 +30,10 @@
   },
   "paths": {
     "ocean_initial": "data/raw/ocean/hycom_initial_20250101.nc",
-    "ocean_boundary": "data/raw/ocean/hycom_boundary_202501.nc",
-    "era5_atm": "data/raw/atmosphere/era5_atm_fdnpp_202501.nc",
-    "era5_rad": "data/raw/atmosphere/era5_rad_fdnpp_202501.nc",
-    "tides": "data/raw/tides/tpxo9_fdnpp_202501.nc",
+    "ocean_boundary": "data/raw/ocean/hycom_boundary_2025.nc",
+    "era5_atm": "data/raw/atmosphere/era5_atm_fdnpp_2025.nc",
+    "era5_rad": "data/raw/atmosphere/era5_rad_fdnpp_2025.nc",
+    "tides": "data/raw/tides/tpxo9_fdnpp_2025.nc",
     "source_discharge": "data/raw/source/fdnpp_source_discharge.csv"
   }
 }
