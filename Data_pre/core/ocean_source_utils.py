@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from pathlib import Path
 
@@ -83,10 +83,13 @@ def load_glorys_config(path: str | Path | None = None) -> dict:
     except json.JSONDecodeError as exc:
         raise SystemExit(f"invalid GLORYS12V1 config JSON: {config_path}: {exc}") from exc
 
+    project_params = load_project_params()
     project_start, project_stop = default_project_start_stop()
+    ocean_time_policy = project_params.get("ocean", {}).get("time_policy", {})
     config.setdefault("time_start", project_start.isoformat())
     config.setdefault("time_stop", project_stop.isoformat())
-    config.setdefault("time_mean_center", "12:00:00")
+    config.setdefault("time_mean_center", ocean_time_policy.get("source_time_center", "12:00:00"))
+    config.setdefault("roms_time_policy", ocean_time_policy.get("roms_time_policy", "daily_mean_to_day_start"))
     config.setdefault("chunk", "month")
     config.setdefault("source_name", "glorys12v1")
     config.setdefault("output_raw_dir", "data/raw/ocean/glorys12v1")
@@ -161,6 +164,23 @@ def glorys_center_time(config: dict, when: datetime | None = None) -> datetime:
     base = when or start
     hh, mm, ss = [int(item) for item in str(config["time_mean_center"]).split(":")]
     return datetime(base.year, base.month, base.day, hh, mm, ss)
+
+
+def glorys_time_center_offset(config: dict) -> timedelta:
+    hh, mm, ss = [int(item) for item in str(config["time_mean_center"]).split(":")]
+    return timedelta(hours=hh, minutes=mm, seconds=ss)
+
+
+def glorys_model_time_from_source_time(config: dict, source_time: datetime) -> datetime:
+    if config.get("roms_time_policy", "daily_mean_to_day_start") == "daily_mean_to_day_start":
+        return source_time - glorys_time_center_offset(config)
+    return source_time
+
+
+def glorys_source_time_from_model_time(config: dict, model_time: datetime) -> datetime:
+    if config.get("roms_time_policy", "daily_mean_to_day_start") == "daily_mean_to_day_start":
+        return model_time + glorys_time_center_offset(config)
+    return model_time
 
 
 def build_glorys_paths(

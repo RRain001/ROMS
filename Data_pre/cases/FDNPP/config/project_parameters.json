@@ -112,7 +112,11 @@
     }
   },
   "ocean": {
-    "default_source": "glorys12v1"
+    "default_source": "glorys12v1",
+    "time_policy": {
+      "source_time_center": "12:00:00",
+      "roms_time_policy": "daily_mean_to_day_start"
+    }
   },
   "run": {
     "ntile_i": 7,

@@ -16,7 +16,8 @@ from ocean_source_utils import (
     MJD_CALENDAR,
     MJD_UNITS,
     build_glorys_paths,
-    glorys_center_time,
+    glorys_model_time_from_source_time,
+    glorys_source_time_from_model_time,
     glorys_time_window,
     load_glorys_config,
 )
@@ -59,8 +60,8 @@ def parse_args() -> argparse.Namespace:
 
 def boundary_window(config: dict, args: argparse.Namespace) -> tuple[datetime, datetime]:
     config_start, config_stop = glorys_time_window(config)
-    start = datetime.fromisoformat(args.start) if args.start else glorys_center_time(config, config_start)
-    stop = datetime.fromisoformat(args.stop) if args.stop else glorys_center_time(config, config_stop)
+    start = datetime.fromisoformat(args.start) if args.start else config_start
+    stop = datetime.fromisoformat(args.stop) if args.stop else config_stop
     if stop < start:
         raise SystemExit("stop must not be earlier than start")
     return start, stop
@@ -258,6 +259,8 @@ def main() -> None:
     args = parse_args()
     config = load_glorys_config(args.config)
     requested_start, requested_stop = boundary_window(config, args)
+    source_start = glorys_source_time_from_model_time(config, requested_start)
+    source_stop = glorys_source_time_from_model_time(config, requested_stop)
     name_start, name_stop = path_window(config, args)
     default_paths = build_glorys_paths(config, start=name_start, stop=name_stop, profile=args.profile)
     src_path = Path(args.src) if args.src else default_paths.staged_boundary
@@ -277,7 +280,7 @@ def main() -> None:
         depth_name = infer_variable(src, ("depth", "lev", "level", "z"))
         depth = np.asarray(src.variables[depth_name][:], dtype=float)
         times, _, _ = read_time_values(src, ("time", "ocean_time", "mt"))
-        selected = [idx for idx, value in enumerate(times) if requested_start <= value <= requested_stop]
+        selected = [idx for idx, value in enumerate(times) if source_start <= value <= source_stop]
         if not selected:
             raise SystemExit("no source times overlap requested window")
 
@@ -304,15 +307,22 @@ def main() -> None:
             ds.source_dataset = str(src_path)
             ds.source = "GLORYS12V1 / GLOBAL_MULTIYEAR_PHY_001_030"
             ds.dataset_id = config["dataset_id_daily"]
+            ds.source_time_center = str(config["time_mean_center"])
+            ds.roms_time_policy = str(config["roms_time_policy"])
+            ds.source_time_start = source_start.isoformat()
+            ds.source_time_stop = source_stop.isoformat()
+            ds.model_time_start = requested_start.isoformat()
+            ds.model_time_stop = requested_stop.isoformat()
             ds.time_reference = f"MJD / {MJD_UNITS}"
 
-            selected_times = [times[index] for index in selected]
-            create_time_variable(ds, "zeta_time", selected_times, "boundary free-surface time")
-            create_time_variable(ds, "v2d_time", selected_times, "boundary barotropic velocity time")
-            create_time_variable(ds, "v3d_time", selected_times, "boundary 3D velocity time")
-            create_time_variable(ds, "temp_time", selected_times, "boundary temperature time")
-            create_time_variable(ds, "salt_time", selected_times, "boundary salinity time")
-            create_time_variable(ds, "dye_time", selected_times, "boundary passive tracer time")
+            selected_source_times = [times[index] for index in selected]
+            selected_model_times = [glorys_model_time_from_source_time(config, item) for item in selected_source_times]
+            create_time_variable(ds, "zeta_time", selected_model_times, "boundary free-surface time")
+            create_time_variable(ds, "v2d_time", selected_model_times, "boundary barotropic velocity time")
+            create_time_variable(ds, "v3d_time", selected_model_times, "boundary 3D velocity time")
+            create_time_variable(ds, "temp_time", selected_model_times, "boundary temperature time")
+            create_time_variable(ds, "salt_time", selected_model_times, "boundary salinity time")
+            create_time_variable(ds, "dye_time", selected_model_times, "boundary passive tracer time")
             for name in ("zeta_time", "v2d_time", "v3d_time", "temp_time", "salt_time", "dye_time"):
                 ds.variables[name].units = MJD_UNITS
                 ds.variables[name].calendar = MJD_CALENDAR
@@ -387,6 +397,9 @@ def main() -> None:
     print(f"grid={grid_path}")
     print(f"source={src_path}")
     print(f"records={len(selected)}")
+    print(f"source_window={source_start.isoformat()} -> {source_stop.isoformat()}")
+    print(f"model_window={requested_start.isoformat()} -> {requested_stop.isoformat()}")
+    print(f"roms_time_policy={config['roms_time_policy']}")
     print(f"wrote {out_path}")
 
 

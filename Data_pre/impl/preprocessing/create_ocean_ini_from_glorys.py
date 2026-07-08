@@ -11,7 +11,13 @@ import numpy as np
 from netCDF4 import Dataset
 
 from case_naming import load_case_naming
-from ocean_source_utils import MJD_CALENDAR, MJD_UNITS, build_glorys_paths, load_glorys_config
+from ocean_source_utils import (
+    MJD_CALENDAR,
+    MJD_UNITS,
+    build_glorys_paths,
+    glorys_source_time_from_model_time,
+    load_glorys_config,
+)
 from roms_preprocessing_utils import (
     create_time_variable,
     depth_average,
@@ -51,9 +57,7 @@ def parse_args() -> argparse.Namespace:
 def target_ini_time(config: dict, args: argparse.Namespace) -> datetime:
     if args.time:
         return datetime.fromisoformat(args.time)
-    base = datetime.fromisoformat(config["time_start"])
-    hh, mm, ss = [int(item) for item in str(config["time_mean_center"]).split(":")]
-    return datetime(base.year, base.month, base.day, hh, mm, ss)
+    return datetime.fromisoformat(config["time_start"])
 
 
 def source_depth_to_z(depth: np.ndarray) -> np.ndarray:
@@ -83,7 +87,8 @@ def main() -> None:
     vertical = load_vertical_config()
     params = load_project_params()
     requested_start = datetime.fromisoformat(params["time"]["start"])
-    desired_time = target_ini_time(config, args)
+    model_time = target_ini_time(config, args)
+    desired_source_time = glorys_source_time_from_model_time(config, model_time)
     z_r, _, hz = sigma_depths(grid.h, vertical)
     wet_rho = grid.mask_rho == 1
     wet_u = wet_rho[:, :-1] & wet_rho[:, 1:]
@@ -94,7 +99,7 @@ def main() -> None:
         depth_name = infer_variable(src, ("depth", "lev", "level", "z"))
         depth = np.asarray(src.variables[depth_name][:], dtype=float)
         time_values, _, _ = read_time_values(src, ("time", "ocean_time", "mt"))
-        deltas = np.asarray([abs((time_value - desired_time).total_seconds()) for time_value in time_values], dtype=float)
+        deltas = np.asarray([abs((time_value - desired_source_time).total_seconds()) for time_value in time_values], dtype=float)
         time_index = int(np.argmin(deltas))
         selected_time = time_values[time_index]
 
@@ -152,10 +157,13 @@ def main() -> None:
         ds.dataset_id = config["dataset_id_daily"]
         ds.source_time_index = str(time_index)
         ds.source_time = selected_time.isoformat()
+        ds.source_time_center = str(config["time_mean_center"])
+        ds.roms_time_policy = str(config["roms_time_policy"])
+        ds.model_time = model_time.isoformat()
         ds.time_reference = f"MJD / {MJD_UNITS}"
         ds.requested_model_start = requested_start.isoformat()
 
-        create_time_variable(ds, "ocean_time", [selected_time], "time since reference date")
+        create_time_variable(ds, "ocean_time", [model_time], "time since reference date")
         ocean_time = ds.variables["ocean_time"]
         ocean_time.units = MJD_UNITS
         ocean_time.calendar = MJD_CALENDAR
@@ -182,6 +190,8 @@ def main() -> None:
     print(f"source={src_path}")
     print(f"time_index={time_index}")
     print(f"source_time={selected_time.isoformat()}")
+    print(f"model_time={model_time.isoformat()}")
+    print(f"roms_time_policy={config['roms_time_policy']}")
     print(f"wrote {out_path}")
 
 

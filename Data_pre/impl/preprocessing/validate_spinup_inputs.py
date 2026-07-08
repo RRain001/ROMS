@@ -14,7 +14,12 @@ from netCDF4 import Dataset, num2date
 
 from case_naming import load_case_naming, roms_input_name, staged_atmosphere_name, staged_ocean_name, staged_tides_name
 from formal_online_workflow import load_formal_online_workflow, spinup_zero_source_name
-from ocean_source_utils import build_glorys_paths, load_glorys_config, normalize_ocean_source
+from ocean_source_utils import (
+    build_glorys_paths,
+    glorys_source_time_from_model_time,
+    load_glorys_config,
+    normalize_ocean_source,
+)
 from roms_preprocessing_utils import ROOT, load_project_params, load_vertical_config, resolve_grid_path
 
 
@@ -104,6 +109,13 @@ def _raw_ocean_requirements(ocean_source: str) -> tuple[tuple[str, ...], tuple[s
     if ocean_source == "glorys12v1":
         return ("time",), ("zos", "uo", "vo", "thetao", "so")
     return ("time",), ("zeta", "u", "v", "temp", "salt")
+
+
+def _raw_ocean_coverage_window(ocean_source: str, start: datetime, end: datetime) -> tuple[datetime, datetime]:
+    if ocean_source == "glorys12v1":
+        config = load_glorys_config()
+        return glorys_source_time_from_model_time(config, start), glorys_source_time_from_model_time(config, end)
+    return start, end
 
 
 def _decode_times(ds: Dataset, variable_name: str) -> list[datetime]:
@@ -392,6 +404,8 @@ def main() -> None:
 
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
     raw_ocean_time_vars, raw_ocean_vars = _raw_ocean_requirements(ocean_source)
+    raw_ocean_start, raw_ocean_end = _raw_ocean_coverage_window(ocean_source, start, end)
+    raw_ocean_time_name = raw_ocean_time_vars[0]
     file_summaries = {
         "raw_ini": _file_summary(paths["raw_ini"], raw_ocean_time_vars, raw_ocean_vars),
         "raw_bdy": _file_summary(paths["raw_bdy"], raw_ocean_time_vars, raw_ocean_vars),
@@ -423,9 +437,9 @@ def main() -> None:
     issues.extend(_missing_variable_issues(file_summaries))
     issues.extend(_nan_issues(file_summaries, labels=("ini", "bdy", "atm", "rad", "tides", "river")))
     issues.extend(_coverage_ok(file_summaries["ini"], "ocean_time", start, start, exact_start=True))
-    issues.extend(_coverage_ok(file_summaries["raw_ini"], "time", start, start, exact_start=True))
+    issues.extend(_coverage_ok(file_summaries["raw_ini"], raw_ocean_time_name, raw_ocean_start, raw_ocean_start, exact_start=True))
     issues.extend(_coverage_ok(file_summaries["bdy"], "zeta_time", start, end, exact_start=True))
-    issues.extend(_coverage_ok(file_summaries["raw_bdy"], "time", start, end, exact_start=True))
+    issues.extend(_coverage_ok(file_summaries["raw_bdy"], raw_ocean_time_name, raw_ocean_start, raw_ocean_end, exact_start=True))
     issues.extend(_coverage_ok(file_summaries["atm"], "wind_time", start, end, exact_start=True))
     issues.extend(_coverage_ok(file_summaries["raw_atm"], "time", start, end, exact_start=True))
     issues.extend(_coverage_ok(file_summaries["rad"], "srf_time", start, end, exact_start=True))

@@ -42,6 +42,12 @@ Formal periods:
 - spin-up: `2024-10-01T00:00:00` to `2025-01-01T00:00:00`
 - production: `2025-01-01T00:00:00` to `2026-01-01T00:00:00`
 
+GLORYS12V1 daily raw files use daily-mean source timestamps centered at
+`12:00:00`. The formal ROMS-ready ocean files keep the model time axis on
+calendar-day starts (`00:00:00`) using the configured
+`daily_mean_to_day_start` policy, and record the original source timestamps in
+NetCDF attributes.
+
 Current status:
 
 - workflow layer: ready

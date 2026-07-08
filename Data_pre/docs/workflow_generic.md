@@ -36,6 +36,9 @@ Use `--case-name <case_name>` on all commands.
 ## Defaults
 
 - Ocean source: GLORYS12V1.
+- GLORYS12V1 time policy: raw daily-mean timestamps are centered at `12:00:00`;
+  ROMS-ready files use `daily_mean_to_day_start` so formal model windows remain
+  on `00:00:00` calendar-day boundaries.
 - Vertical levels: `N = 40`.
 - Standard online physics profile: MY25/k-kl vertical mixing, Smagorinsky
   horizontal mixing with `C = 0.2`, `SSH_TIDES`, and `UV_TIDES`.
