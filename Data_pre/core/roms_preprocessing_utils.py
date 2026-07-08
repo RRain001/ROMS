@@ -80,7 +80,7 @@ def load_project_params() -> dict:
     params.setdefault("ocean", {})
     params["ocean"].setdefault("default_source", "hycom")
     params.setdefault("vertical", {})
-    params["vertical"].setdefault("N", 40)
+    params["vertical"].setdefault("N", 30)
     params["vertical"].setdefault("theta_s", 7.0)
     params["vertical"].setdefault("theta_b", 0.1)
     params["vertical"].setdefault("Tcline_m", 200.0)
@@ -106,6 +106,30 @@ def load_project_params() -> dict:
     params["output"].setdefault("history_interval_hours", params.get("time", {}).get("output_interval_hours", 1))
     params["output"].setdefault("average_interval_hours", params.get("time", {}).get("output_interval_hours", 1))
     params["output"].setdefault("diagnostic_interval_hours", params.get("time", {}).get("output_interval_hours", 1))
+    params.setdefault("formal_online_workflow", {})
+    params["formal_online_workflow"].setdefault("enabled", False)
+    params["formal_online_workflow"].setdefault("profile", params["physics"].get("profile", "online_my25_uvtide"))
+    params["formal_online_workflow"].setdefault("spinup", {})
+    params["formal_online_workflow"]["spinup"].setdefault("enabled", True)
+    params["formal_online_workflow"]["spinup"].setdefault("duration_months", 3)
+    params["formal_online_workflow"]["spinup"].setdefault("source_mode", "zero")
+    params["formal_online_workflow"]["spinup"].setdefault("history", {"enabled": False})
+    params["formal_online_workflow"]["spinup"].setdefault(
+        "restart",
+        {"enabled": True, "interval_days": 5, "require_final_restart": True},
+    )
+    params["formal_online_workflow"]["spinup"].setdefault("diagnostics", {"enabled": False})
+    params["formal_online_workflow"].setdefault("production", {})
+    params["formal_online_workflow"]["production"].setdefault("start", params.get("time", {}).get("start"))
+    params["formal_online_workflow"]["production"].setdefault("end", params.get("time", {}).get("stop"))
+    params["formal_online_workflow"]["production"].setdefault("hot_start_from_spinup", True)
+    params["formal_online_workflow"]["production"].setdefault("history", {"interval_hours": 1, "variables": ["zeta"]})
+    params["formal_online_workflow"]["production"].setdefault(
+        "average",
+        {"interval_hours": 24, "variables": ["dye_01", "u", "v", "ubar", "vbar"]},
+    )
+    params["formal_online_workflow"]["production"].setdefault("restart", {"interval_days": 5})
+    params["formal_online_workflow"]["production"].setdefault("diagnostics", {"enabled": False})
     return params
 
 

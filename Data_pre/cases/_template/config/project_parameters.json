@@ -59,6 +59,53 @@
     "average_interval_hours": 1,
     "diagnostic_interval_hours": 1
   },
+  "formal_online_workflow": {
+    "enabled": false,
+    "profile": "online_my25_uvtide",
+    "spinup": {
+      "enabled": true,
+      "duration_months": 3,
+      "source_mode": "zero",
+      "history": {
+        "enabled": false
+      },
+      "restart": {
+        "enabled": true,
+        "interval_days": 5,
+        "require_final_restart": true
+      },
+      "diagnostics": {
+        "enabled": false
+      }
+    },
+    "production": {
+      "start": "2024-01-01T00:00:00",
+      "end": "2025-01-01T00:00:00",
+      "hot_start_from_spinup": true,
+      "history": {
+        "interval_hours": 1,
+        "variables": [
+          "zeta"
+        ]
+      },
+      "average": {
+        "interval_hours": 24,
+        "variables": [
+          "dye_01",
+          "u",
+          "v",
+          "ubar",
+          "vbar"
+        ]
+      },
+      "restart": {
+        "interval_days": 5
+      },
+      "diagnostics": {
+        "enabled": false
+      }
+    }
+  },
   "ocean": {
     "default_source": "hycom"
   },
