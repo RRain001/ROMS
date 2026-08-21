@@ -1,6 +1,10 @@
-# FDNPP workflow notes
+# FDNPP_202501 historical workflow notes
 
-This document records the current FDNPP workflow contract across `Data_pre`,
+> Historical snapshot: this archived January 2025 case is not the current
+> authoritative FDNPP configuration. Use `Data_pre/cases/FDNPP` for the active
+> formal case. The original status and blocker statements below are preserved.
+
+This document records the archived FDNPP workflow contract across `Data_pre`,
 `ROMS_Build`, and `ROMS_Run`.
 
 Runtime configuration is authoritative in:

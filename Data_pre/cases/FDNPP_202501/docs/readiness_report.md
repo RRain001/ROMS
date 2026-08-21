@@ -1,4 +1,8 @@
-# FDNPP_202501 Readiness Report
+# FDNPP_202501 Historical Readiness Report
+
+> Historical snapshot: this report records the archived January 2025 case and
+> is not a statement of current FDNPP readiness. Use
+> `Data_pre/cases/FDNPP/docs/readiness_report.md` for the active case.
 
 Case identity:
 
