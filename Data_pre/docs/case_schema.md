@@ -22,13 +22,24 @@ Spatial staging rule:
 
 - `domain.*` defines the scientific study region used by ROMS grid generation.
 - Raw-download coverage is normally derived automatically from `project_parameters.json:domain.*`.
-- Default rule for new regional cases: `HYCOM` expands the study-region west/east/south/north boundaries by `0.08°`, while `ERA5` expands by `0.25°`.
+- Source-specific coverage rule: when HYCOM is explicitly selected, it expands
+  the study-region west/east/south/north boundaries by `0.08°`; ERA5 expands by
+  `0.25°`.
 - Put `hycom_bbox_buffer_deg` or `era5_bbox_buffer_deg` in `staged_download_config.json` when you want to override those source-specific defaults.
 - Legacy `bbox_buffer_deg` is still accepted as a shared fallback override for older cases.
 - Keep an explicit `bbox.*` in `staged_download_config.json` only for cases that need a nonstandard fixed download box.
 - If a source product is coarse or the boundary interpolation is sensitive, increase the raw-download margin further instead of shrinking it to the exact study-region edge.
 
 For a minimal starting point, copy `cases/_template/`.
+
+Framework defaults and precedence:
+
+- New cases default to `ocean.default_source = glorys12v1`.
+- New cases default to `vertical.N = 40`, `Vtransform=2`, `Vstretching=4`,
+  `theta_s=7.0`, `theta_b=0.1`, and `Tcline_m=200.0`.
+- An explicit case value in `project_parameters.json` overrides a framework
+  fallback. `--ocean-source` overrides the selected ocean source for one command.
+- HYCOM is supported as an explicit fallback and is not the default source.
 
 Lifecycle rule:
 

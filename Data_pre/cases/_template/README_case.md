@@ -19,6 +19,17 @@ Key fields:
 - `naming.grid_subset_name`: subset bathymetry filename
 - `paths.case_root`: target project directory under `/home/lhy/ROMS/projects/`
 
+Template defaults:
+
+- ocean source: `GLORYS12V1`
+- vertical levels: `N=40`
+- vertical coordinates: `Vtransform=2`, `Vstretching=4`
+- HYCOM is available only through an explicit fallback command or case override.
+
+The runtime precedence is command-line `--ocean-source`, then the case's
+`project_parameters.json`, then the framework defaults. See
+`Data_pre/docs/adding_a_case.md` for the complete setup checklist.
+
 Case lifecycle:
 
 1. Download or stage upstream data into `data/raw/...`

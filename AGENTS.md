@@ -14,8 +14,8 @@ Use `Data_pre/cases/<case_name>/config` as the authoritative runtime configurati
 
 - Resolve cases with `--case-name <case_name>` whenever possible.
 - Keep generated products under `projects/<case_name>`.
-- Default vertical levels are `vertical.N = 30` unless a case explicitly overrides this in `project_parameters.json`.
-- Default ocean source is HYCOM. GLORYS12V1 code may remain, but it must be explicit opt-in via configuration or `--ocean-source glorys12v1`.
+- Default vertical levels are `vertical.N = 40` unless a case explicitly overrides this in `project_parameters.json`.
+- Default ocean source is GLORYS12V1. HYCOM remains available only as an explicit opt-in via configuration or `--ocean-source hycom`.
 - Prefer case naming helpers from `Data_pre/core/case_naming.py` over hard-coded filenames.
 
 ## FDNPP Notes
@@ -48,7 +48,7 @@ Use `Data_pre/cases/<case_name>/config` as the authoritative runtime configurati
 
 Before claiming a case is ready, run the relevant lightweight checks:
 
-- `python3 Data_pre/scripts/validation/validate_staged_data.py --case-name <case_name> --ocean-source hycom`
+- `python3 Data_pre/scripts/validation/validate_staged_data.py --case-name <case_name>`
 - `python3 Data_pre/scripts/validation/validate_roms_ready_inputs.py --case-name <case_name>`
 - `python3 ROMS_Build/scripts/build/show_build_plan.py --case-name <case_name>`
 - `python3 ROMS_Run/scripts/checks/validate_run_prereqs.py --case-name <case_name> --mode pilot_1day`

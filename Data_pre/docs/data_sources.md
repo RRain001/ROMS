@@ -14,6 +14,15 @@ Responsibility rule:
 - upstream access can be online download, authenticated API retrieval, or offline shared-file staging
 - all source families should land in the case `data/raw/...` tree before conversion to ROMS-ready inputs
 
+Ocean-source precedence:
+
+- GLORYS12V1 is the framework default and uses `glorys12v1_download_config.json`.
+- A case may explicitly set `ocean.default_source` in `project_parameters.json`.
+- A command may override the case source with `--ocean-source hycom` or
+  `--ocean-source glorys12v1`.
+- The HYCOM staged-download configuration and HYCOM manifest are fallback-chain
+  inputs; they must not be described as the active default for a GLORYS case.
+
 Bathymetry workflow:
 
 - use the shared offline global file

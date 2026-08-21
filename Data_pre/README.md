@@ -41,9 +41,14 @@ Run-support note:
 Usage patterns:
 
 - `python3 /home/lhy/ROMS/Data_pre/scripts/bathymetry/stage_and_subset_bathymetry.py --case-name <case_name>`
-- `python3 /home/lhy/ROMS/Data_pre/scripts/ocean/download_hycom_staged.py --case-name <case_name>`
+- `python3 /home/lhy/ROMS/Data_pre/scripts/ocean/download_glorys12v1_staged.py --case-name <case_name> --resume`
 - `python3 /home/lhy/ROMS/Data_pre/scripts/validation/validate_staged_data.py --case-name <case_name>`
 - `python3 /home/lhy/ROMS/Data_pre/scripts/run_support/create_pilot_infile.py --case-name <case_name>`
+
+HYCOM remains available through the explicit fallback path:
+
+- `python3 /home/lhy/ROMS/Data_pre/scripts/ocean/download_hycom_staged.py --case-name <case_name>`
+- `python3 /home/lhy/ROMS/Data_pre/scripts/validation/validate_staged_data.py --case-name <case_name> --ocean-source hycom`
 
 Case selection:
 
@@ -55,6 +60,12 @@ Configuration source:
 
 - runtime configuration is read from `Data_pre/cases/<case_name>/config`
 - `projects/<case_name>/config`, when present, is a legacy snapshot and is not used by the shared entrypoints
-- the standard ocean source is HYCOM unless a command explicitly opts into another source
+- the standard ocean source is GLORYS12V1 unless a command explicitly opts into HYCOM
+- the standard online vertical configuration is `N=40`, `Vtransform=2`, `Vstretching=4`
+- command-line `--ocean-source` takes precedence over the case configuration; explicit case values take precedence over framework fallbacks
 
 To add a new region, start from `cases/_template/` and create a matching project directory under `/home/lhy/ROMS/projects/`.
+
+Detailed onboarding is documented in `Data_pre/docs/adding_a_case.md`. The
+HYCOM/N30 to GLORYS12V1/N40 compatibility rules are documented in
+`Data_pre/docs/defaults_migration.md`.

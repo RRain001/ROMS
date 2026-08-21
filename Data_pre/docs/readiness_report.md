@@ -10,6 +10,8 @@ Minimum contents:
   - case name
   - project root
   - simulation start and stop time
+  - effective ocean source
+  - configured vertical level count `N`
 - upstream data status
   - bathymetry source
   - ocean source
@@ -35,6 +37,8 @@ Completion rule:
 - a case is considered complete inside `Data_pre` when raw data are downloaded or staged, ROMS-ready inputs are generated, validations pass, and the run file has been assembled
 - a case is not considered complete merely because a download started
 - a case can still be complete inside `Data_pre` even though ROMS has not yet been compiled or run
+- A readiness report must distinguish the active default source from an explicit
+  fallback source and must list any missing coverage as a blocker.
 
 Out of scope for the readiness report:
 

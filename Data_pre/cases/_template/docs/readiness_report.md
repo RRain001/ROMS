@@ -5,6 +5,8 @@ Case identity:
 - case name: `<case_name>`
 - project root: `/home/lhy/ROMS/projects/<case_name>`
 - simulation window: `<start>` to `<stop>`
+- ocean source: `<GLORYS12V1 or explicit override>`
+- vertical levels: `<N>`
 
 Upstream data status:
 

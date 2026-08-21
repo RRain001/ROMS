@@ -80,7 +80,7 @@ def load_project_params() -> dict:
     params.setdefault("ocean", {})
     params["ocean"].setdefault("default_source", "glorys12v1")
     params.setdefault("vertical", {})
-    params["vertical"].setdefault("N", 30)
+    params["vertical"].setdefault("N", 40)
     params["vertical"].setdefault("theta_s", 7.0)
     params["vertical"].setdefault("theta_b", 0.1)
     params["vertical"].setdefault("Tcline_m", 200.0)

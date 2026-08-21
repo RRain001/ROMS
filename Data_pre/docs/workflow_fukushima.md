@@ -1,4 +1,8 @@
-# Shared Workflow
+# Shared Workflow (legacy filename)
+
+This filename is retained for compatibility with older links. The canonical
+generic workflow is documented in `Data_pre/docs/workflow_generic.md`; current
+framework defaults are GLORYS12V1 and `N=40`.
 
 This document now serves as the shared preprocessing workflow reference for `Data_pre`.
 
@@ -13,7 +17,8 @@ Common workflow chain:
 1. Select a case with `--case-name <case_name>`.
 2. Download or stage upstream raw data by family:
    - bathymetry: stage from the shared offline GEBCO global file under `/workspace/GEBCO/GEBCO_2026.nc`
-   - ocean: `scripts/ocean/download_hycom_staged.py` or `download_glorys12v1_staged.py`
+   - ocean: `scripts/ocean/download_glorys12v1_staged.py`
+     (HYCOM is an explicit fallback via `--ocean-source hycom`)
    - atmosphere: `scripts/atmosphere/download_era5_staged.py`
    - tides: `scripts/tides/stage_tpxo_elevation_atlas.py`
    - source: `scripts/source/stage_source_discharge.py`

@@ -32,7 +32,7 @@ flowchart TD
 flowchart LR
     A["Case config<br/>projects/<case>/config<br/>Data_pre/cases/<case>/config"] --> B["Data_pre<br/>download, stage, preprocess, validate"]
     C["Offline shared datasets<br/>example: GEBCO, TPXO"] --> B
-    D["Online data services<br/>example: HYCOM, ERA5"] --> B
+    D["Online data services<br/>example: GLORYS12V1, ERA5"] --> B
     E["credentials/era5_key.txt"] --> B
 
     B --> F["projects/<case>/data<br/>raw + staged data"]
@@ -68,6 +68,13 @@ flowchart LR
 - `Data_pre/scripts/run_support/create_initial_nc.py` is `technical fallback only`.
 - Its output `roms_ini_pilot.nc` exists to support smoke tests and file-plumbing checks before real ocean initial fields are available.
 - It should not be interpreted as a scientific substitute for HYCOM- or GLORYS-derived initial conditions.
+
+## Canonical Defaults
+
+- New cases default to GLORYS12V1 ocean forcing and `vertical.N = 40`.
+- HYCOM remains a supported explicit fallback through `--ocean-source hycom`.
+- An explicit `project_parameters.json` case value overrides the framework fallback;
+  a command-line ocean-source selection overrides the case ocean-source value.
 
 ## End-to-End View
 

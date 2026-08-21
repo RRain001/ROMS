@@ -1,5 +1,11 @@
 # Data_pre 多地区通用框架改造计划
 
+> Implementation status: the multi-case framework described here is implemented.
+> The current canonical defaults are GLORYS12V1 and `vertical.N = 40`; HYCOM is
+> an explicit fallback. Use `Data_pre/docs/workflow_generic.md` and
+> `Data_pre/docs/adding_a_case.md` for the current operating procedure. This
+> file is retained as the design and migration record.
+
 ## Summary
 
 将 `/home/lhy/ROMS/Data_pre` 从“以 Fukushima 为中心的共享预处理目录”重构为“支持多个地区案例并行的通用 ROMS 预处理框架”。本次目标按“完整多案例框架”执行，并按你的选择直接切换到新通用规则，不再优先保留 Fukushima 专属命名和旧兼容入口。

@@ -4,6 +4,8 @@ This workflow is case-driven. Runtime configuration is read from
 `Data_pre/cases/<case_name>/config`; `projects/<case_name>` stores generated
 data, inputs, build artifacts, logs, and model outputs.
 
+For a new research region, follow `Data_pre/docs/adding_a_case.md`.
+
 ## Case Setup
 
 1. Copy `Data_pre/cases/_template` to `Data_pre/cases/<case_name>`.
@@ -16,6 +18,10 @@ data, inputs, build artifacts, logs, and model outputs.
    - Set `paths.case_root` to `projects/<case_name>`.
 3. Edit `config/staged_download_config.json` only for source windows, credentials, and staged raw paths.
 4. Leave `config/staged_download_config.json` in place when HYCOM should be available as an explicit ocean-source fallback. `config/glorys12v1_download_config.json` controls the default GLORYS12V1 path; its time window defaults to `project_parameters.json:time` when `time_start` and `time_stop` are omitted.
+
+The effective source precedence is: command-line `--ocean-source`, then the
+case's `ocean.default_source`, then the framework default GLORYS12V1. Explicit
+case values are never replaced by shared fallbacks.
 
 Do not edit `projects/<case_name>/config` as a runtime input. If present, it is a
 snapshot or legacy copy only.
@@ -48,7 +54,8 @@ Use `--case-name <case_name>` on all commands.
 - Model NetCDF outputs: `projects/<case_name>/output`.
 
 HYCOM remains available only through explicit `--ocean-source hycom` commands
-and should not affect GLORYS12V1 validation.
+and should not affect GLORYS12V1 validation. New cases use `N=40` unless they
+explicitly override the vertical configuration.
 
 ## GLORYS12V1 Standard Flow
 
