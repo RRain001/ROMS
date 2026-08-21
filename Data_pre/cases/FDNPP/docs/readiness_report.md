@@ -4,28 +4,30 @@ Case identity:
 
 - case name: `FDNPP`
 - project root: `/home/lhy/ROMS/projects/FDNPP`
-- simulation window: `2025-01-01 00:00:00` to `2025-02-01 00:00:00`
+- simulation window: `2025-01-01 00:00:00` to `2026-01-01 00:00:00`
+- ocean source: `GLORYS12V1`
+- vertical levels: `N=40`
 
 Upstream data status:
 
 - bathymetry: offline GEBCO subset from `/workspace/GEBCO/GEBCO_2026.nc`
-- ocean: HYCOM staged products present under `data/raw/ocean/`
+- ocean: GLORYS12V1 raw static, initial, and boundary products are staged
 - atmosphere: ERA5 staged products present under `data/raw/atmosphere/`
 - tides: TPXO staged product present under `data/raw/tides/`
 - source discharge: staged CSV present under `data/raw/source/`
 
 Staged raw status:
 
-- expected `data/raw/...` products present: `yes`
-- `validate_staged_data.py`: `pass`
-- `validate_staged_data_deep.py`: `pass`
+- expected `data/raw/...` products present: `yes for staged source products`
+- `validate_staged_data.py`: `pass for GLORYS12V1 ocean products`
+- `validate_staged_data_deep.py`: `pass for GLORYS12V1 ocean products`
 
 ROMS-ready status:
 
 - grid generated: `yes`
 - smoothing or bathymetry audit completed: `not recorded here`
-- initial condition generated: `yes`
-- boundary condition generated: `yes`
+- initial condition generated: `yes; canonical source-suffixed output generated`
+- boundary condition generated: `yes; canonical source-suffixed output verified`
 - atmosphere forcing generated: `yes`
 - radiation forcing generated: `yes`
 - tides forcing generated: `yes`
@@ -40,7 +42,10 @@ Run handoff status:
 
 Known limitations:
 
-- the current HYCOM boundary workflow proof uses short-window boundary coverage rather than a finalized production monthly boundary product
+- source-unsuffixed ocean inputs are retained compatibility products; the active run configuration uses canonical GLORYS filenames
+- the radioactive-decay branch still needs its decay executable
+- the default `pilot_1day` mode still needs its short-window forcing files and default executable
+- `staged_download_config.json` and `staged_data_manifest.csv` describe the explicit HYCOM fallback chain, not the active default
 
 Handoff rule:
 

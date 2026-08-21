@@ -29,6 +29,11 @@ used as the source of truth.
 - ROMS tiles: `NtileI=7`, `NtileJ=8`
 - active grid: `input/roms_grid_bathy_500m_maskclean_smoothed.nc`
 
+The active GLORYS12V1 input names are source-suffixed, for example
+`roms_ini_fdnpp_glorys12v1_20250101_online_my25_uvtide.nc`. Unsuffixed ocean
+inputs and the HYCOM manifest are compatibility or historical products unless
+an explicit HYCOM run is selected.
+
 FDNPP uses a land/sea mask. The case CPP header must define `MASKING`, otherwise
 ROMS ignores `mask_rho` and can integrate masked land cells as shallow ocean.
 
@@ -51,29 +56,34 @@ NetCDF attributes.
 Current status:
 
 - workflow layer: ready
-- pre-run validation: pending re-run on the rebuilt active case
+- pre-run validation: ROMS-ready validation passes; non-decay formal run prerequisites pass
 - output configuration: carried into the rebuilt active case
 - zero-source spin-up source: generated
 - production hot start: configured to use the final spin-up restart
 - spin-up tide staging: generated with UV ellipse variables
-- remaining data blocker: missing GLORYS staged ocean files and production-year ERA5 staged files in the rebuilt active case
+- remaining run-layer items: decay branch executable and default pilot executable/short-window forcing are pending
 
-Do not claim the rebuilt active case is data-ready until the ocean/atmosphere
-downloads below are completed.
+The Data_pre handoff is data-ready: the canonical GLORYS inputs and ROMS-ready
+validation pass. Do not claim every run mode is executable until the mode-specific
+binary and forcing checks below pass.
 
 ## Current Data Blocker
 
 Current blocking issue:
 
 ```text
-missing GLORYS staged ocean data for 2024-10-01 to 2025-01-01 and 2025-01-01 to 2026-01-01,
-plus missing ERA5 staged atmosphere/radiation data for 2025-01-01 to 2026-01-01
+GLORYS raw static, initial, and boundary products are staged and pass the
+GLORYS staged-data checks. Canonical source-suffixed ROMS-ready initial and
+boundary files, ERA5 forcing, tides, and source/river inputs are present and
+pass ROMS-ready validation. Existing unsuffixed products are compatibility
+artifacts.
 ```
 
 Follow-up task:
 
 ```text
-Download the remaining GLORYS and ERA5 datasets for the rebuilt active FDNPP case
+Build the decay executable; prepare the default pilot executable and short-window
+forcing if that mode is required
 ```
 
 ## Output Contract
@@ -114,7 +124,8 @@ python3 ROMS_Run/scripts/checks/validate_run_prereqs.py --case-name FDNPP --mode
 Expected today:
 
 - tide/source/local spin-up atmosphere inputs can be regenerated in the rebuilt case
-- `validate_spinup_inputs.py` remains blocked until the missing GLORYS/ERA5 staged data is downloaded
+- `validate_run_prereqs.py` is expected to pass for non-decay formal spin-up and production modes
+- decay production remains blocked by the decay executable
 
 ## Build And Run
 
