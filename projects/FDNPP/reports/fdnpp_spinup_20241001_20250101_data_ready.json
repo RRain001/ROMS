@@ -5,35 +5,87 @@
     "start": "2024-10-01T00:00:00",
     "end": "2025-01-01T00:00:00"
   },
-  "status": "blocked",
+  "status": "ready",
   "file_summaries": {
     "raw_ini": {
       "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/glorys12v1/glorys12v1_initial_20241001.nc",
-      "exists": false,
-      "dimensions": {},
-      "time_ranges": {},
-      "missing_variables": [
-        "zos",
-        "uo",
-        "vo",
-        "thetao",
-        "so"
-      ],
-      "nan_checks": {}
+      "exists": true,
+      "dimensions": {
+        "time": 1,
+        "depth": 50,
+        "latitude": 18,
+        "longitude": 21
+      },
+      "time_ranges": {
+        "time": {
+          "start": "2024-10-01T12:00:00",
+          "end": "2024-10-01T12:00:00",
+          "count": 1
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "zos": {
+          "nan_count": 82,
+          "finite_count": 296
+        },
+        "uo": {
+          "nan_count": 10991,
+          "finite_count": 7909
+        },
+        "vo": {
+          "nan_count": 10991,
+          "finite_count": 7909
+        },
+        "thetao": {
+          "nan_count": 10991,
+          "finite_count": 7909
+        },
+        "so": {
+          "nan_count": 10991,
+          "finite_count": 7909
+        }
+      }
     },
     "raw_bdy": {
       "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/ocean/glorys12v1/glorys12v1_boundary_20241001_20250101.nc",
-      "exists": false,
-      "dimensions": {},
-      "time_ranges": {},
-      "missing_variables": [
-        "zos",
-        "uo",
-        "vo",
-        "thetao",
-        "so"
-      ],
-      "nan_checks": {}
+      "exists": true,
+      "dimensions": {
+        "time": 93,
+        "depth": 50,
+        "latitude": 18,
+        "longitude": 21
+      },
+      "time_ranges": {
+        "time": {
+          "start": "2024-10-01T12:00:00",
+          "end": "2025-01-01T12:00:00",
+          "count": 93
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "zos": {
+          "nan_count": 7626,
+          "finite_count": 27528
+        },
+        "uo": {
+          "nan_count": 1022163,
+          "finite_count": 735537
+        },
+        "vo": {
+          "nan_count": 1022163,
+          "finite_count": 735537
+        },
+        "thetao": {
+          "nan_count": 1022163,
+          "finite_count": 735537
+        },
+        "so": {
+          "nan_count": 1022163,
+          "finite_count": 735537
+        }
+      }
     },
     "raw_atm": {
       "path": "/home/lhy/ROMS/projects/FDNPP/data/raw/atmosphere/era5_atm_fdnpp_20241001_20250101.nc",
@@ -152,61 +204,241 @@
     },
     "ini": {
       "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_ini_fdnpp_20241001_online_my25_uvtide.nc",
-      "exists": false,
-      "dimensions": {},
-      "time_ranges": {},
-      "missing_variables": [
-        "zeta",
-        "u",
-        "v",
-        "ubar",
-        "vbar",
-        "temp",
-        "salt",
-        "dye_01"
-      ],
-      "nan_checks": {}
+      "exists": true,
+      "dimensions": {
+        "ocean_time": 1,
+        "s_rho": 40,
+        "eta_rho": 190,
+        "xi_rho": 201,
+        "eta_u": 190,
+        "xi_u": 200,
+        "eta_v": 189,
+        "xi_v": 201
+      },
+      "time_ranges": {
+        "ocean_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2024-10-01T00:00:00",
+          "count": 1
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "zeta": {
+          "nan_count": 0,
+          "finite_count": 38190
+        },
+        "u": {
+          "nan_count": 0,
+          "finite_count": 1520000
+        },
+        "v": {
+          "nan_count": 0,
+          "finite_count": 1519560
+        },
+        "ubar": {
+          "nan_count": 0,
+          "finite_count": 38000
+        },
+        "vbar": {
+          "nan_count": 0,
+          "finite_count": 37989
+        },
+        "temp": {
+          "nan_count": 0,
+          "finite_count": 1527600
+        },
+        "salt": {
+          "nan_count": 0,
+          "finite_count": 1527600
+        },
+        "dye_01": {
+          "nan_count": 0,
+          "finite_count": 1527600
+        }
+      }
     },
     "bdy": {
       "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_bdy_fdnpp_20241001_20250101_online_my25_uvtide.nc",
-      "exists": false,
-      "dimensions": {},
-      "time_ranges": {},
-      "missing_variables": [
-        "zeta_west",
-        "zeta_east",
-        "zeta_south",
-        "zeta_north",
-        "ubar_west",
-        "ubar_east",
-        "ubar_south",
-        "ubar_north",
-        "vbar_west",
-        "vbar_east",
-        "vbar_south",
-        "vbar_north",
-        "u_west",
-        "u_east",
-        "u_south",
-        "u_north",
-        "v_west",
-        "v_east",
-        "v_south",
-        "v_north",
-        "temp_west",
-        "temp_east",
-        "temp_south",
-        "temp_north",
-        "salt_west",
-        "salt_east",
-        "salt_south",
-        "salt_north",
-        "dye_west_01",
-        "dye_east_01",
-        "dye_south_01",
-        "dye_north_01"
-      ],
-      "nan_checks": {}
+      "exists": true,
+      "dimensions": {
+        "zeta_time": 93,
+        "v2d_time": 93,
+        "v3d_time": 93,
+        "temp_time": 93,
+        "salt_time": 93,
+        "dye_time": 93,
+        "eta_rho": 190,
+        "xi_rho": 201,
+        "eta_u": 190,
+        "xi_u": 200,
+        "eta_v": 189,
+        "xi_v": 201,
+        "s_rho": 40
+      },
+      "time_ranges": {
+        "zeta_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 93
+        },
+        "v2d_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 93
+        },
+        "v3d_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 93
+        },
+        "temp_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 93
+        },
+        "salt_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 93
+        },
+        "dye_time": {
+          "start": "2024-10-01T00:00:00",
+          "end": "2025-01-01T00:00:00",
+          "count": 93
+        }
+      },
+      "missing_variables": [],
+      "nan_checks": {
+        "zeta_west": {
+          "nan_count": 0,
+          "finite_count": 17670
+        },
+        "zeta_east": {
+          "nan_count": 0,
+          "finite_count": 17670
+        },
+        "zeta_south": {
+          "nan_count": 0,
+          "finite_count": 18693
+        },
+        "zeta_north": {
+          "nan_count": 0,
+          "finite_count": 18693
+        },
+        "ubar_west": {
+          "nan_count": 0,
+          "finite_count": 17670
+        },
+        "ubar_east": {
+          "nan_count": 0,
+          "finite_count": 17670
+        },
+        "ubar_south": {
+          "nan_count": 0,
+          "finite_count": 18600
+        },
+        "ubar_north": {
+          "nan_count": 0,
+          "finite_count": 18600
+        },
+        "vbar_west": {
+          "nan_count": 0,
+          "finite_count": 17577
+        },
+        "vbar_east": {
+          "nan_count": 0,
+          "finite_count": 17577
+        },
+        "vbar_south": {
+          "nan_count": 0,
+          "finite_count": 18693
+        },
+        "vbar_north": {
+          "nan_count": 0,
+          "finite_count": 18693
+        },
+        "u_west": {
+          "nan_count": 0,
+          "finite_count": 706800
+        },
+        "u_east": {
+          "nan_count": 0,
+          "finite_count": 706800
+        },
+        "u_south": {
+          "nan_count": 0,
+          "finite_count": 744000
+        },
+        "u_north": {
+          "nan_count": 0,
+          "finite_count": 744000
+        },
+        "v_west": {
+          "nan_count": 0,
+          "finite_count": 703080
+        },
+        "v_east": {
+          "nan_count": 0,
+          "finite_count": 703080
+        },
+        "v_south": {
+          "nan_count": 0,
+          "finite_count": 747720
+        },
+        "v_north": {
+          "nan_count": 0,
+          "finite_count": 747720
+        },
+        "temp_west": {
+          "nan_count": 0,
+          "finite_count": 706800
+        },
+        "temp_east": {
+          "nan_count": 0,
+          "finite_count": 706800
+        },
+        "temp_south": {
+          "nan_count": 0,
+          "finite_count": 747720
+        },
+        "temp_north": {
+          "nan_count": 0,
+          "finite_count": 747720
+        },
+        "salt_west": {
+          "nan_count": 0,
+          "finite_count": 706800
+        },
+        "salt_east": {
+          "nan_count": 0,
+          "finite_count": 706800
+        },
+        "salt_south": {
+          "nan_count": 0,
+          "finite_count": 747720
+        },
+        "salt_north": {
+          "nan_count": 0,
+          "finite_count": 747720
+        },
+        "dye_west_01": {
+          "nan_count": 0,
+          "finite_count": 706800
+        },
+        "dye_east_01": {
+          "nan_count": 0,
+          "finite_count": 706800
+        },
+        "dye_south_01": {
+          "nan_count": 0,
+          "finite_count": 747720
+        },
+        "dye_north_01": {
+          "nan_count": 0,
+          "finite_count": 747720
+        }
+      }
     },
     "atm": {
       "path": "/home/lhy/ROMS/projects/FDNPP/input/roms_atm_fdnpp_20241001_20250101.nc",
@@ -462,64 +694,7 @@
       "rad": false
     }
   },
-  "blocking_issues": [
-    "raw_ini: missing variable zos",
-    "raw_ini: missing variable uo",
-    "raw_ini: missing variable vo",
-    "raw_ini: missing variable thetao",
-    "raw_ini: missing variable so",
-    "raw_bdy: missing variable zos",
-    "raw_bdy: missing variable uo",
-    "raw_bdy: missing variable vo",
-    "raw_bdy: missing variable thetao",
-    "raw_bdy: missing variable so",
-    "ini: missing variable zeta",
-    "ini: missing variable u",
-    "ini: missing variable v",
-    "ini: missing variable ubar",
-    "ini: missing variable vbar",
-    "ini: missing variable temp",
-    "ini: missing variable salt",
-    "ini: missing variable dye_01",
-    "bdy: missing variable zeta_west",
-    "bdy: missing variable zeta_east",
-    "bdy: missing variable zeta_south",
-    "bdy: missing variable zeta_north",
-    "bdy: missing variable ubar_west",
-    "bdy: missing variable ubar_east",
-    "bdy: missing variable ubar_south",
-    "bdy: missing variable ubar_north",
-    "bdy: missing variable vbar_west",
-    "bdy: missing variable vbar_east",
-    "bdy: missing variable vbar_south",
-    "bdy: missing variable vbar_north",
-    "bdy: missing variable u_west",
-    "bdy: missing variable u_east",
-    "bdy: missing variable u_south",
-    "bdy: missing variable u_north",
-    "bdy: missing variable v_west",
-    "bdy: missing variable v_east",
-    "bdy: missing variable v_south",
-    "bdy: missing variable v_north",
-    "bdy: missing variable temp_west",
-    "bdy: missing variable temp_east",
-    "bdy: missing variable temp_south",
-    "bdy: missing variable temp_north",
-    "bdy: missing variable salt_west",
-    "bdy: missing variable salt_east",
-    "bdy: missing variable salt_south",
-    "bdy: missing variable salt_north",
-    "bdy: missing variable dye_west_01",
-    "bdy: missing variable dye_east_01",
-    "bdy: missing variable dye_south_01",
-    "bdy: missing variable dye_north_01",
-    "roms_ini_fdnpp_20241001_online_my25_uvtide.nc: missing time variable ocean_time",
-    "glorys12v1_initial_20241001.nc: missing time variable time",
-    "roms_bdy_fdnpp_20241001_20250101_online_my25_uvtide.nc: missing time variable zeta_time",
-    "glorys12v1_boundary_20241001_20250101.nc: missing time variable time",
-    "ini: missing file /home/lhy/ROMS/projects/FDNPP/input/roms_ini_fdnpp_20241001_online_my25_uvtide.nc",
-    "bdy: missing file /home/lhy/ROMS/projects/FDNPP/input/roms_bdy_fdnpp_20241001_20250101_online_my25_uvtide.nc"
-  ],
-  "can_generate_run_mode": false,
-  "next_step": "Resolve the blocking issues above before creating online_spinup_3mo_my25_uvtide."
+  "blocking_issues": [],
+  "can_generate_run_mode": true,
+  "next_step": "Generate and validate online_spinup_3mo_my25_uvtide run mode wiring."
 }
