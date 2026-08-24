@@ -15,7 +15,7 @@ from pathlib import Path
 from netCDF4 import Dataset
 
 from case_context import get_case_config_path, get_case_root
-from case_naming import load_case_naming, staged_atmosphere_name, staged_ocean_name, staged_source_csv_name, staged_tides_name
+from case_naming import continuous_staged_tides_path, load_case_naming, staged_atmosphere_name, staged_ocean_name, staged_source_csv_name, staged_tides_name
 from formal_online_workflow import load_formal_online_workflow
 from ocean_source_utils import build_glorys_paths, load_glorys_config, normalize_ocean_source
 from roms_preprocessing_utils import load_project_params
@@ -155,7 +155,7 @@ def glorys_requirements(config_path: str | None) -> list[Requirement]:
     if continuous and workflow:
         atmosphere_start = workflow.spinup_start
         atmosphere_stop = workflow.production_end
-        tides_path = ROOT / "data" / "raw" / "tides" / "tpxo9_fdnpp_continuous.nc"
+        tides_path = continuous_staged_tides_path(workflow.spinup_start, workflow.production_end)
     else:
         atmosphere_start = atmosphere_stop = None
         tides_path = ROOT / "data" / "raw" / "tides" / staged_tides_name()
@@ -218,7 +218,7 @@ def main() -> None:
             print(f"  note: {item.note}")
         for msg in messages:
             print(f"  - {msg}")
-        if item.category == "tides" and item.path.name == "tpxo9_fdnpp_continuous.nc":
+        if item.category == "tides" and "tide_ERe" in item.variables:
             for msg in check_tide_metadata(item.path):
                 print(f"  - {msg}")
                 if item.required:

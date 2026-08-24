@@ -21,6 +21,7 @@ from ocean_source_utils import (
     normalize_ocean_source,
 )
 from roms_preprocessing_utils import ROOT, load_project_params, load_vertical_config, resolve_grid_path
+from staged_data_utils import config_path_to_abs, load_download_config
 
 
 def parse_args() -> argparse.Namespace:
@@ -83,6 +84,7 @@ def _format_label(start: datetime, end: datetime) -> str:
 def _expected_paths(start: datetime, end: datetime, profile: str, ocean_source: str) -> dict[str, Path]:
     naming = load_case_naming()
     workflow = load_formal_online_workflow(load_project_params())
+    staged_config = load_download_config()
     if ocean_source == "glorys12v1":
         ocean_paths = build_glorys_paths(load_glorys_config(), start=start, stop=end, profile=profile)
         raw_ini = ocean_paths.staged_initial
@@ -95,9 +97,13 @@ def _expected_paths(start: datetime, end: datetime, profile: str, ocean_source: 
         "raw_bdy": raw_bdy,
         "raw_atm": ROOT / "data" / "raw" / "atmosphere" / staged_atmosphere_name("atm", start=start, stop=end),
         "raw_rad": ROOT / "data" / "raw" / "atmosphere" / staged_atmosphere_name("rad", start=start, stop=end),
-        "raw_tides": ROOT / "data" / "raw" / "tides" / staged_tides_name(start=start, stop=end),
-        "ini": ROOT / "input" / roms_input_name("ini", profile=profile, start=start, stop=end),
-        "bdy": ROOT / "input" / roms_input_name("bdy", profile=profile, start=start, stop=end),
+        "raw_tides": (
+            config_path_to_abs(staged_config, "tides")
+            if "tides" in staged_config.get("paths", {})
+            else ROOT / "data" / "raw" / "tides" / staged_tides_name()
+        ),
+        "ini": ROOT / "input" / roms_input_name("ini", ocean_source=ocean_source, profile=profile, start=start, stop=end),
+        "bdy": ROOT / "input" / roms_input_name("bdy", ocean_source=ocean_source, profile=profile, start=start, stop=end),
         "atm": ROOT / "input" / roms_input_name("atm", start=start, stop=end),
         "rad": ROOT / "input" / roms_input_name("rad", start=start, stop=end),
         "tides": ROOT / "input" / roms_input_name("tides", profile=profile, start=start, stop=end),

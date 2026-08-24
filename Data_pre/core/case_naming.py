@@ -147,6 +147,17 @@ def staged_tides_name(start: datetime | None = None, stop: datetime | None = Non
     return f"tpxo9_{naming.roms_prefix}_{window_label}.nc"
 
 
+def continuous_staged_tides_path(start: datetime, stop: datetime) -> Path:
+    """Resolve the canonical continuous tide file, with a legacy fallback."""
+    naming = load_case_naming()
+    raw_dir = get_case_root() / "data" / "raw" / "tides"
+    canonical = raw_dir / staged_tides_name(start=start, stop=stop)
+    if canonical.exists():
+        return canonical
+    legacy = raw_dir / f"tpxo9_{naming.roms_prefix}_continuous.nc"
+    return legacy if legacy.exists() else canonical
+
+
 def staged_source_csv_name() -> str:
     return load_case_naming().source_csv_name
 

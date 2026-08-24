@@ -69,6 +69,24 @@ def accumulated_to_rate(data: np.ndarray, times: np.ndarray) -> np.ndarray:
     return out
 
 
+def fill_time_missing_fields(values: np.ndarray, label: str) -> np.ndarray:
+    """Carry the last finite spatial field across ERA5 expver gaps."""
+    out = np.asarray(values, dtype=float).copy()
+    if out.ndim < 1 or out.shape[0] == 0:
+        raise SystemExit(f"{label}: empty time series")
+    finite = np.isfinite(out)
+    if not np.any(finite):
+        raise SystemExit(f"{label}: no finite values in the complete time series")
+    first = int(np.flatnonzero(finite.reshape(out.shape[0], -1).any(axis=1))[0])
+    for index in range(first):
+        out[index] = out[first]
+    for index in range(first + 1, out.shape[0]):
+        missing = ~np.isfinite(out[index])
+        if np.any(missing):
+            out[index][missing] = out[index - 1][missing]
+    return out
+
+
 def interp_fill(
     lon: np.ndarray,
     lat: np.ndarray,
@@ -157,13 +175,13 @@ def main() -> None:
         pair = np.asarray(pair)
         tair = np.asarray(tair)
         qair = np.asarray(qair)
-        rain_raw = np.asarray(rain_raw)
-        evap_raw = np.asarray(evap_raw)
+        rain_raw = fill_time_missing_fields(np.asarray(rain_raw), "rain")
+        evap_raw = fill_time_missing_fields(np.asarray(evap_raw), "EminusP")
         rain_units = getattr(src.variables[rain_name], "units", "")
         evap_units = getattr(src.variables[eminusp_name], "units", "")
         rain = accumulated_to_rate(rain_raw, times) if "tp" in rain_name.lower() or "accum" in rain_units.lower() else rain_raw
         evap_rate = accumulated_to_rate(np.abs(evap_raw), times) if eminusp_name.lower() in {"e", "evaporation"} or "accum" in evap_units.lower() else np.abs(evap_raw)
-        eminusp = evap_rate - rain / 1000.0
+        eminusp = fill_time_missing_fields(evap_rate - rain / 1000.0, "EminusP")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with Dataset(out_path, "w", format="NETCDF4") as ds:

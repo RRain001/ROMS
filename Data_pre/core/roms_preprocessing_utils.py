@@ -145,6 +145,20 @@ def load_project_params() -> dict:
     return params
 
 
+def zero_phase_date_number(params: dict | None = None) -> float:
+    """Return the configured ROMS zero-phase date as YYYYMMDD."""
+    config = params if params is not None else load_project_params()
+    value = config.get("tides", {}).get("zero_phase_date")
+    if value is None:
+        raise ValueError("tides.zero_phase_date must be configured")
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip()
+    if text.isdigit() and len(text) == 8:
+        return float(text)
+    return float(datetime.fromisoformat(text.replace("Z", "+00:00")).strftime("%Y%m%d"))
+
+
 def to_builtin(value):
     if isinstance(value, np.generic):
         return value.item()

@@ -7,7 +7,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from netCDF4 import Dataset
+from netCDF4 import Dataset, date2num, num2date
 
 from roms_preprocessing_utils import ROOT
 
@@ -39,13 +39,28 @@ def _value_key(value: object) -> tuple[str, float | str]:
         return ("text", str(value))
 
 
+def _normalized_time_values(ds: Dataset, dimension: str, reference: Dataset) -> np.ndarray:
+    variable = ds.variables[dimension]
+    values = np.asarray(variable[:])
+    source_units = getattr(variable, "units", None)
+    target_variable = reference.variables[dimension]
+    target_units = getattr(target_variable, "units", None)
+    if not source_units or not target_units or " since " not in str(source_units).lower():
+        return values
+    source_calendar = getattr(variable, "calendar", "standard")
+    target_calendar = getattr(target_variable, "calendar", source_calendar)
+    decoded = num2date(values, units=source_units, calendar=source_calendar)
+    return np.asarray(date2num(decoded, units=target_units, calendar=target_calendar))
+
+
 def _merge_indices(datasets: list[Dataset], dimension: str) -> tuple[np.ndarray, list[np.ndarray], list[np.ndarray]]:
+    reference = datasets[0]
     merged_values: list[object] = []
     source_indices: list[list[int]] = [[] for _ in datasets]
     source_positions: list[list[int]] = [[] for _ in datasets]
     seen: set[tuple[str, float | str]] = set()
     for source_index, ds in enumerate(datasets):
-        values = np.asarray(ds.variables[dimension][:])
+        values = _normalized_time_values(ds, dimension, reference)
         for local_index, value in enumerate(values):
             key = _value_key(value)
             if key in seen:
@@ -113,6 +128,9 @@ def merge_files(inputs: list[Path], output: Path) -> None:
 
             for name, source_var in first.variables.items():
                 target_var = _create_variable(target, source_var, source_var.dimensions)
+                if name in merged:
+                    target_var[:] = merged[name][0]
+                    continue
                 time_axes = [
                     (axis, dimension)
                     for axis, dimension in enumerate(source_var.dimensions)

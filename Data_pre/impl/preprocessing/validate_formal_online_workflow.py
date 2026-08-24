@@ -25,7 +25,7 @@ case_name, case_root, remaining_args = parse_case_args(sys.argv[1:])
 export_case_context(resolve_case_context(case_name=case_name, case_root=case_root))
 sys.argv = [sys.argv[0]] + remaining_args
 
-from case_naming import continuous_tides_name, load_case_naming, roms_input_name, run_infile_name, staged_tides_name
+from case_naming import continuous_staged_tides_path, continuous_tides_name, load_case_naming, roms_input_name, run_infile_name, staged_tides_name
 from formal_online_workflow import (
     RESTART_OPTIONAL_TURBULENCE_VARIABLES,
     expected_restart_variables,
@@ -34,7 +34,7 @@ from formal_online_workflow import (
     spinup_restart_name,
     spinup_zero_source_name,
 )
-from roms_preprocessing_utils import ROOT, load_project_params, to_builtin
+from roms_preprocessing_utils import ROOT, load_project_params, to_builtin, zero_phase_date_number
 from ocean_source_utils import normalize_ocean_source
 from staged_data_utils import config_path_to_abs, load_download_config
 
@@ -195,7 +195,12 @@ def _river_transition(path: Path, production_start: datetime, production_end: da
     return result
 
 
-def _tide_metadata(path: Path, *, require_zero_phase: bool = True) -> dict[str, Any]:
+def _tide_metadata(
+    path: Path,
+    *,
+    require_zero_phase: bool = True,
+    expected_zero_phase: float | None = None,
+) -> dict[str, Any]:
     required = ("tide_period", "tide_Eamp", "tide_Ephase", "tide_Cmax", "tide_Cmin", "tide_Cangle", "tide_Cphase")
     if not require_zero_phase:
         required += ("tide_ERe", "tide_EIm", "tide_URe", "tide_UIm", "tide_VRe", "tide_VIm")
@@ -213,8 +218,8 @@ def _tide_metadata(path: Path, *, require_zero_phase: bool = True) -> dict[str, 
             result["phase_reconstruction"] = getattr(ds, "phase_reconstruction", None)
             if result["missing_variables"]:
                 result["issues"].append("missing ROMS tide variables")
-            if require_zero_phase and result["zero_phase_date"] != 20241001.0:
-                result["issues"].append("zero_phase_date must be 20241001.0")
+            if require_zero_phase and expected_zero_phase is not None and result["zero_phase_date"] != expected_zero_phase:
+                result["issues"].append(f"zero_phase_date must be {expected_zero_phase:.0f}")
             for key in ("phase_convention", "source_phase_reference", "v0_handling", "nodal_correction", "phase_reconstruction"):
                 if not result.get(key):
                     result["issues"].append(f"missing tidal metadata: {key}")
@@ -555,6 +560,7 @@ def _validate_continuous_workflow(args: argparse.Namespace, params: dict[str, An
     dt_seconds = float(params["time"]["pilot_dt_seconds"])
     ocean_source = normalize_ocean_source(params.get("ocean", {}).get("default_source"))
     input_dir = ROOT / "input"
+    expected_zero_phase = zero_phase_date_number(params)
     continuous_infile = Path(args.continuous_infile) if args.continuous_infile else ROOT / "run" / run_infile_name(workflow.continuous_mode, ocean_source=ocean_source)
     paths = {
         "continuous_ini": input_dir / roms_input_name("ini", ocean_source=ocean_source, profile=workflow.profile, start=workflow.spinup_start, stop=workflow.production_end),
@@ -564,14 +570,14 @@ def _validate_continuous_workflow(args: argparse.Namespace, params: dict[str, An
         "continuous_source": input_dir / continuous_source_name(naming.roms_prefix, workflow),
         "continuous_tides": input_dir / continuous_tides_name(workflow.profile),
     }
-    raw_tides = ROOT / "data" / "raw" / "tides" / "tpxo9_fdnpp_continuous.nc"
+    raw_tides = continuous_staged_tides_path(workflow.spinup_start, workflow.production_end)
     checks = {
         "continuous_ini": _time_coverage(paths["continuous_ini"], "ocean_time", workflow.spinup_start, workflow.spinup_start),
         "continuous_bdy": _time_coverage(paths["continuous_bdy"], "zeta_time", workflow.spinup_start, workflow.production_end),
         "continuous_atm": _time_coverage(paths["continuous_atm"], "wind_time", workflow.spinup_start, workflow.production_end),
         "continuous_rad": _time_coverage(paths["continuous_rad"], "srf_time", workflow.spinup_start, workflow.production_end),
         "continuous_source": _river_transition(paths["continuous_source"], workflow.production_start, workflow.production_end),
-        "continuous_tides": _tide_metadata(paths["continuous_tides"]),
+        "continuous_tides": _tide_metadata(paths["continuous_tides"], expected_zero_phase=expected_zero_phase),
         "raw_tides": _tide_metadata(raw_tides, require_zero_phase=False),
         "continuous_infile": _infile_checks(
             continuous_infile,

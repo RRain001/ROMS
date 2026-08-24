@@ -14,7 +14,7 @@ from netCDF4 import Dataset, num2date
 from case_naming import continuous_tides_name, load_case_naming, roms_input_name
 from ocean_source_utils import build_glorys_paths, load_glorys_config, normalize_ocean_source
 from formal_online_workflow import continuous_source_name, load_formal_online_workflow
-from roms_preprocessing_utils import ROOT, load_project_params, load_vertical_config, resolve_grid_path
+from roms_preprocessing_utils import ROOT, load_project_params, load_vertical_config, resolve_grid_path, zero_phase_date_number
 
 
 def parse_args() -> argparse.Namespace:
@@ -157,15 +157,15 @@ def check_uv_tide_content(path: Path, require_uv: bool) -> list[str]:
     return issues
 
 
-def check_tide_metadata(path: Path, require_zero_phase: bool) -> list[str]:
+def check_tide_metadata(path: Path, require_zero_phase: bool, expected_zero_phase: float) -> list[str]:
     if not require_zero_phase or not path.exists():
         return []
     issues: list[str] = []
     with Dataset(path) as ds:
         if "zero_phase_date" not in ds.variables:
             issues.append("tides: missing zero_phase_date")
-        elif float(ds.variables["zero_phase_date"][()]) != 20241001.0:
-            issues.append("tides: zero_phase_date must be 20241001.0")
+        elif float(ds.variables["zero_phase_date"][()]) != expected_zero_phase:
+            issues.append(f"tides: zero_phase_date must be {expected_zero_phase:.0f}")
         for name in ("phase_convention", "source_phase_reference", "v0_handling", "nodal_correction", "phase_reconstruction"):
             if not getattr(ds, name, ""):
                 issues.append(f"tides: missing metadata {name}")
@@ -274,6 +274,7 @@ def check_infile_dimensions(infile_path: Path, grid_path: Path) -> list[str]:
 def main() -> None:
     args = parse_args()
     params = load_project_params()
+    expected_zero_phase = zero_phase_date_number(params)
     ocean_source = normalize_ocean_source(args.ocean_source)
     profile = args.profile
     formal_cfg = params.get("formal_online_workflow", {})
@@ -325,7 +326,7 @@ def main() -> None:
         issues.extend(check_zero_variable(bry_path, (f"dye_{edge}_01", f"dye_01_{edge}"), f"bry {edge}"))
     require_uv = args.require_uv_tides or bool(params.get("tides", {}).get("uv_tides", False))
     issues.extend(check_uv_tide_content(files["tides"][0], require_uv))
-    issues.extend(check_tide_metadata(files["tides"][0], continuous))
+    issues.extend(check_tide_metadata(files["tides"][0], continuous, expected_zero_phase))
     issues.extend(check_river_vshape(river_path))
     issues.extend(check_dimension_consistency(Path(grid_path), ini_path, bry_path, river_path))
     if args.infile:
@@ -356,7 +357,7 @@ def main() -> None:
     fatal = [
         message
         for message in issues
-        if "missing" in message or "cannot open" in message or "expected" in message or "does not match" in message
+        if "missing" in message or "cannot open" in message or "expected" in message or "does not match" in message or "NaN" in message
     ]
     if fatal:
         raise SystemExit(2)
