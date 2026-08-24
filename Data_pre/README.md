@@ -68,4 +68,6 @@ To add a new region, start from `cases/_template/` and create a matching project
 
 Detailed onboarding is documented in `Data_pre/docs/adding_a_case.md`. The
 HYCOM/N30 to GLORYS12V1/N40 compatibility rules are documented in
-`Data_pre/docs/defaults_migration.md`.
+`Data_pre/docs/defaults_migration.md`. The FDNPP worked-case experience is
+documented in `Data_pre/docs/fdnpp_case_reference.md`; the active single-run
+procedure is documented in `Data_pre/docs/fdnpp_continuous_workflow.md`.
