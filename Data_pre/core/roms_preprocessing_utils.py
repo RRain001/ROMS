@@ -109,6 +109,7 @@ def load_project_params() -> dict:
     params.setdefault("formal_online_workflow", {})
     params["formal_online_workflow"].setdefault("enabled", False)
     params["formal_online_workflow"].setdefault("profile", params["physics"].get("profile", "online_my25_uvtide"))
+    params["formal_online_workflow"].setdefault("mode", "continuous")
     params["formal_online_workflow"].setdefault("spinup", {})
     params["formal_online_workflow"]["spinup"].setdefault("enabled", True)
     params["formal_online_workflow"]["spinup"].setdefault("duration_months", 3)
@@ -119,10 +120,14 @@ def load_project_params() -> dict:
         {"enabled": True, "interval_days": 5, "require_final_restart": True},
     )
     params["formal_online_workflow"]["spinup"].setdefault("diagnostics", {"enabled": False})
+    params["formal_online_workflow"].setdefault(
+        "preproduction_months",
+        params["formal_online_workflow"]["spinup"].get("duration_months", 3),
+    )
     params["formal_online_workflow"].setdefault("production", {})
     params["formal_online_workflow"]["production"].setdefault("start", params.get("time", {}).get("start"))
     params["formal_online_workflow"]["production"].setdefault("end", params.get("time", {}).get("stop"))
-    params["formal_online_workflow"]["production"].setdefault("hot_start_from_spinup", True)
+    params["formal_online_workflow"]["production"].setdefault("hot_start_from_spinup", False)
     params["formal_online_workflow"]["production"].setdefault("history", {"interval_hours": 1, "variables": ["zeta"]})
     params["formal_online_workflow"]["production"].setdefault(
         "average",
@@ -130,6 +135,13 @@ def load_project_params() -> dict:
     )
     params["formal_online_workflow"]["production"].setdefault("restart", {"interval_days": 5})
     params["formal_online_workflow"]["production"].setdefault("diagnostics", {"enabled": False})
+    params["tides"].setdefault("zero_phase_date", "2024-10-01T00:00:00")
+    params["tides"].setdefault("phase_convention", "OTPS")
+    params["tides"].setdefault("source_reference", "TPXO9-atlas_v5 OTPS complex harmonic constants")
+    params["tides"].setdefault("v0_handling", "source_model_convention_not_reapplied")
+    params["tides"].setdefault("nodal_correction", "not_applied_to_external_tides")
+    params["tides"].setdefault("ramp_tides", True)
+    params["tides"].setdefault("ramp_days", 1.0)
     return params
 
 

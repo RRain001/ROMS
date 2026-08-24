@@ -57,7 +57,15 @@
   },
   "tides": {
     "ssh_tides": true,
-    "uv_tides": true
+    "uv_tides": true,
+    "zero_phase_date": "2024-10-01T00:00:00",
+    "phase_convention": "OTPS",
+    "source_reference": "TPXO9-atlas_v5 OTPS complex harmonic constants",
+    "source_reference_date": "OTPS model convention; atlas binary does not encode a calendar epoch",
+    "v0_handling": "source-model convention not re-applied",
+    "nodal_correction": "not applied to external TPXO coefficients",
+    "ramp_tides": true,
+    "ramp_days": 1.0
   },
   "output": {
     "history_interval_hours": 1,
@@ -66,7 +74,9 @@
   },
   "formal_online_workflow": {
     "enabled": true,
+    "mode": "continuous",
     "profile": "online_my25_uvtide",
+    "preproduction_months": 3,
     "spinup": {
       "enabled": true,
       "duration_months": 3,
@@ -86,7 +96,7 @@
     "production": {
       "start": "2025-01-01T00:00:00",
       "end": "2026-01-01T00:00:00",
-      "hot_start_from_spinup": true,
+      "hot_start_from_spinup": false,
       "history": {
         "interval_hours": 1,
         "variables": [

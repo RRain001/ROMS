@@ -1,5 +1,15 @@
 {
-  "default_variant": "default",
+  "default_variant": "online_my25_uvtide",
+  "formal_online": {
+    "mode": "online_continuous_my25_uvtide",
+    "variant": "online_my25_uvtide",
+    "required_cpp_defs": [
+      "SSH_TIDES",
+      "UV_TIDES",
+      "RAMP_TIDES",
+      "TIDES_DATE"
+    ]
+  },
   "compiler": {
     "fort": "ifort",
     "use_mpi": true,

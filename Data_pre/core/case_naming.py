@@ -173,3 +173,9 @@ def roms_input_name(
     if role == "tides":
         return f"roms_tides_{naming.roms_prefix}_{window_label}{profile_suffix}.nc"
     raise ValueError(f"unsupported ROMS input role: {role}")
+
+
+def continuous_tides_name(profile: str | None = None) -> str:
+    """Return the stable tide filename shared by a continuous integration."""
+    naming = load_case_naming()
+    return f"roms_tides_{naming.roms_prefix}{_profile_suffix(profile)}.nc"

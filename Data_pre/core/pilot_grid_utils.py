@@ -72,8 +72,14 @@ def _distance_m(lon: np.ndarray, lat: np.ndarray, lon0: float, lat0: float) -> n
     return np.hypot(dx, dy)
 
 
-def locate_source_on_grid(grid_path: Path, source_lon: float, source_lat: float) -> SourcePlacement:
-    """Locate the configured source and snap it to the nearest water rho cell."""
+def locate_source_on_grid(
+    grid_path: Path,
+    source_lon: float,
+    source_lat: float,
+    *,
+    min_depth_m: float | None = None,
+) -> SourcePlacement:
+    """Locate the source on the nearest eligible final-grid water rho cell."""
     with Dataset(grid_path) as grid:
         lon = np.asarray(grid.variables["lon_rho"][:, :], dtype=float)
         lat = np.asarray(grid.variables["lat_rho"][:, :], dtype=float)
@@ -83,17 +89,26 @@ def locate_source_on_grid(grid_path: Path, source_lon: float, source_lat: float)
     dist = _distance_m(lon, lat, source_lon, source_lat)
     nearest_eta, nearest_xi = np.unravel_index(np.argmin(dist), dist.shape)
     nearest_is_water = bool(mask[nearest_eta, nearest_xi] == 1)
+    eligible = mask == 1
+    if min_depth_m is not None:
+        eligible &= depth >= float(min_depth_m)
+    nearest_is_eligible = bool(eligible[nearest_eta, nearest_xi])
 
-    if nearest_is_water:
+    if nearest_is_eligible:
         snapped_eta, snapped_xi = nearest_eta, nearest_xi
-        placement_rule = "configured source already on water rho cell"
+        placement_rule = "configured source already on eligible wet rho cell"
     else:
-        water = mask == 1
-        if not np.any(water):
+        if not np.any(eligible):
             raise SystemExit(f"grid has no water rho cells: {grid_path}")
-        water_dist = np.where(water, dist, np.inf)
+        water_dist = np.where(eligible, dist, np.inf)
         snapped_eta, snapped_xi = np.unravel_index(np.argmin(water_dist), water_dist.shape)
-        placement_rule = "configured source on land; snapped to nearest mask_rho=1 rho cell"
+        if min_depth_m is None:
+            placement_rule = "configured source on land; snapped to nearest mask_rho=1 rho cell"
+        else:
+            placement_rule = (
+                "configured source was not an eligible wet cell; snapped to nearest "
+                f"mask_rho=1 rho cell with h >= {float(min_depth_m):g} m"
+            )
 
     return SourcePlacement(
         configured_lon=source_lon,

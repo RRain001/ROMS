@@ -12,10 +12,11 @@ import numpy as np
 from netCDF4 import Dataset
 
 from case_naming import load_case_naming
-from formal_online_workflow import load_formal_online_workflow, spinup_zero_source_name
+from formal_online_workflow import continuous_source_name, load_formal_online_workflow, spinup_zero_source_name
 from pilot_grid_utils import locate_source_on_grid
 from radioactive_decay import radioactive_decay_attrs
 from roms_preprocessing_utils import ROOT, load_project_params, load_vertical_config, resolve_grid_path, to_mjd
+from source_activity import release_rate_bq_s
 
 
 DEFAULT_CSV = ROOT / "data" / "raw" / "source" / load_case_naming().source_csv_name
@@ -34,6 +35,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--scenario-tag", default=None)
     parser.add_argument("--zero-release", action="store_true")
     parser.add_argument("--formal-spinup", action="store_true", help="Generate the configured formal spin-up zero-source file")
+    parser.add_argument(
+        "--formal-continuous",
+        action="store_true",
+        help="Generate the continuous source: zero before production_start, active during production",
+    )
     return parser.parse_args()
 
 
@@ -90,7 +96,14 @@ def main() -> None:
         args.stop = args.stop or workflow.spinup_end.isoformat()
         args.scenario_tag = args.scenario_tag or "spinup_zero_source"
         out_path = ROOT / "input" / spinup_zero_source_name(naming.roms_prefix, workflow)
-    if args.profile and args.output == str(DEFAULT_OUT) and not args.formal_spinup:
+    if args.formal_continuous:
+        if args.zero_release:
+            raise SystemExit("--formal-continuous and --zero-release are mutually exclusive")
+        args.start = args.start or workflow.spinup_start.isoformat()
+        args.stop = args.stop or workflow.production_end.isoformat()
+        args.scenario_tag = args.scenario_tag or "continuous_zero_until_production"
+        out_path = ROOT / "input" / continuous_source_name(naming.roms_prefix, workflow, decay=False)
+    if args.profile and args.output == str(DEFAULT_OUT) and not args.formal_spinup and not args.formal_continuous:
         out_path = out_path.with_name(f"{out_path.stem}_{args.profile}{out_path.suffix}")
     discharge_path = Path(args.discharge_csv)
     vertical = load_vertical_config()
@@ -108,14 +121,20 @@ def main() -> None:
         )
     else:
         times, discharge, scenario_tag = read_discharge_csv(discharge_path)
-    placement = locate_source_on_grid(grid_path, params["domain"]["source_lon"], params["domain"]["source_lat"])
-    release_bq_s = params["source"]["annual_release_TBq_per_year"] * 1e12 / (
-        params["source"]["calendar_year_days"] * 24 * 3600
+    placement = locate_source_on_grid(
+        grid_path,
+        params["domain"]["source_lon"],
+        params["domain"]["source_lat"],
+        min_depth_m=vertical.Hmin_m,
     )
+    release_bq_s = release_rate_bq_s(params)
     if args.zero_release:
         concentration = np.zeros_like(discharge)
     else:
         concentration = release_bq_s / discharge
+    if args.formal_continuous:
+        production_mask = np.asarray(times, dtype="datetime64[ns]") >= np.datetime64(workflow.production_start)
+        concentration = np.where(production_mask, concentration, 0.0)
     scenario_key = scenario_tag.lower()
     if scenario_key == "derived_release_carrier":
         discharge_note = (
@@ -124,6 +143,8 @@ def main() -> None:
         )
     elif scenario_key == "spinup_zero_source":
         discharge_note = "spin-up carrier transport retained; dye source concentration forced to zero"
+    elif scenario_key == "continuous_zero_until_production":
+        discharge_note = "continuous run: dye source is zero before production_start and active afterward"
     elif scenario_key == "scenario_baseline":
         discharge_note = "scenario, not measured"
     else:
@@ -141,12 +162,31 @@ def main() -> None:
         ds.discharge_note = discharge_note
         ds.carrier_transport_m3_s = float(np.nanmedian(discharge))
         ds.not_measured_discharge = "true" if scenario_key in {"derived_release_carrier", "scenario_baseline"} else "false"
-        ds.annual_release_TBq_per_year = float(params["source"]["annual_release_TBq_per_year"])
-        ds.annual_release_TBq_per_year_note = "case-specific source value from project_parameters.json"
-        ds.release_rate_note = "zero release for spin-up" if args.zero_release else "derived from annual HTO release rate"
+        source_cfg = params["source"]
+        if "annual_release_PBq_per_year" in source_cfg:
+            ds.annual_release_PBq_per_year = float(source_cfg["annual_release_PBq_per_year"])
+            ds.annual_release_unit = "PBq year-1"
+        else:
+            ds.annual_release_TBq_per_year = float(source_cfg["annual_release_TBq_per_year"])
+            ds.annual_release_unit = "TBq year-1"
+        ds.annual_release_original = str(source_cfg.get("annual_release_original", ""))
+        ds.annual_release_note = "case-specific source value from project_parameters.json"
+        ds.release_rate_note = (
+            "zero before production_start, derived from annual HTO release rate afterward"
+            if args.formal_continuous
+            else ("zero release for spin-up" if args.zero_release else "derived from annual HTO release rate")
+        )
         ds.release_Bq_s = 0.0 if args.zero_release else release_bq_s
         ds.source_profile = args.profile or "default"
-        ds.source_mode = "zero_release_spinup" if args.zero_release else params["source"].get("release_mode", "constant_rate")
+        ds.source_mode = (
+            "continuous_zero_until_production"
+            if args.formal_continuous
+            else ("zero_release_spinup" if args.zero_release else params["source"].get("release_mode", "constant_rate"))
+        )
+        if args.formal_continuous:
+            ds.preproduction_start = workflow.spinup_start.isoformat()
+            ds.production_start = workflow.production_start.isoformat()
+            ds.production_end = workflow.production_end.isoformat()
         ds.source_vertical_location = "surface_layer"
         ds.s_rho_surface_index_zero_based = int(vertical.N - 1)
         ds.river_Vshape_sum_expected = 1.0
@@ -167,6 +207,10 @@ def main() -> None:
         ds.snapped_source_depth_m = placement.snapped_depth_m
         ds.source_snap_distance_m = placement.snapped_distance_m
         ds.source_placement_rule = placement.placement_rule
+        ds.source_snap_warning = "distance exceeds 5 km" if placement.snapped_distance_m > 5000.0 else ""
+        ds.source_model = str(source_cfg.get("source_model", "nearest_final_roms_wet_cell"))
+        ds.source_hmin_m = float(vertical.Hmin_m)
+        ds.source_reference_type = str(source_cfg.get("source_reference_type", "configured_domain_source"))
 
         def var(name: str, dtype: str, dims: tuple[str, ...]):
             return ds.createVariable(name, dtype, dims, zlib=True, complevel=1)

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Shared rules for formal online passive-tracer spin-up and production runs."""
+"""Shared rules for formal online passive-tracer continuous runs.
+
+The legacy split spin-up/production names remain available for reading old
+artifacts, but new workflows use one continuous model integration.
+"""
 
 from __future__ import annotations
 
@@ -36,6 +40,8 @@ class FormalOnlineWorkflow:
     spinup_start: datetime
     spinup_end: datetime
     production_duration_label: str
+    continuous_mode: str
+    continuous_decay_mode: str
     spinup_mode: str
     production_mode: str
     production_decay_mode: str
@@ -99,9 +105,12 @@ def load_formal_online_workflow(params: dict[str, Any]) -> FormalOnlineWorkflow:
     production_end = datetime.fromisoformat(
         str(production_cfg.get("end") or params.get("time", {}).get("stop"))
     )
-    months = int(spinup_cfg.get("duration_months", 3))
+    months = int(cfg.get("preproduction_months", spinup_cfg.get("duration_months", 3)))
+    if months < 0:
+        raise ValueError("formal_online_workflow.preproduction_months must be non-negative")
     spinup_start = subtract_months(production_start, months)
     duration = production_duration_label(production_start, production_end)
+    continuous_mode = f"online_continuous_{token}"
     return FormalOnlineWorkflow(
         enabled=bool(cfg.get("enabled", False)),
         profile=profile,
@@ -112,6 +121,8 @@ def load_formal_online_workflow(params: dict[str, Any]) -> FormalOnlineWorkflow:
         spinup_start=spinup_start,
         spinup_end=production_start,
         production_duration_label=duration,
+        continuous_mode=continuous_mode,
+        continuous_decay_mode=f"{continuous_mode}_decay",
         spinup_mode=f"online_spinup_{months}mo_{token}",
         production_mode=f"online_production_{duration}_{token}_from_spinup",
         production_decay_mode=f"online_production_{duration}_{token}_decay_from_spinup",
@@ -120,6 +131,15 @@ def load_formal_online_workflow(params: dict[str, Any]) -> FormalOnlineWorkflow:
 
 def parse_formal_online_mode(mode: str, params: dict[str, Any]) -> dict[str, Any] | None:
     workflow = load_formal_online_workflow(params)
+    if mode == workflow.continuous_mode:
+        return {"phase": "continuous", "workflow": workflow, "profile": workflow.profile, "decay": False}
+    if mode == workflow.continuous_decay_mode:
+        return {
+            "phase": "continuous",
+            "workflow": workflow,
+            "profile": profile_name_from_token(workflow.profile_token, decay=True),
+            "decay": True,
+        }
     if mode == workflow.spinup_mode or mode == "online_spinup_3mo":
         return {"phase": "spinup", "workflow": workflow, "profile": workflow.profile, "decay": False}
     if mode == workflow.production_mode:
@@ -155,6 +175,17 @@ def parse_formal_online_mode(mode: str, params: dict[str, Any]) -> dict[str, Any
             "duration_label": production_match.group(1),
             "decay": decay,
         }
+    continuous_match = re.fullmatch(r"online_continuous_(.+?)(_decay)?", mode)
+    if continuous_match:
+        token = continuous_match.group(1)
+        decay = bool(continuous_match.group(2))
+        return {
+            "phase": "continuous",
+            "workflow": workflow,
+            "profile": profile_name_from_token(token, decay=decay),
+            "profile_token": token,
+            "decay": decay,
+        }
     return None
 
 
@@ -164,6 +195,11 @@ def spinup_restart_name(case_prefix: str, workflow: FormalOnlineWorkflow) -> str
 
 def spinup_zero_source_name(case_prefix: str, workflow: FormalOnlineWorkflow) -> str:
     return f"roms_rivers_{case_prefix}_{workflow.spinup_mode}_zero_source.nc"
+
+
+def continuous_source_name(case_prefix: str, workflow: FormalOnlineWorkflow, *, decay: bool = False) -> str:
+    suffix = "_decay" if decay else ""
+    return f"roms_rivers_{case_prefix}_{workflow.continuous_mode}{suffix}.nc"
 
 
 def expected_restart_variables(passive_tracer_enabled: bool = True) -> tuple[str, ...]:

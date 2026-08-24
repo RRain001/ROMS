@@ -13,8 +13,9 @@ from pathlib import Path
 import numpy as np
 from netCDF4 import Dataset, num2date
 
-from case_naming import load_case_naming, output_product_name, roms_input_name, run_infile_name
+from case_naming import continuous_tides_name, load_case_naming, output_product_name, roms_input_name, run_infile_name
 from formal_online_workflow import (
+    continuous_source_name,
     load_formal_online_workflow,
     parse_formal_online_mode,
     spinup_restart_name,
@@ -335,7 +336,9 @@ def forcing_paths(
         source_paths = build_ocean_source_paths(
             ocean_source,
             config=load_glorys_config(args.config),
-            profile=profile,
+            profile=file_profile,
+            start=start,
+            stop=stop,
         )
     else:
         source_paths = build_ocean_source_paths(ocean_source)
@@ -344,6 +347,10 @@ def forcing_paths(
     river_default = "../input/roms_rivers_production.nc"
     if file_profile:
         river_default = f"../input/roms_rivers_production_{file_profile}.nc"
+    tide_default = f"../input/{roms_input_name('tides', profile=file_profile, start=start, stop=stop)}"
+    if formal and formal["phase"] == "continuous":
+        river_default = f"../input/{continuous_source_name(naming.roms_prefix, workflow, decay=bool(formal.get('decay')))}"
+        tide_default = f"../input/{continuous_tides_name(workflow.profile)}"
     if formal and formal["phase"] == "spinup":
         river_default = f"../input/{spinup_zero_source_name(naming.roms_prefix, workflow)}"
     ini_default = f"../input/{roms_input_name('ini', ocean_source=ocean_source, profile=file_profile, start=start, stop=stop)}"
@@ -362,7 +369,7 @@ def forcing_paths(
         "clm": args.clm_path or args.ini_path or relative_to_run(source_paths.roms_ini),
         "nud": "none",
         "river": args.river_path or river_default,
-        "tides": args.tides_path or f"../input/{roms_input_name('tides', profile=file_profile, start=start, stop=stop)}",
+        "tides": args.tides_path or tide_default,
         "frc_files": [
             f"     FRCNAME == {args.atm_path or atm_default} \\",
             f"                {args.rad_path or rad_default}",
@@ -557,7 +564,17 @@ def base_text(
     profile = active_profile(args, mode, params)
     ntile_i, ntile_j = tile_layout(params)
     source_label = f" ({ocean_source})" if forcing_mode == "external" and ocean_source != "hycom" else ""
-    if formal and formal["phase"] == "spinup":
+    if formal and formal["phase"] == "continuous":
+        start = workflow.spinup_start
+        stop = workflow.production_end
+        decay_label = " decay" if formal.get("decay") else ""
+        title = (
+            f"{naming.title} online passive tracer continuous run "
+            f"({workflow.spinup_duration_months}-month preproduction + {workflow.production_duration_label} production)"
+            f"{decay_label}{source_label}"
+        )
+        out_prefix = workflow.continuous_decay_mode if formal.get("decay") else workflow.continuous_mode
+    elif formal and formal["phase"] == "spinup":
         start = workflow.spinup_start
         stop = workflow.spinup_end
         title = f"{naming.title} online passive tracer {workflow.spinup_duration_months}-month spin-up{source_label}"
@@ -750,6 +767,8 @@ def base_text(
     text = replace_line(text, "NUDNAME", forcing["nud"])
     text = replace_line(text, "SSFNAME", forcing["river"])
     text = replace_line(text, "TIDENAME", forcing["tides"])
+    if formal and formal["phase"] == "continuous":
+        text = replace_line(text, "Lnodal", "F                         ! external TPXO coefficients; no ROMS nodal correction")
     text = replace_line(text, "NBCFILES", "1")
     text = replace_line(text, "NCLMFILES", str(forcing["nclmfiles"]))
     text = replace_nffiles_block(text, forcing["nffiles"], forcing["frc_files"])
@@ -781,7 +800,7 @@ def base_text(
     text = replace_line(text, "QCKNAME", f"../output/{output_product_name('qck', 'pilot', source_for_name, product_profile)}")
     if formal and formal["phase"] == "spinup":
         text = apply_formal_spinup_output_profile(text, dt_seconds)
-    elif formal and formal["phase"] == "production":
+    elif formal and formal["phase"] in {"production", "continuous"}:
         text = apply_formal_production_output_profile(text, dt_seconds)
     if output_profile == "light_month":
         text = apply_light_month_output_profile(text, dt_seconds, avg_temp_salt=args.avg_temp_salt)
