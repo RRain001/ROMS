@@ -1,0 +1,39 @@
+{
+  "hycom_bbox_buffer_deg": 0.08,
+  "era5_bbox_buffer_deg": 0.25,
+  "time": {
+    "start": "2024-10-01T00:00:00",
+    "stop": "2026-01-01T00:00:00"
+  },
+  "hycom": {
+    "source": "auto",
+    "source_key": null,
+    "opendap_base_url": "https://tds.hycom.org/thredds/dodsC/GLBy0.08/expt_93.0"
+  },
+  "era5": {
+    "dataset": "reanalysis-era5-single-levels",
+    "credentials_file": "/home/lhy/ROMS/credentials/era5_key.txt",
+    "atm_variables": [
+      "10m_u_component_of_wind",
+      "10m_v_component_of_wind",
+      "surface_pressure",
+      "2m_temperature",
+      "2m_dewpoint_temperature",
+      "total_precipitation",
+      "evaporation"
+    ],
+    "rad_variables": [
+      "surface_solar_radiation_downwards",
+      "surface_thermal_radiation_downwards",
+      "surface_net_thermal_radiation"
+    ]
+  },
+  "paths": {
+    "ocean_initial": "data/raw/ocean/hycom_initial_20241001.nc",
+    "ocean_boundary": "data/raw/ocean/hycom_boundary_20241001_20260101.nc",
+    "era5_atm": "data/raw/atmosphere/era5_atm_lahague_20241001_20260101.nc",
+    "era5_rad": "data/raw/atmosphere/era5_rad_lahague_20241001_20260101.nc",
+    "tides": "data/raw/tides/tpxo9_lahague_20241001_20260101.nc",
+    "source_discharge": "data/raw/source/lahague_source_discharge.csv"
+  }
+}

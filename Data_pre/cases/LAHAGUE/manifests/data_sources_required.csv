@@ -1,0 +1,8 @@
+id,kind,path,required_variables,status,notes
+1,bathymetry,input/roms_grid_bathy_500m_maskclean_smoothed.nc,"lon_rho lat_rho h mask_rho",ready,"Final smoothed ROMS grid"
+2,ocean_initial_continuous,input/roms_ini_lahague_glorys12v1_20241001_online_my25_uvtide.nc,"zeta u v ubar vbar temp salt dye_01",ready,"GLORYS initial state at the continuous-run start"
+3,ocean_boundary_continuous,input/roms_bdy_lahague_glorys12v1_20241001_20260101_online_my25_uvtide.nc,"zeta_* u_* v_* ubar_* vbar_* temp_* salt_* dye_01_*",ready,"GLORYS boundary forcing for the full continuous window"
+4,atmosphere_continuous,input/roms_atm_lahague_20241001_20260101.nc,"Uwind Vwind Pair Tair Qair rain EminusP",ready,"ERA5 atmosphere for the full continuous window"
+5,radiation_continuous,input/roms_rad_lahague_20241001_20260101.nc,"swrad lwrad lwrad_down",ready,"ERA5 radiation for the full continuous window"
+6,tides_continuous,input/roms_tides_lahague_online_my25_uvtide.nc,"tide_Eamp tide_Ephase tide_Cmax tide_Cmin tide_Cangle tide_Cphase",ready,"Corrected TPXO9 tide forcing with elevation and UV ellipses"
+7,source_continuous,input/roms_rivers_lahague_online_continuous_my25_uvtide.nc,"river_transport river_dye_01 river_temp river_salt",ready,"Zero before 2025-01-01, formal source afterward"

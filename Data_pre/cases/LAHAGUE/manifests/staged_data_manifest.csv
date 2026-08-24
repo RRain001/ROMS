@@ -1,0 +1,9 @@
+kind,required,path,variables,notes
+bathymetry,true,data/raw/bathymetry/gebco_lahague.nc,"lon lat elevation","Staged from local GEBCO"
+ocean_static,true,data/raw/ocean/glorys12v1/glorys12v1_static_lahague.nc,"mask deptho mdt","Downloaded once from GLORYS12V1 static product"
+ocean_initial,true,data/raw/ocean/glorys12v1/glorys12v1_initial_20241001.nc,"time thetao so uo vo zos","GLORYS initial state at the continuous-run start"
+ocean_boundary_continuous,true,data/raw/ocean/glorys12v1/glorys12v1_boundary_20241001_20260101.nc,"time thetao so uo vo zos","GLORYS boundary forcing for the full continuous window"
+atmosphere_continuous,true,data/raw/atmosphere/era5_atm_lahague_20241001_20260101.nc,"Uwind Vwind Pair Tair Qair rain EminusP","ERA5 atmosphere for the full continuous window"
+radiation_continuous,true,data/raw/atmosphere/era5_rad_lahague_20241001_20260101.nc,"swrad lwrad lwrad_down","ERA5 radiation for the full continuous window"
+tides_continuous,true,data/raw/tides/tpxo9_lahague_20241001_20260101.nc,"tide_ERe tide_EIm tide_URe tide_UIm tide_VRe tide_VIm","TPXO9 complex elevation and UV constants with OTPS metadata"
+source_discharge,true,data/raw/source/lahague_source_discharge.csv,"time discharge_m3_s scenario","Continuous source schedule; the first three months are zero"

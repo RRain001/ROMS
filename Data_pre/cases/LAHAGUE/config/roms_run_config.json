@@ -1,0 +1,70 @@
+{
+  "launcher": "$HOME/intel/oneapi/mpi/2021.9.0/bin/mpirun",
+  "np": 56,
+  "shell_init_files": [
+    "$HOME/intel/oneapi/setvars.sh"
+  ],
+  "library_paths": [
+    "$HOME/roms_build/install/lib",
+    "$HOME/intel/oneapi/compiler/2023.1.0/linux/compiler/lib/intel64_lin"
+  ],
+  "env": {},
+  "build_layout": {
+    "build_root": "build",
+    "build_dir": "build/Build_romsM",
+    "bin_dir": "bin"
+  },
+  "default_run_mode": "online_continuous_my25_uvtide",
+  "run_modes": {
+    "smoke": {
+      "build_variant": "default",
+      "binary": "romsM_lahague",
+      "fallback_binaries": [],
+      "infile": "ocean_lahague_smoke.in",
+      "log_file": "smoke.log"
+    },
+    "pilot_1day": {
+      "build_variant": "default",
+      "binary": "romsM_lahague",
+      "fallback_binaries": [],
+      "infile": "ocean_lahague_pilot_1day_glorys12v1.in",
+      "log_file": "pilot_1day.log"
+    },
+    "pilot_month": {
+      "build_variant": "default",
+      "binary": "romsM_lahague",
+      "fallback_binaries": [],
+      "infile": "ocean_lahague_pilot_glorys12v1.in",
+      "log_file": "pilot_month.log"
+    },
+    "online_continuous_my25_uvtide": {
+      "build_variant": "online_my25_uvtide",
+      "binary": "romsM_lahague_online_my25_uvtide",
+      "fallback_binaries": [],
+      "infile": "ocean_lahague_online_continuous_my25_uvtide_glorys12v1.in",
+      "log_file": "online_continuous_my25_uvtide.log",
+      "required_cpp_defs": ["SSH_TIDES", "UV_TIDES", "RAMP_TIDES", "TIDES_DATE"]
+    },
+    "online_spinup_3mo_my25_uvtide": {
+      "build_variant": "online_my25_uvtide",
+      "binary": "romsM_lahague_online_my25_uvtide",
+      "fallback_binaries": [],
+      "infile": "ocean_lahague_online_spinup_3mo_my25_uvtide_glorys12v1.in",
+      "log_file": "online_spinup_3mo_my25_uvtide.log"
+    },
+    "online_production_1y_my25_uvtide_from_spinup": {
+      "build_variant": "online_my25_uvtide",
+      "binary": "romsM_lahague_online_my25_uvtide",
+      "fallback_binaries": [],
+      "infile": "ocean_lahague_online_production_1y_my25_uvtide_from_spinup_glorys12v1.in",
+      "log_file": "online_production_1y_my25_uvtide_from_spinup.log"
+    },
+    "online_production_1y_my25_uvtide_decay_from_spinup": {
+      "build_variant": "online_my25_uvtide_decay",
+      "binary": "romsM_lahague_online_my25_uvtide_decay",
+      "fallback_binaries": [],
+      "infile": "ocean_lahague_online_production_1y_my25_uvtide_decay_from_spinup_glorys12v1.in",
+      "log_file": "online_production_1y_my25_uvtide_decay_from_spinup.log"
+    }
+  }
+}
