@@ -18,6 +18,19 @@ Top-level sections:
 - `naming`: filenames and prefixes for generated products
 - `paths`: project root, ROMS source path, shared dataset paths
 
+Source amount and placement:
+
+- Define exactly one of `source.annual_release_PBq_per_year` or
+  `source.annual_release_TBq_per_year`; shared source helpers convert either
+  form to `Bq` and `Bq s-1`.
+- `source.source_model = nearest_final_roms_wet_cell` means the configured
+  `domain.source_lon/source_lat` is only a reference coordinate. Source files
+  are generated after the final grid and use the nearest eligible
+  `mask_rho=1` cell satisfying `h >= vertical.Hmin_m`.
+- Generated source metadata records the snapped grid index, coordinates,
+  depth, distance, placement rule, and grid path. A snap distance above the
+  case warning threshold should be reported for review.
+
 Spatial staging rule:
 
 - `domain.*` defines the scientific study region used by ROMS grid generation.
