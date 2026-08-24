@@ -25,15 +25,18 @@ case_name, case_root, remaining_args = parse_case_args(sys.argv[1:])
 export_case_context(resolve_case_context(case_name=case_name, case_root=case_root))
 sys.argv = [sys.argv[0]] + remaining_args
 
-from case_naming import load_case_naming, roms_input_name, run_infile_name, staged_tides_name
+from case_naming import continuous_tides_name, load_case_naming, roms_input_name, run_infile_name, staged_tides_name
 from formal_online_workflow import (
     RESTART_OPTIONAL_TURBULENCE_VARIABLES,
     expected_restart_variables,
+    continuous_source_name,
     load_formal_online_workflow,
     spinup_restart_name,
     spinup_zero_source_name,
 )
 from roms_preprocessing_utils import ROOT, load_project_params, to_builtin
+from ocean_source_utils import normalize_ocean_source
+from staged_data_utils import config_path_to_abs, load_download_config
 
 
 OUTPUT_KEY_LABELS = {
@@ -61,6 +64,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--spinup-infile", default=None)
     parser.add_argument("--production-infile", default=None)
     parser.add_argument("--decay-production-infile", default=None)
+    parser.add_argument("--continuous-infile", default=None)
     parser.add_argument("--restart", default=None)
     parser.add_argument("--report-json", default=None)
     parser.add_argument("--report-md", default=None)
@@ -155,6 +159,71 @@ def _river_zero(path: Path) -> dict[str, Any]:
     return result
 
 
+def _river_transition(path: Path, production_start: datetime, production_end: datetime) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "path": str(path),
+        "exists": path.exists(),
+        "preproduction_is_zero": False,
+        "production_is_active": False,
+        "covers": False,
+    }
+    if not path.exists():
+        return result
+    try:
+        with Dataset(path) as ds:
+            time_var = ds.variables["river_time"]
+            times = num2date(time_var[:], units=time_var.units, calendar=getattr(time_var, "calendar", "standard"))
+            values = np.asarray(ds.variables["river_dye_01"][:], dtype=float)
+            flattened = np.nanmax(np.abs(values), axis=tuple(range(1, values.ndim)))
+            parsed = [datetime(item.year, item.month, item.day, item.hour, item.minute, item.second) for item in times]
+            pre = np.asarray([item < production_start for item in parsed], dtype=bool)
+            prod = np.asarray([production_start <= item <= production_end for item in parsed], dtype=bool)
+            result.update(
+                {
+                    "start": parsed[0].isoformat(),
+                    "end": parsed[-1].isoformat(),
+                    "covers": bool(parsed[0] <= production_start and parsed[-1] >= production_end),
+                    "preproduction_max": float(np.nanmax(flattened[pre])) if np.any(pre) else None,
+                    "production_max": float(np.nanmax(flattened[prod])) if np.any(prod) else None,
+                    "preproduction_is_zero": bool(np.any(pre) and np.allclose(flattened[pre], 0.0)),
+                    "production_is_active": bool(np.any(prod) and np.nanmax(flattened[prod]) > 0.0),
+                    "source_mode": getattr(ds, "source_mode", None),
+                }
+            )
+    except Exception as exc:  # noqa: BLE001
+        result["error"] = f"{type(exc).__name__}: {exc}"
+    return result
+
+
+def _tide_metadata(path: Path, *, require_zero_phase: bool = True) -> dict[str, Any]:
+    required = ("tide_period", "tide_Eamp", "tide_Ephase", "tide_Cmax", "tide_Cmin", "tide_Cangle", "tide_Cphase")
+    if not require_zero_phase:
+        required += ("tide_ERe", "tide_EIm", "tide_URe", "tide_UIm", "tide_VRe", "tide_VIm")
+    result: dict[str, Any] = {"path": str(path), "exists": path.exists(), "missing_variables": list(required), "issues": []}
+    if not path.exists():
+        return result
+    try:
+        with Dataset(path) as ds:
+            result["missing_variables"] = [name for name in required if name not in ds.variables]
+            result["zero_phase_date"] = float(ds.variables["zero_phase_date"][()]) if "zero_phase_date" in ds.variables else None
+            result["phase_convention"] = getattr(ds, "phase_convention", None)
+            result["source_phase_reference"] = getattr(ds, "source_phase_reference", None)
+            result["v0_handling"] = getattr(ds, "v0_handling", None)
+            result["nodal_correction"] = getattr(ds, "nodal_correction", None)
+            result["phase_reconstruction"] = getattr(ds, "phase_reconstruction", None)
+            if result["missing_variables"]:
+                result["issues"].append("missing ROMS tide variables")
+            if require_zero_phase and result["zero_phase_date"] != 20241001.0:
+                result["issues"].append("zero_phase_date must be 20241001.0")
+            for key in ("phase_convention", "source_phase_reference", "v0_handling", "nodal_correction", "phase_reconstruction"):
+                if not result.get(key):
+                    result["issues"].append(f"missing tidal metadata: {key}")
+    except Exception as exc:  # noqa: BLE001
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        result["issues"].append(result["error"])
+    return result
+
+
 def _netcdf_missing_variables(path: Path, variables: tuple[str, ...]) -> dict[str, Any]:
     result: dict[str, Any] = {"path": str(path), "exists": path.exists(), "missing_variables": list(variables)}
     if not path.exists():
@@ -235,32 +304,40 @@ def _infile_checks(path: Path, *, phase: str, dt_seconds: float, expected_ini: s
     else:
         hourly = str(max(1, int(round(3600 / dt_seconds))))
         daily = str(max(1, int(round(24 * 3600 / dt_seconds))))
-        if nrrec not in {"-1", "1"}:
+        if phase == "continuous":
+            if nrrec != "0":
+                result["issues"].append(f"continuous run must start as a new integration (NRREC={nrrec})")
+            if ini and ini.startswith("../output/"):
+                result["issues"].append("continuous ININAME must be an initial field, not a restart output")
+        elif nrrec not in {"-1", "1"}:
             result["issues"].append(f"production is not configured as restart hot start (NRREC={nrrec})")
         if expected_ini and ini != expected_ini:
-            result["issues"].append(f"production ININAME {ini} does not match expected {expected_ini}")
+            label = "continuous" if phase == "continuous" else "production"
+            result["issues"].append(f"{label} ININAME {ini} does not match expected {expected_ini}")
         if nhis != hourly:
-            result["issues"].append(f"production history interval is not 1 h (NHIS {nhis}, expected {hourly})")
+            label = "continuous" if phase == "continuous" else "production"
+            result["issues"].append(f"{label} history interval is not 1 h (NHIS {nhis}, expected {hourly})")
         if result["history_outputs"]["enabled_variables"] != ["zeta"]:
             result["issues"].append(
-                f"production history is not limited to zeta: {result['history_outputs']['enabled_variables']}"
+                f"{('continuous' if phase == 'continuous' else 'production')} history is not limited to zeta: {result['history_outputs']['enabled_variables']}"
             )
         if navg != daily:
-            result["issues"].append(f"production average interval is not 24 h (NAVG {navg}, expected {daily})")
+            label = "continuous" if phase == "continuous" else "production"
+            result["issues"].append(f"{label} average interval is not 24 h (NAVG {navg}, expected {daily})")
         expected_average = ["u", "v", "ubar", "vbar", "dye_01"]
         if sorted(result["average_outputs"]["enabled_variables"]) != sorted(expected_average):
             result["issues"].append(
-                f"production average variables mismatch: {result['average_outputs']['enabled_variables']}"
+                f"{('continuous' if phase == 'continuous' else 'production')} average variables mismatch: {result['average_outputs']['enabled_variables']}"
             )
         for key in ("Aout_idUvel", "Aout_idVvel", "Aout_idUbar", "Aout_idVbar", "Aout_inert"):
             if result[key] != "T":
-                result["issues"].append(f"production average missing expected {key}")
+                result["issues"].append(f"{('continuous' if phase == 'continuous' else 'production')} average missing expected {key}")
         if ndia != "0":
-            result["issues"].append("production diagnostics is not off (NDIA != 0)")
+            result["issues"].append(f"{('continuous' if phase == 'continuous' else 'production')} diagnostics is not off (NDIA != 0)")
         if result["diagnostics_outputs"]["enabled_keys"]:
-            result["issues"].append("production has enabled diagnostics variables despite NDIA=0")
+            result["issues"].append(f"{('continuous' if phase == 'continuous' else 'production')} has enabled diagnostics variables despite NDIA=0")
         if nrst != restart_5d:
-            result["issues"].append(f"production restart interval is not 5 d (NRST {nrst}, expected {restart_5d})")
+            result["issues"].append(f"{('continuous' if phase == 'continuous' else 'production')} restart interval is not 5 d (NRST {nrst}, expected {restart_5d})")
     return result
 
 
@@ -428,21 +505,166 @@ def _write_md(path: Path, payload: dict[str, Any]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _write_continuous_md(path: Path, payload: dict[str, Any]) -> None:
+    checks = payload["checks"]
+    lines = [
+        "# Formal Online Continuous Workflow",
+        "",
+        "## Window",
+        "",
+        f"- preproduction start: `{payload['workflow']['spinup_start']}`",
+        f"- production start: `{payload['workflow']['production_start']}`",
+        f"- production end: `{payload['workflow']['production_end']}`",
+        f"- preproduction months: `{payload['workflow']['preproduction_months']}`",
+        "- one executable and one uninterrupted integration; restart files are recovery checkpoints only.",
+        "",
+        "## Input Coverage",
+        "",
+    ]
+    for key in ("continuous_ini", "continuous_bdy", "continuous_atm", "continuous_rad"):
+        item = checks[key]
+        lines.append(f"- {key}: `{item.get('start')} -> {item.get('end')}` ({'OK' if item.get('covers') else 'BLOCKED'})")
+    source = checks["continuous_source"]
+    lines.extend(
+        [
+            f"- continuous source: preproduction zero=`{source.get('preproduction_is_zero')}`, production active=`{source.get('production_is_active')}`",
+            f"- tides: zero_phase_date=`{checks['continuous_tides'].get('zero_phase_date')}`, phase convention=`{checks['continuous_tides'].get('phase_convention')}`",
+            "",
+            "## Infile",
+            "",
+            f"- path: `{checks['continuous_infile']['path']}`",
+            f"- NRREC: `{checks['continuous_infile'].get('NRREC')}`",
+            f"- ININAME: `{checks['continuous_infile'].get('ININAME')}`",
+            f"- NHIS/NAVG/NDIA: `{checks['continuous_infile'].get('NHIS')}` / `{checks['continuous_infile'].get('NAVG')}` / `{checks['continuous_infile'].get('NDIA')}`",
+            f"- issues: `{'; '.join(checks['continuous_infile'].get('issues', [])) or 'none'}`",
+            "",
+            "## Validation",
+            "",
+            f"- status: `{payload['status']}`",
+            f"- blocking issues: `{'; '.join(payload['blocking_issues']) or 'none'}`",
+            f"- next step: {payload['next_step']}",
+        ]
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _validate_continuous_workflow(args: argparse.Namespace, params: dict[str, Any]) -> None:
+    naming = load_case_naming()
+    workflow = load_formal_online_workflow(params)
+    dt_seconds = float(params["time"]["pilot_dt_seconds"])
+    ocean_source = normalize_ocean_source(params.get("ocean", {}).get("default_source"))
+    input_dir = ROOT / "input"
+    continuous_infile = Path(args.continuous_infile) if args.continuous_infile else ROOT / "run" / run_infile_name(workflow.continuous_mode, ocean_source=ocean_source)
+    paths = {
+        "continuous_ini": input_dir / roms_input_name("ini", ocean_source=ocean_source, profile=workflow.profile, start=workflow.spinup_start, stop=workflow.production_end),
+        "continuous_bdy": input_dir / roms_input_name("bdy", ocean_source=ocean_source, profile=workflow.profile, start=workflow.spinup_start, stop=workflow.production_end),
+        "continuous_atm": input_dir / roms_input_name("atm", start=workflow.spinup_start, stop=workflow.production_end),
+        "continuous_rad": input_dir / roms_input_name("rad", start=workflow.spinup_start, stop=workflow.production_end),
+        "continuous_source": input_dir / continuous_source_name(naming.roms_prefix, workflow),
+        "continuous_tides": input_dir / continuous_tides_name(workflow.profile),
+    }
+    raw_tides = ROOT / "data" / "raw" / "tides" / "tpxo9_fdnpp_continuous.nc"
+    checks = {
+        "continuous_ini": _time_coverage(paths["continuous_ini"], "ocean_time", workflow.spinup_start, workflow.spinup_start),
+        "continuous_bdy": _time_coverage(paths["continuous_bdy"], "zeta_time", workflow.spinup_start, workflow.production_end),
+        "continuous_atm": _time_coverage(paths["continuous_atm"], "wind_time", workflow.spinup_start, workflow.production_end),
+        "continuous_rad": _time_coverage(paths["continuous_rad"], "srf_time", workflow.spinup_start, workflow.production_end),
+        "continuous_source": _river_transition(paths["continuous_source"], workflow.production_start, workflow.production_end),
+        "continuous_tides": _tide_metadata(paths["continuous_tides"]),
+        "raw_tides": _tide_metadata(raw_tides, require_zero_phase=False),
+        "continuous_infile": _infile_checks(
+            continuous_infile,
+            phase="continuous",
+            dt_seconds=dt_seconds,
+            expected_ini=f"../input/{paths['continuous_ini'].name}",
+        ),
+    }
+    blocking: list[str] = []
+    for label, check in checks.items():
+        if label in {"continuous_infile", "continuous_tides", "raw_tides"}:
+            blocking.extend(f"{label}: {issue}" for issue in check.get("issues", []))
+        elif label == "continuous_source":
+            if not check.get("exists"):
+                blocking.append("continuous_source: missing source file")
+            elif not check.get("covers"):
+                blocking.append("continuous_source: time coverage does not span full window")
+            if not check.get("preproduction_is_zero"):
+                blocking.append("continuous_source: source is not zero before production_start")
+            if not check.get("production_is_active"):
+                blocking.append("continuous_source: source is not active after production_start")
+        elif not check.get("exists"):
+            blocking.append(f"{label}: missing input file")
+        elif not check.get("covers"):
+            blocking.append(f"{label}: time coverage does not span expected window")
+
+    payload = {
+        "case_name": naming.case_name,
+        "validation_phase": args.phase,
+        "status": "ready" if not blocking else "blocked",
+        "workflow": {
+            "enabled": workflow.enabled,
+            "mode": "continuous",
+            "profile": workflow.profile,
+            "profile_token": workflow.profile_token,
+            "preproduction_months": workflow.spinup_duration_months,
+            "spinup_start": workflow.spinup_start.isoformat(),
+            "spinup_end": workflow.spinup_end.isoformat(),
+            "production_start": workflow.production_start.isoformat(),
+            "production_end": workflow.production_end.isoformat(),
+            "continuous_mode": workflow.continuous_mode,
+        },
+        "forcing_window": {
+            "start": workflow.spinup_start.isoformat(),
+            "stop": workflow.production_end.isoformat(),
+            "postprocessing_start": workflow.production_start.isoformat(),
+            "postprocessing_stop": workflow.production_end.isoformat(),
+        },
+        "paths": {key: str(value) for key, value in paths.items()},
+        "checks": checks,
+        "restart": {"role": "recovery_checkpoint_only", "formal_stage_handoff": False},
+        "production": {"hot_start_from_spinup": False, "manual_handoff": False},
+        "blocking_issues": blocking,
+        "spinup_input_data_blocking_issues": [],
+        "next_step": "Launch the single continuous run; no spin-up completion monitoring or production handoff is required." if not blocking else "Fix the blocking continuous input/configuration checks before launch.",
+        "notes": [
+            "Preproduction source is zero through 2024-12-31 and switches to the configured release at 2025-01-01.",
+            "RAMP_TIDES is applied only at the beginning of the continuous integration.",
+            "Post-processing must select 2025-01-01 through 2026-01-01 from the continuous output files.",
+        ],
+    }
+    reports_dir = ROOT / "reports"
+    report_json = Path(args.report_json) if args.report_json else reports_dir / "formal_online_continuous_workflow.json"
+    report_md = Path(args.report_md) if args.report_md else reports_dir / "formal_online_continuous_workflow.md"
+    _write_json(report_json, payload)
+    _write_continuous_md(report_md, payload)
+    _write_json(reports_dir / "formal_online_spinup_output_flow.json", payload)
+    _write_continuous_md(reports_dir / "formal_online_spinup_output_flow.md", payload)
+    print(json.dumps(payload, indent=2, ensure_ascii=False, default=to_builtin))
+    if blocking:
+        raise SystemExit(2)
+
+
 def main() -> None:
     args = parse_args()
     params = load_project_params()
+    if str(params.get("formal_online_workflow", {}).get("mode", "")).lower() == "continuous":
+        _validate_continuous_workflow(args, params)
+        return
     naming = load_case_naming()
     workflow = load_formal_online_workflow(params)
     if args.profile:
         params.setdefault("formal_online_workflow", {})["profile"] = args.profile
         workflow = load_formal_online_workflow(params)
     dt_seconds = float(params["time"]["pilot_dt_seconds"])
-    spinup_infile = Path(args.spinup_infile) if args.spinup_infile else ROOT / "run" / run_infile_name(workflow.spinup_mode)
-    prod_infile = Path(args.production_infile) if args.production_infile else ROOT / "run" / run_infile_name(workflow.production_mode)
-    decay_infile = Path(args.decay_production_infile) if args.decay_production_infile else ROOT / "run" / run_infile_name(workflow.production_decay_mode)
+    ocean_source = normalize_ocean_source(params.get("ocean", {}).get("default_source"))
+    spinup_infile = Path(args.spinup_infile) if args.spinup_infile else ROOT / "run" / run_infile_name(workflow.spinup_mode, ocean_source=ocean_source)
+    prod_infile = Path(args.production_infile) if args.production_infile else ROOT / "run" / run_infile_name(workflow.production_mode, ocean_source=ocean_source)
+    decay_infile = Path(args.decay_production_infile) if args.decay_production_infile else ROOT / "run" / run_infile_name(workflow.production_decay_mode, ocean_source=ocean_source)
     restart = Path(args.restart) if args.restart else ROOT / "output" / spinup_restart_name(naming.roms_prefix, workflow)
     expected_ini = f"../output/{spinup_restart_name(naming.roms_prefix, workflow)}"
     input_dir = ROOT / "input"
+    staged_config = load_download_config()
     paths = {
         "spinup_ini": input_dir / roms_input_name("ini", profile=workflow.profile, start=workflow.spinup_start, stop=workflow.spinup_end),
         "spinup_bdy": input_dir / roms_input_name("bdy", profile=workflow.profile, start=workflow.spinup_start, stop=workflow.spinup_end),
@@ -450,7 +672,11 @@ def main() -> None:
         "spinup_rad": input_dir / roms_input_name("rad", start=workflow.spinup_start, stop=workflow.spinup_end),
         "spinup_source": input_dir / spinup_zero_source_name(naming.roms_prefix, workflow),
         "production_source": input_dir / f"roms_rivers_production_{workflow.profile}.nc",
-        "raw_tides": ROOT / "data" / "raw" / "tides" / staged_tides_name(start=workflow.spinup_start, stop=workflow.spinup_end),
+        "raw_tides": (
+            config_path_to_abs(staged_config, "tides")
+            if "tides" in staged_config.get("paths", {})
+            else ROOT / "data" / "raw" / "tides" / staged_tides_name()
+        ),
     }
     checks = {
         "spinup_ini": _time_coverage(paths["spinup_ini"], "ocean_time", workflow.spinup_start, workflow.spinup_start),

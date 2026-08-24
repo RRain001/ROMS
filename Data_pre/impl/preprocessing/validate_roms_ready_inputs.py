@@ -4,15 +4,17 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 from pathlib import Path
 import re
 
 import numpy as np
 from netCDF4 import Dataset, num2date
 
-from case_naming import roms_input_name
+from case_naming import continuous_tides_name, load_case_naming, roms_input_name
 from ocean_source_utils import build_glorys_paths, load_glorys_config, normalize_ocean_source
-from roms_preprocessing_utils import ROOT, load_vertical_config, resolve_grid_path
+from formal_online_workflow import continuous_source_name, load_formal_online_workflow
+from roms_preprocessing_utils import ROOT, load_project_params, load_vertical_config, resolve_grid_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -24,11 +26,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--require-uv-tides", action="store_true")
     parser.add_argument("--ini", default=None)
     parser.add_argument("--bry", default=None)
-    parser.add_argument("--atm", default=str(ROOT / "input" / roms_input_name("atm")))
-    parser.add_argument("--rad", default=str(ROOT / "input" / roms_input_name("rad")))
+    parser.add_argument("--atm", default=None)
+    parser.add_argument("--rad", default=None)
     parser.add_argument("--tides", default=None)
     parser.add_argument("--river", default=None)
     parser.add_argument("--infile", default=None, help="Optional ROMS .in file for Lm/Mm/N consistency checks")
+    parser.add_argument(
+        "--full-finite",
+        action="store_true",
+        help="Scan every time record for NaN values; default samples large continuous files",
+    )
     return parser.parse_args()
 
 
@@ -46,7 +53,7 @@ def check_file(path: Path, required: list[str], label: str) -> list[str]:
     return issues
 
 
-def check_required_variables_finite(path: Path, required: list[str], label: str) -> list[str]:
+def check_required_variables_finite(path: Path, required: list[str], label: str, *, full_scan: bool = False) -> list[str]:
     issues: list[str] = []
     if not path.exists():
         return issues
@@ -54,8 +61,23 @@ def check_required_variables_finite(path: Path, required: list[str], label: str)
         for name in required:
             if name not in ds.variables:
                 continue
-            values = np.ma.filled(ds.variables[name][:], np.nan).astype(float, copy=False)
-            nan_count = int(np.isnan(values).sum())
+            variable = ds.variables[name]
+            nan_count = 0
+            if variable.ndim == 0:
+                values = np.ma.filled(variable[...], np.nan).astype(float, copy=False)
+                nan_count = int(np.isnan(values).sum())
+            elif variable.shape[0] > 0:
+                if full_scan or variable.shape[0] <= 1024:
+                    starts = range(0, variable.shape[0], 256)
+                else:
+                    # Large continuous forcing files are sampled at both ends
+                    # and the midpoint during the normal readiness check.
+                    starts = sorted({0, variable.shape[0] // 2, variable.shape[0] - 1})
+                for start in starts:
+                    stop = min(variable.shape[0], start + (256 if full_scan or variable.shape[0] <= 1024 else 1))
+                    index = (slice(start, stop),) + (slice(None),) * (variable.ndim - 1)
+                    values = np.ma.filled(variable[index], np.nan).astype(float, copy=False)
+                    nan_count += int(np.isnan(values).sum())
             if nan_count > 0:
                 issues.append(f"{label}: variable {name} contains {nan_count} NaN values")
     return issues
@@ -133,6 +155,44 @@ def check_uv_tide_content(path: Path, require_uv: bool) -> list[str]:
             if name not in ds.variables:
                 issues.append(f"tides: missing UV tide variable {name}")
     return issues
+
+
+def check_tide_metadata(path: Path, require_zero_phase: bool) -> list[str]:
+    if not require_zero_phase or not path.exists():
+        return []
+    issues: list[str] = []
+    with Dataset(path) as ds:
+        if "zero_phase_date" not in ds.variables:
+            issues.append("tides: missing zero_phase_date")
+        elif float(ds.variables["zero_phase_date"][()]) != 20241001.0:
+            issues.append("tides: zero_phase_date must be 20241001.0")
+        for name in ("phase_convention", "source_phase_reference", "v0_handling", "nodal_correction", "phase_reconstruction"):
+            if not getattr(ds, name, ""):
+                issues.append(f"tides: missing metadata {name}")
+    return issues
+
+
+def check_time_span(path: Path, time_name: str, expected_start, expected_stop) -> list[str]:
+    if not path.exists():
+        return []
+    with Dataset(path) as ds:
+        if time_name not in ds.variables:
+            return [f"{path.name}: missing time variable {time_name}"]
+        var = ds.variables[time_name]
+        values = var[:]
+        if values.size == 0:
+            return [f"{path.name}: empty time variable {time_name}"]
+        decoded = num2date(values, units=var.units, calendar=getattr(var, "calendar", "standard"))
+        first = decoded[0]
+        last = decoded[-1]
+        first_dt = datetime(first.year, first.month, first.day, first.hour, first.minute, first.second)
+        last_dt = datetime(last.year, last.month, last.day, last.hour, last.minute, last.second)
+        if first_dt > expected_start or last_dt < expected_stop:
+            return [
+                f"{path.name}: {time_name} covers {first_dt.isoformat()} -> {last_dt.isoformat()}, "
+                f"expected {expected_start.isoformat()} -> {expected_stop.isoformat()}"
+            ]
+    return []
 
 
 def check_river_vshape(path: Path) -> list[str]:
@@ -213,24 +273,44 @@ def check_infile_dimensions(infile_path: Path, grid_path: Path) -> list[str]:
 
 def main() -> None:
     args = parse_args()
+    params = load_project_params()
     ocean_source = normalize_ocean_source(args.ocean_source)
     profile = args.profile
+    formal_cfg = params.get("formal_online_workflow", {})
+    continuous = bool(formal_cfg.get("enabled") and formal_cfg.get("mode") == "continuous")
+    workflow = load_formal_online_workflow(params) if continuous else None
+    if profile is None:
+        if formal_cfg.get("enabled") and formal_cfg.get("profile"):
+            profile = str(formal_cfg["profile"])
     grid_path = resolve_grid_path(args.grid, prefer_smoothed=True)
-    if ocean_source == "hycom":
+    if continuous and workflow is not None:
+        ini_path = Path(args.ini or ROOT / "input" / roms_input_name("ini", ocean_source=ocean_source, profile=workflow.profile, start=workflow.spinup_start, stop=workflow.production_end))
+        bry_path = Path(args.bry or ROOT / "input" / roms_input_name("bdy", ocean_source=ocean_source, profile=workflow.profile, start=workflow.spinup_start, stop=workflow.production_end))
+        river_path = Path(args.river) if args.river else ROOT / "input" / continuous_source_name(load_case_naming().roms_prefix, workflow)
+        tide_path = Path(args.tides) if args.tides else ROOT / "input" / continuous_tides_name(workflow.profile)
+        atm_path = Path(args.atm) if args.atm else ROOT / "input" / roms_input_name("atm", start=workflow.spinup_start, stop=workflow.production_end)
+        rad_path = Path(args.rad) if args.rad else ROOT / "input" / roms_input_name("rad", start=workflow.spinup_start, stop=workflow.production_end)
+    elif ocean_source == "hycom":
         ini_path = Path(args.ini or ROOT / "input" / roms_input_name("ini", profile=profile))
         bry_path = Path(args.bry or ROOT / "input" / roms_input_name("bdy", profile=profile))
+        river_path = Path(args.river) if args.river else ROOT / "input" / (f"roms_rivers_production_{profile}.nc" if profile else "roms_rivers_production.nc")
+        tide_path = Path(args.tides) if args.tides else ROOT / "input" / roms_input_name("tides", profile=profile)
+        atm_path = Path(args.atm) if args.atm else ROOT / "input" / roms_input_name("atm")
+        rad_path = Path(args.rad) if args.rad else ROOT / "input" / roms_input_name("rad")
     else:
         config = load_glorys_config(args.config)
         defaults = build_glorys_paths(config, profile=profile)
         ini_path = Path(args.ini or defaults.roms_ini)
         bry_path = Path(args.bry or defaults.roms_bdy)
-    river_path = Path(args.river) if args.river else ROOT / "input" / (f"roms_rivers_production_{profile}.nc" if profile else "roms_rivers_production.nc")
-    tide_path = Path(args.tides) if args.tides else ROOT / "input" / roms_input_name("tides", profile=profile)
+        river_path = Path(args.river) if args.river else ROOT / "input" / (f"roms_rivers_production_{profile}.nc" if profile else "roms_rivers_production.nc")
+        tide_path = Path(args.tides) if args.tides else ROOT / "input" / roms_input_name("tides", profile=profile)
+        atm_path = Path(args.atm) if args.atm else ROOT / "input" / roms_input_name("atm")
+        rad_path = Path(args.rad) if args.rad else ROOT / "input" / roms_input_name("rad")
     files = {
         "grid": (Path(grid_path), ["h", "mask_rho", "pm", "pn", "angle", "lon_rho", "lat_rho"]),
         "ini": (ini_path, ["zeta", "u", "v", "ubar", "vbar", "temp", "salt", "dye_01"]),
-        "atm": (Path(args.atm), ["Uwind", "Vwind", "Pair", "Tair", "Qair", "rain", "EminusP"]),
-        "rad": (Path(args.rad), ["swrad", "lwrad", "lwrad_down"]),
+        "atm": (atm_path, ["Uwind", "Vwind", "Pair", "Tair", "Qair", "rain", "EminusP"]),
+        "rad": (rad_path, ["swrad", "lwrad", "lwrad_down"]),
         "tides": (tide_path, ["tide_period", "tide_Eamp", "tide_Ephase"]),
         "river": (river_path, ["river_transport", "river_dye_01", "river_temp", "river_salt"]),
     }
@@ -238,12 +318,14 @@ def main() -> None:
     for label, (path, required) in files.items():
         issues.extend(check_file(path, required, label))
         if label in {"ini", "atm", "rad", "river"}:
-            issues.extend(check_required_variables_finite(path, required, label))
+            issues.extend(check_required_variables_finite(path, required, label, full_scan=args.full_finite))
     issues.extend(check_boundary_content(bry_path))
     issues.extend(check_zero_variable(ini_path, ("dye_01",), "ini"))
     for edge in ("west", "east", "south", "north"):
         issues.extend(check_zero_variable(bry_path, (f"dye_{edge}_01", f"dye_01_{edge}"), f"bry {edge}"))
-    issues.extend(check_uv_tide_content(files["tides"][0], args.require_uv_tides))
+    require_uv = args.require_uv_tides or bool(params.get("tides", {}).get("uv_tides", False))
+    issues.extend(check_uv_tide_content(files["tides"][0], require_uv))
+    issues.extend(check_tide_metadata(files["tides"][0], continuous))
     issues.extend(check_river_vshape(river_path))
     issues.extend(check_dimension_consistency(Path(grid_path), ini_path, bry_path, river_path))
     if args.infile:
@@ -252,13 +334,22 @@ def main() -> None:
     if not issues:
         issues.extend(check_time_range(ini_path, "ocean_time"))
         issues.extend(check_time_range(bry_path, "zeta_time"))
-        issues.extend(check_time_range(Path(args.atm), "wind_time"))
-        issues.extend(check_time_range(Path(args.rad), "srf_time"))
+        issues.extend(check_time_range(atm_path, "wind_time"))
+        issues.extend(check_time_range(rad_path, "srf_time"))
         issues.extend(check_time_range(river_path, "river_time"))
         with Dataset(river_path) as ds:
             units = getattr(ds.variables["river_dye_01"], "units", "")
             if units != "Bq meter-3":
                 issues.append(f"river: expected river_dye_01 units Bq meter-3, got {units!r}")
+        if continuous and workflow is not None:
+            for path, time_name, start, stop in (
+                (ini_path, "ocean_time", workflow.spinup_start, workflow.spinup_start),
+                (bry_path, "zeta_time", workflow.spinup_start, workflow.production_end),
+                (atm_path, "wind_time", workflow.spinup_start, workflow.production_end),
+                (rad_path, "srf_time", workflow.spinup_start, workflow.production_end),
+                (river_path, "river_time", workflow.spinup_start, workflow.production_end),
+            ):
+                issues.extend(check_time_span(path, time_name, start, stop))
 
     for message in issues:
         print(message)

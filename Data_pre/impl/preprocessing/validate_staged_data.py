@@ -16,7 +16,9 @@ from netCDF4 import Dataset
 
 from case_context import get_case_config_path, get_case_root
 from case_naming import load_case_naming, staged_atmosphere_name, staged_ocean_name, staged_source_csv_name, staged_tides_name
+from formal_online_workflow import load_formal_online_workflow
 from ocean_source_utils import build_glorys_paths, load_glorys_config, normalize_ocean_source
+from roms_preprocessing_utils import load_project_params
 from staged_data_utils import config_path_to_abs, load_download_config
 
 ROOT = get_case_root()
@@ -128,13 +130,48 @@ def check_netcdf(path: Path, variables: list[str]) -> tuple[bool, list[str]]:
     return not problems, problems
 
 
+def check_tide_metadata(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    issues: list[str] = []
+    with Dataset(path) as ds:
+        for name in ("phase_convention", "source_phase_reference", "source_reference_date", "v0_handling", "nodal_correction", "phase_reconstruction"):
+            if not getattr(ds, name, ""):
+                issues.append(f"missing tidal metadata: {name}")
+    return issues
+
+
 def glorys_requirements(config_path: str | None) -> list[Requirement]:
     config = load_glorys_config(config_path)
-    paths = build_glorys_paths(config)
+    params = load_project_params()
+    formal_cfg = params.get("formal_online_workflow", {})
+    continuous = bool(formal_cfg.get("enabled") and formal_cfg.get("mode") == "continuous")
+    workflow = load_formal_online_workflow(params) if continuous else None
+    paths = build_glorys_paths(
+        config,
+        start=workflow.spinup_start if workflow else None,
+        stop=workflow.production_end if workflow else None,
+    )
+    if continuous and workflow:
+        atmosphere_start = workflow.spinup_start
+        atmosphere_stop = workflow.production_end
+        tides_path = ROOT / "data" / "raw" / "tides" / "tpxo9_fdnpp_continuous.nc"
+    else:
+        atmosphere_start = atmosphere_stop = None
+        tides_path = ROOT / "data" / "raw" / "tides" / staged_tides_name()
+    tide_variables = ["tide_period", "tide_Eamp", "tide_Ephase"]
+    if bool(params.get("tides", {}).get("uv_tides", False)):
+        tide_variables.extend(["tide_Cmax", "tide_Cmin", "tide_Cangle", "tide_Cphase"])
+    if continuous:
+        tide_variables.extend(["tide_ERe", "tide_EIm", "tide_URe", "tide_UIm", "tide_VRe", "tide_VIm"])
     return [
         Requirement("ocean_static", True, paths.staged_static, list(config["static_variables"]), "GLORYS12V1 static subset"),
         Requirement("ocean_initial", True, paths.staged_initial, list(config["variables_3d"]) + list(config["variables_2d"]), "GLORYS12V1 staged initial subset"),
         Requirement("ocean_boundary", True, paths.staged_boundary, list(config["variables_3d"]) + list(config["variables_2d"]), "GLORYS12V1 staged boundary subset"),
+        Requirement("atmosphere", True, ROOT / "data" / "raw" / "atmosphere" / staged_atmosphere_name("atm", start=atmosphere_start, stop=atmosphere_stop), ["Uwind", "Vwind", "Pair", "Tair", "Qair", "rain"], "ERA5 atmosphere covering the continuous window"),
+        Requirement("radiation", True, ROOT / "data" / "raw" / "atmosphere" / staged_atmosphere_name("rad", start=atmosphere_start, stop=atmosphere_stop), ["swrad", "lwrad", "lwrad_down"], "ERA5 radiation covering the continuous window"),
+        Requirement("tides", True, tides_path, tide_variables, "TPXO complex constants and derived ROMS tide fields"),
+        Requirement("source_discharge", True, ROOT / "data" / "raw" / "source" / staged_source_csv_name(), ["time", "discharge_m3_s", "scenario"], "Numerical carrier discharge for converting annual release to Bq/m3"),
     ]
 
 
@@ -181,6 +218,11 @@ def main() -> None:
             print(f"  note: {item.note}")
         for msg in messages:
             print(f"  - {msg}")
+        if item.category == "tides" and item.path.name == "tpxo9_fdnpp_continuous.nc":
+            for msg in check_tide_metadata(item.path):
+                print(f"  - {msg}")
+                if item.required:
+                    required_missing += 1
         print()
 
     print("summary:")

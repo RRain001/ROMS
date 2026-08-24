@@ -69,6 +69,7 @@ class RunMode:
     np: int
     launcher: str
     fallback_binaries: tuple[Path, ...]
+    required_cpp_defs: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -180,6 +181,7 @@ def resolve_run_context(
         np=int(mode_cfg.get("np", default_np)),
         launcher=_expand_text(str(mode_cfg.get("launcher", default_launcher))) or default_launcher,
         fallback_binaries=tuple(case_context.case_root / rel for rel in mode_cfg.get("fallback_binaries", [])),
+        required_cpp_defs=tuple(str(item) for item in mode_cfg.get("required_cpp_defs", [])),
     )
     shell_init_files = tuple(
         path for item in run_config.get("shell_init_files", []) if (path := _expand_path(item)) is not None
@@ -548,6 +550,21 @@ def validate_formal_online_content(context: RunContext, metadata: InfileMetadata
             issues.append("formal spin-up must disable diagnostics (NDIA=0)")
         if _parse_scalar(text, "NRST") != restart_steps:
             issues.append(f"formal spin-up restart interval must be 5 d (NRST={restart_steps})")
+    elif formal["phase"] == "continuous":
+        hourly_steps = str(max(1, int(round(3600 / dt_seconds))))
+        daily_steps = str(max(1, int(round(24 * 3600 / dt_seconds))))
+        if _parse_scalar(text, "NRREC") != "0":
+            issues.append("formal continuous run must start with NRREC=0")
+        if (_parse_scalar(text, "ININAME") or "").startswith("../output/"):
+            issues.append("formal continuous ININAME must not point to a restart output")
+        if _parse_scalar(text, "NHIS") != hourly_steps:
+            issues.append("formal continuous history interval must be 1 h")
+        if _parse_scalar(text, "NAVG") != daily_steps:
+            issues.append("formal continuous average interval must be 24 h")
+        if _parse_scalar(text, "NDIA") != "0":
+            issues.append("formal continuous diagnostics must be disabled (NDIA=0)")
+        if _parse_scalar(text, "NRST") != restart_steps:
+            issues.append(f"formal continuous restart interval must be 5 d (NRST={restart_steps})")
     else:
         hourly_steps = str(max(1, int(round(3600 / dt_seconds))))
         daily_steps = str(max(1, int(round(24 * 3600 / dt_seconds))))
@@ -574,6 +591,42 @@ def validate_formal_online_content(context: RunContext, metadata: InfileMetadata
     return issues, warnings
 
 
+def validate_tide_build_artifacts(context: RunContext, binary: Path | None) -> list[str]:
+    """Check the generated sources used to build the active tide executable."""
+    required = context.mode.required_cpp_defs
+    if not required:
+        return []
+    issues: list[str] = []
+    set_tides = context.paths.build_dir / "set_tides.f90"
+    tides_date = context.paths.build_dir / "tides_date.f90"
+    source_text: dict[str, str] = {}
+    for path in (set_tides, tides_date):
+        if not path.exists():
+            issues.append(f"missing generated build source for tide validation: {path}")
+        else:
+            source_text[path.name] = path.read_text(errors="ignore")
+    signatures = {
+        "SSH_TIDES": ("set_tides.f90", ("Etide(:,:)=0.0_r8", "SSH_Tamp")),
+        "UV_TIDES": ("set_tides.f90", ("Utide(:,:)=0.0_r8", "UV_Tmajor", "Vtide(:,:)=0.0_r8")),
+        "RAMP_TIDES": ("set_tides.f90", ("ramp=TANH((tdays(ng)-dstart)/1.0_r8)",)),
+        "TIDES_DATE": ("tides_date.f90", ("zero_phase_date", "netcdf_get_fvar")),
+    }
+    for macro in required:
+        signature = signatures.get(macro)
+        if signature is None:
+            continue
+        filename, needles = signature
+        text = source_text.get(filename, "")
+        missing = [needle for needle in needles if needle not in text]
+        if missing:
+            issues.append(f"generated build source for {macro} is missing: {', '.join(missing)}")
+    if binary is not None and binary.exists():
+        source_mtime = max((path.stat().st_mtime for path in (set_tides, tides_date) if path.exists()), default=0.0)
+        if source_mtime and binary.stat().st_mtime < source_mtime:
+            issues.append(f"executable {binary.name} is older than generated tide build sources")
+    return issues
+
+
 def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileMetadata]:
     issues: list[str] = []
     warnings: list[str] = []
@@ -590,6 +643,7 @@ def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileM
 
     expected_cpp_names: list[str] = []
     build_config_path = context.config_dir / "roms_build_config.json"
+    build_config: dict[str, Any] = {}
     if build_config_path.exists():
         try:
             build_config = _load_json(build_config_path)
@@ -598,6 +652,21 @@ def validate_prereqs(context: RunContext) -> tuple[list[str], list[str], InfileM
                 expected_cpp_names.append(str(variant_cpp).strip())
         except Exception:
             pass
+    if context.mode.required_cpp_defs:
+        variant_cfg = build_config.get("variants", {}).get(context.mode.build_variant, {})
+        header_path = context.case_root / variant_cfg.get("header_dir", "run") / variant_cfg.get(
+            "header_name", f"{context.case_name.lower()}.h"
+        )
+        if not header_path.exists():
+            issues.append(f"missing CPP header for required tide macros: {header_path}")
+        else:
+            header_text = header_path.read_text(errors="ignore")
+            for macro in context.mode.required_cpp_defs:
+                defined = re.search(rf"^\s*#\s*define\s+{re.escape(macro)}(?:\s|$)", header_text, flags=re.MULTILINE)
+                undefined = re.search(rf"^\s*#\s*undef\s+{re.escape(macro)}(?:\s|$)", header_text, flags=re.MULTILINE)
+                if not defined or undefined:
+                    issues.append(f"CPP header {header_path.name} does not define required macro {macro}")
+        issues.extend(validate_tide_build_artifacts(context, binary))
     case_cpp = str(context.project_params.get("case", {}).get("cpp_name") or "").strip()
     if case_cpp:
         expected_cpp_names.append(case_cpp)
