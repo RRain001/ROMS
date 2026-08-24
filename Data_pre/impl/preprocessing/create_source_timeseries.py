@@ -12,6 +12,7 @@ from pathlib import Path
 from case_context import get_case_config_path, get_case_root
 from case_naming import load_case_naming
 from pilot_grid_utils import locate_source_on_grid, resolve_active_pilot_grid
+from source_activity import release_rate_bq_s
 
 
 ROOT = get_case_root()
@@ -37,13 +38,17 @@ def main() -> None:
     out_path = Path(args.output)
     if args.profile and args.output == str(OUT):
         out_path = out_path.with_name(f"{out_path.stem}_{args.profile}{out_path.suffix}")
-    placement = locate_source_on_grid(grid_path, d["source_lon"], d["source_lat"])
+    placement = locate_source_on_grid(
+        grid_path,
+        d["source_lon"],
+        d["source_lat"],
+        min_depth_m=float(p["vertical"].get("Hmin_m", 0.0)),
+    )
 
     start = datetime.fromisoformat(t["start"])
     stop = datetime.fromisoformat(t["stop"])
     step = timedelta(hours=t["source_interval_hours"])
-    annual_bq = s["annual_release_TBq_per_year"] * 1e12
-    bq_s = annual_bq / (s["calendar_year_days"] * 24 * 3600)
+    bq_s = release_rate_bq_s(p)
     bq_step = bq_s * step.total_seconds()
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -100,7 +105,8 @@ def main() -> None:
                     placement.placement_rule,
                     (
                         f"{placement_note}; activity flux only; choose discharge before making "
-                        "ROMS river_dye concentration"
+                        "ROMS river_dye concentration; source_model="
+                        f"{p.get('source', {}).get('source_model', 'nearest_final_roms_wet_cell')}"
                     ),
                 ]
             )

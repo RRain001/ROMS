@@ -14,6 +14,7 @@ from netCDF4 import Dataset
 from case_context import get_case_config_path, get_case_root
 from case_naming import load_case_naming
 from pilot_grid_utils import locate_source_on_grid, resolve_active_pilot_grid
+from source_activity import release_rate_bq_s
 
 
 ROOT = get_case_root()
@@ -49,10 +50,14 @@ def main() -> None:
     start = datetime.fromisoformat(t["start"])
     stop = datetime.fromisoformat(t["stop"])
     step = timedelta(hours=t["source_interval_hours"])
-    annual_bq = s["annual_release_TBq_per_year"] * 1e12
-    release_bq_s = annual_bq / (s["calendar_year_days"] * 24 * 3600)
+    release_bq_s = release_rate_bq_s(p)
     concentration_bq_m3 = release_bq_s / discharge
-    placement = locate_source_on_grid(grid_path, d["source_lon"], d["source_lat"])
+    placement = locate_source_on_grid(
+        grid_path,
+        d["source_lon"],
+        d["source_lat"],
+        min_depth_m=float(v.get("Hmin_m", 0.0)),
+    )
 
     times = []
     cur = start
@@ -74,6 +79,13 @@ def main() -> None:
         ds.release_Bq_s = release_bq_s
         ds.nominal_discharge_m3_s = discharge
         ds.concentration_Bq_m3 = concentration_bq_m3
+        if "annual_release_PBq_per_year" in s:
+            ds.annual_release_PBq_per_year = float(s["annual_release_PBq_per_year"])
+            ds.annual_release_unit = "PBq year-1"
+        else:
+            ds.annual_release_TBq_per_year = float(s["annual_release_TBq_per_year"])
+            ds.annual_release_unit = "TBq year-1"
+        ds.annual_release_original = str(s.get("annual_release_original", ""))
         ds.source_lon = placement.snapped_lon
         ds.source_lat = placement.snapped_lat
         ds.configured_source_lon = placement.configured_lon
@@ -94,6 +106,10 @@ def main() -> None:
         ds.snapped_source_depth_m = placement.snapped_depth_m
         ds.source_snap_distance_m = placement.snapped_distance_m
         ds.source_placement_rule = placement.placement_rule
+        ds.source_snap_warning = "distance exceeds 5 km" if placement.snapped_distance_m > 5000.0 else ""
+        ds.source_model = str(s.get("source_model", "nearest_final_roms_wet_cell"))
+        ds.source_hmin_m = float(v.get("Hmin_m", 0.0))
+        ds.source_reference_type = str(s.get("source_reference_type", "configured_domain_source"))
         ds.source_location_note = (
             "source_lon/source_lat are the actual injection coordinates on the active grid; "
             "configured_source_lon/configured_source_lat retain the requested point"

@@ -8,6 +8,7 @@ import math
 from datetime import datetime
 
 from case_context import get_case_config_path, get_case_root
+from source_activity import annual_release_bq, release_rate_bq_s
 
 
 ROOT = get_case_root()
@@ -49,8 +50,8 @@ def main() -> None:
     stop = datetime.fromisoformat(t["stop"])
     seconds = (stop - start).total_seconds()
 
-    annual_bq = s["annual_release_TBq_per_year"] * 1e12
-    bq_per_s = annual_bq / (s["calendar_year_days"] * 24 * 3600)
+    annual_bq = annual_release_bq(p)
+    bq_per_s = release_rate_bq_s(p)
     period_bq = bq_per_s * seconds
 
     for label, res in [("target", d["target_resolution_m"]), ("pilot", d["pilot_resolution_m"])]:

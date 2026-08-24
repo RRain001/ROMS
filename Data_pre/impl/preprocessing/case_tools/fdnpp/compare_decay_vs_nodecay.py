@@ -12,6 +12,7 @@ import numpy as np
 from netCDF4 import Dataset, num2date
 
 from radioactive_decay import radioactive_decay_config
+from source_activity import release_rate_bq_s
 from roms_preprocessing_utils import ROOT, load_project_params
 
 
@@ -133,9 +134,7 @@ def field_health(path: Path) -> dict[str, object]:
 
 def cumulative_source_bq(params: dict[str, object], seconds: float) -> dict[str, float]:
     source = params.get("source", {}) if isinstance(params.get("source"), dict) else {}
-    release_bq_s = float(source.get("annual_release_TBq_per_year", 0.0)) * 1.0e12 / (
-        float(source.get("calendar_year_days", 365.0)) * 86400.0
-    )
+    release_bq_s = release_rate_bq_s(params)
     return {
         "release_Bq_s": release_bq_s,
         "duration_seconds": float(seconds),
