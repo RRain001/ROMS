@@ -71,12 +71,36 @@ def subset_bounds(lon: np.ndarray, lat: np.ndarray, grid_path: Path) -> tuple[sl
     east = float(np.nanmax(grid.lon_rho))
     south = float(np.nanmin(grid.lat_rho))
     north = float(np.nanmax(grid.lat_rho))
+    atlas_lon_min = float(np.nanmin(lon))
+    atlas_lon_max = float(np.nanmax(lon))
+    # TPXO atlas coordinates are conventionally [0, 360), while ROMS grids
+    # commonly use [-180, 180).  Convert only the requested bounds; retain
+    # the atlas convention in the staged file so the shared interpolation
+    # helper can normalize the ROMS target coordinates later.
+    if atlas_lon_min >= 0.0 and atlas_lon_max > 180.0:
+        west %= 360.0
+        east %= 360.0
+    elif atlas_lon_min < 0.0 and atlas_lon_max <= 180.0:
+        west = ((west + 180.0) % 360.0) - 180.0
+        east = ((east + 180.0) % 360.0) - 180.0
+    if east < west:
+        raise SystemExit(
+            "TPXO subset crosses the longitude seam; split/wrap the domain before staging "
+            f"(requested west={west}, east={east}, atlas range={atlas_lon_min}..{atlas_lon_max})"
+        )
     lon_step = float(np.nanmedian(np.diff(lon))) if lon.size > 1 else 0.0
     lat_step = float(np.nanmedian(np.diff(lat))) if lat.size > 1 else 0.0
     lon_start = max(0, int(np.searchsorted(lon, west - lon_step, side="left")))
     lon_stop = min(len(lon), int(np.searchsorted(lon, east + lon_step, side="right")))
     lat_start = max(0, int(np.searchsorted(lat, south - lat_step, side="left")))
     lat_stop = min(len(lat), int(np.searchsorted(lat, north + lat_step, side="right")))
+    if lon_stop <= lon_start or lat_stop <= lat_start:
+        raise SystemExit(
+            "TPXO subset is empty; check the grid/atlas longitude convention and bounds "
+            f"(lon slice={lon_start}:{lon_stop}, lat slice={lat_start}:{lat_stop}, "
+            f"requested={west}..{east}, {south}..{north}, "
+            f"atlas range={atlas_lon_min}..{atlas_lon_max})"
+        )
     return slice(lat_start, lat_stop), slice(lon_start, lon_stop)
 
 
@@ -92,18 +116,25 @@ def read_grid_subset(path: Path, lat_slice: slice, lon_slice: slice, shape: tupl
 
 def read_constituent_subset(path: Path, lat_slice: slice, lon_slice: slice, shape: tuple[int, int]) -> np.ndarray:
     nlat, nlon = shape
-    data = np.memmap(path, dtype=">f4", mode="r", offset=44, shape=(2, nlat, nlon))
-    real = np.asarray(data[0, lat_slice, lon_slice], dtype=np.float32)
-    imag = np.asarray(data[1, lat_slice, lon_slice], dtype=np.float32)
+    # TPXO atlas records store [Re, Im] interleaved at every grid point.
+    data = np.memmap(path, dtype=">f4", mode="r", offset=44, shape=(nlat, nlon, 2))
+    real = np.asarray(data[lat_slice, lon_slice, 0], dtype=np.float32)
+    imag = np.asarray(data[lat_slice, lon_slice, 1], dtype=np.float32)
     return (real + 1j * imag).astype(np.complex64)
 
 
 def read_transport_subset(path: Path, lat_slice: slice, lon_slice: slice, shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
     nlat, nlon = shape
-    data = np.memmap(path, dtype=">f4", mode="r", offset=44, shape=(4, nlat, nlon))
-    u = np.asarray(data[0, lat_slice, lon_slice], dtype=np.float32) + 1j * np.asarray(data[1, lat_slice, lon_slice], dtype=np.float32)
-    v = np.asarray(data[2, lat_slice, lon_slice], dtype=np.float32) + 1j * np.asarray(data[3, lat_slice, lon_slice], dtype=np.float32)
+    # TPXO atlas transport records store [URe, UIm, VRe, VIm] interleaved.
+    data = np.memmap(path, dtype=">f4", mode="r", offset=44, shape=(nlat, nlon, 4))
+    u = np.asarray(data[lat_slice, lon_slice, 0], dtype=np.float32) + 1j * np.asarray(data[lat_slice, lon_slice, 1], dtype=np.float32)
+    v = np.asarray(data[lat_slice, lon_slice, 2], dtype=np.float32) + 1j * np.asarray(data[lat_slice, lon_slice, 3], dtype=np.float32)
     return u.astype(np.complex64), v.astype(np.complex64)
+
+
+def otps_elevation_phase(values: np.ndarray) -> np.ndarray:
+    """Convert TPXO/OTPS complex elevation constants to ROMS phase degrees."""
+    return np.mod(-np.degrees(np.angle(values)), 360.0).astype(np.float32)
 
 
 def fill_nearest(values: np.ndarray) -> np.ndarray:
@@ -160,8 +191,14 @@ def main() -> None:
     if unknown:
         raise SystemExit(f"unknown TPXO constituent(s): {', '.join(unknown)}")
 
-    eamp = np.empty((len(constituents), len(subset_lat), len(subset_lon)), dtype=np.float32)
-    ephase = np.empty_like(eamp)
+    e_real = np.empty((len(constituents), len(subset_lat), len(subset_lon)), dtype=np.float32)
+    e_imag = np.empty_like(e_real)
+    eamp = np.empty_like(e_real)
+    ephase = np.empty_like(e_real)
+    u_real = np.empty_like(e_real) if args.include_uv else None
+    u_imag = np.empty_like(e_real) if args.include_uv else None
+    v_real = np.empty_like(e_real) if args.include_uv else None
+    v_imag = np.empty_like(e_real) if args.include_uv else None
     cmax = np.empty_like(eamp) if args.include_uv else None
     cmin = np.empty_like(eamp) if args.include_uv else None
     cangle = np.empty_like(eamp) if args.include_uv else None
@@ -171,13 +208,20 @@ def main() -> None:
         if not path.exists():
             raise SystemExit(f"TPXO constituent file not found: {path}")
         values = read_constituent_subset(path, lat_slice, lon_slice, (nlat, nlon))
+        e_real[index] = np.real(values)
+        e_imag[index] = np.imag(values)
         eamp[index] = np.abs(values)
-        ephase[index] = np.mod(np.degrees(np.angle(values)), 360.0)
+        ephase[index] = otps_elevation_phase(values)
         if args.include_uv:
             uv_path = atlas_dir / f"u_{constituent}_tpxo9_atlas_30_v5"
             if not uv_path.exists():
                 raise SystemExit(f"TPXO current constituent file not found: {uv_path}")
             u_transport, v_transport = read_transport_subset(uv_path, lat_slice, lon_slice, (nlat, nlon))
+            assert u_real is not None and u_imag is not None and v_real is not None and v_imag is not None
+            u_real[index] = np.real(u_transport)
+            u_imag[index] = np.imag(u_transport)
+            v_real[index] = np.real(v_transport)
+            v_imag[index] = np.imag(v_transport)
             u_velocity = transport_to_velocity(u_transport, depth, mask, args.velocity_depth_min)
             v_velocity = transport_to_velocity(v_transport, depth, mask, args.velocity_depth_min)
             assert cmax is not None and cmin is not None and cangle is not None and cphase is not None
@@ -194,8 +238,16 @@ def main() -> None:
         ds.constituents = ",".join(constituents)
         ds.tide_mode = "ssh_uv" if args.include_uv else "elevation_only"
         ds.uv_tides_included = "true" if args.include_uv else "false"
+        ds.source_phase_convention = "OTPS: phase = -angle(Re + i Im), wrapped to [0, 360) degrees"
+        ds.phase_convention = "OTPS"
+        ds.source_complex_layout = "TPXO atlas Fortran grid records: interleaved [Re, Im] or [URe, UIm, VRe, VIm] per grid point"
+        ds.source_phase_reference = "TPXO9-atlas_v5 OTPS complex harmonic constants"
+        ds.source_reference_date = "OTPS model convention; calendar epoch is not encoded in atlas binary"
+        ds.v0_handling = "source-model convention not re-applied"
+        ds.nodal_correction = "not applied to external TPXO coefficients"
+        ds.phase_reconstruction = "interpolate complex real/imaginary components before deriving phase and ellipse"
         if args.include_uv:
-            ds.current_source = "TPXO atlas u_* files, four float planes [Ure,Uim,Vre,Vim]"
+            ds.current_source = "TPXO atlas u_* files, interleaved [URe,UIm,VRe,VIm] per grid point"
             ds.current_conversion = "transport divided by TPXO atlas depth, then converted to tidal ellipse"
             ds.velocity_depth_min_m = float(args.velocity_depth_min)
 
@@ -229,8 +281,18 @@ def main() -> None:
         phase_var.units = "degrees"
         phase_var[:, :, :] = ephase
 
+        e_real_var = ds.createVariable("tide_ERe", "f4", ("tide_period", "lat", "lon"), zlib=True, complevel=1)
+        e_real_var.units = "m"
+        e_real_var.long_name = "TPXO elevation harmonic real component"
+        e_real_var[:, :, :] = e_real
+        e_imag_var = ds.createVariable("tide_EIm", "f4", ("tide_period", "lat", "lon"), zlib=True, complevel=1)
+        e_imag_var.units = "m"
+        e_imag_var.long_name = "TPXO elevation harmonic imaginary component"
+        e_imag_var[:, :, :] = e_imag
+
         if args.include_uv:
             assert cmax is not None and cmin is not None and cangle is not None and cphase is not None
+            assert u_real is not None and u_imag is not None and v_real is not None and v_imag is not None
             cmax_var = ds.createVariable("tide_Cmax", "f4", ("tide_period", "lat", "lon"), zlib=True, complevel=1)
             cmax_var.units = "meter second-1"
             cmax_var[:, :, :] = cmax
@@ -243,6 +305,16 @@ def main() -> None:
             cphase_var = ds.createVariable("tide_Cphase", "f4", ("tide_period", "lat", "lon"), zlib=True, complevel=1)
             cphase_var.units = "degrees"
             cphase_var[:, :, :] = cphase
+            for name, values, units, long_name in (
+                ("tide_URe", u_real, "meter2 second-1", "TPXO transport harmonic U real component"),
+                ("tide_UIm", u_imag, "meter2 second-1", "TPXO transport harmonic U imaginary component"),
+                ("tide_VRe", v_real, "meter2 second-1", "TPXO transport harmonic V real component"),
+                ("tide_VIm", v_imag, "meter2 second-1", "TPXO transport harmonic V imaginary component"),
+            ):
+                component = ds.createVariable(name, "f4", ("tide_period", "lat", "lon"), zlib=True, complevel=1)
+                component.units = units
+                component.long_name = long_name
+                component[:, :, :] = values
 
     print(f"atlas_dir={atlas_dir}")
     print(f"grid={grid_path}")
