@@ -1,0 +1,876 @@
+{
+  "FDNPP": {
+    "repair": {
+      "input": "/home/lhy/ROMS/projects/FDNPP/input/roms_grid_bathy_500m_maskclean_smoothed.nc",
+      "output": "/home/lhy/ROMS/projects/FDNPP/output/grid_metrics_audit_20261013/roms_grid_metrics_fixed.nc",
+      "method": "WGS84 adjacent-edge means; one-sided edge spacing and index derivatives v1",
+      "dry_run": false,
+      "input_sha256": "1f4a0e0432bf392e992b4bcddada85b6e0fc14c48258f266c40f321bdf55d00c",
+      "output_sha256": "e719a593b44afc4b4165c1460351b697e543fc1de02af4b500a47d87728c0c0b",
+      "fields": {
+        "pm": {
+          "before": {
+            "min": 0.0020096969553616588,
+            "max": 0.0020096969553616588,
+            "mean": 0.002009696955361659,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": 0.00200615745250896,
+            "max": 0.002028691752657597,
+            "mean": 0.0020173468163048607,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 1.899479729593808e-05,
+          "p95_abs_change": 1.7900314335293852e-05
+        },
+        "pn": {
+          "before": {
+            "min": 0.002010505963075125,
+            "max": 0.002010505963075125,
+            "mean": 0.0020105059630751254,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": 0.0020271473935612634,
+            "max": 0.0020274346348722787,
+            "mean": 0.0020272912002644613,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 1.6928671797153752e-05,
+          "p95_abs_change": 1.6915734316612016e-05
+        },
+        "dndx": {
+          "before": {
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 0.0,
+          "p95_abs_change": 0.0
+        },
+        "dmde": {
+          "before": {
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": -0.029576283236110612,
+            "max": -0.029013753049923707,
+            "mean": -0.02929551602187338,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 0.029576283236110612,
+          "p95_abs_change": 0.02955098040285975
+        }
+      },
+      "unchanged_variables": [
+        "xl",
+        "el",
+        "spherical",
+        "x_rho",
+        "y_rho",
+        "x_u",
+        "y_u",
+        "x_v",
+        "y_v",
+        "x_psi",
+        "y_psi",
+        "lon_rho",
+        "lat_rho",
+        "lon_u",
+        "lat_u",
+        "lon_v",
+        "lat_v",
+        "lon_psi",
+        "lat_psi",
+        "h",
+        "f",
+        "angle",
+        "mask_rho",
+        "mask_u",
+        "mask_v",
+        "mask_psi"
+      ]
+    },
+    "before": {
+      "status": "FAIL",
+      "metric_relative_tolerance": 1e-06,
+      "derivative_absolute_tolerance_m": 1e-07,
+      "pm_nonfinite_count": 0,
+      "pm_nonpositive_count": 0,
+      "pm_relerr_max": 0.009363077101809477,
+      "pm_relerr_p95": 0.0088283381531527,
+      "pm_relerr_mean": 0.004071606008978335,
+      "pn_nonfinite_count": 0,
+      "pn_nonpositive_count": 0,
+      "pn_relerr_max": 0.008349799054419429,
+      "pn_relerr_p95": 0.0083434710886117,
+      "pn_relerr_mean": 0.008279636271729344,
+      "dndx_nonfinite_count": 0,
+      "dndx_abserr_m_max": 0.0,
+      "dndx_abserr_m_p95": 0.0,
+      "dndx_abserr_m_mean": 0.0,
+      "dmde_nonfinite_count": 0,
+      "dmde_abserr_m_max": 0.029576283236110612,
+      "dmde_abserr_m_p95": 0.02955098040285975,
+      "dmde_abserr_m_mean": 0.02929551602187338
+    },
+    "after": {
+      "status": "PASS",
+      "metric_relative_tolerance": 1e-06,
+      "derivative_absolute_tolerance_m": 1e-07,
+      "pm_nonfinite_count": 0,
+      "pm_nonpositive_count": 0,
+      "pm_relerr_max": 0.0,
+      "pm_relerr_p95": 0.0,
+      "pm_relerr_mean": 0.0,
+      "pn_nonfinite_count": 0,
+      "pn_nonpositive_count": 0,
+      "pn_relerr_max": 0.0,
+      "pn_relerr_p95": 0.0,
+      "pn_relerr_mean": 0.0,
+      "dndx_nonfinite_count": 0,
+      "dndx_abserr_m_max": 0.0,
+      "dndx_abserr_m_p95": 0.0,
+      "dndx_abserr_m_mean": 0.0,
+      "dmde_nonfinite_count": 0,
+      "dmde_abserr_m_max": 0.0,
+      "dmde_abserr_m_p95": 0.0,
+      "dmde_abserr_m_mean": 0.0
+    },
+    "shape": [
+      190,
+      201
+    ],
+    "wet_area_before_m2": 8290047286.503084,
+    "wet_area_after_m2": 8190386964.091107,
+    "wet_volume_before_m3": 2103950286713.9966,
+    "wet_volume_after_m3": 2080257490136.1323,
+    "wet_cell_area_change_percent_min": -1.7495497833412421,
+    "wet_cell_area_change_percent_max": -0.6600211198921846,
+    "cfl_x_ratio_min": 0.9982387877718302,
+    "cfl_x_ratio_max": 1.0094515729076774,
+    "cfl_y_ratio_min": 1.0082772350800118,
+    "cfl_y_ratio_max": 1.0084201052412005,
+    "input_inventory": [
+      {
+        "name": "roms_atm_fdnpp_20241001_20250101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_atm_fdnpp_20241001_20260101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_atm_fdnpp_2025.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_fdnpp_20241001_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_fdnpp_2025_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_fdnpp_glorys12v1_20241001_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_fdnpp_glorys12v1_20241001_20260101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_fdnpp_glorys12v1_2025_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_fdnpp_glorys12v1_2025_online_my25_uvtide_decay.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_ini_fdnpp_20241001_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_ini_fdnpp_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_ini_fdnpp_glorys12v1_20241001_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_ini_fdnpp_glorys12v1_20250101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_ini_fdnpp_glorys12v1_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_ini_fdnpp_glorys12v1_20250101_online_my25_uvtide_decay.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rad_fdnpp_20241001_20250101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rad_fdnpp_20241001_20260101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rad_fdnpp_2025.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rivers_fdnpp_online_continuous_my25_uvtide.nc",
+        "metric_variables": [],
+        "transport_m3_s_min": 1.0,
+        "transport_m3_s_max": 1.0,
+        "vshape_sum_min": 1.0,
+        "vshape_sum_max": 1.0,
+        "release_Bq_s_min": 0.0,
+        "release_Bq_s_max": 697615.4236428209,
+        "source_x": [
+          29.0
+        ],
+        "source_y": [
+          95.0
+        ],
+        "source_cell_volume_ratio": 0.9880078432765641
+      },
+      {
+        "name": "roms_rivers_fdnpp_online_spinup_3mo_my25_uvtide_zero_source.nc",
+        "metric_variables": [],
+        "transport_m3_s_min": 1.0,
+        "transport_m3_s_max": 1.0,
+        "vshape_sum_min": 1.0,
+        "vshape_sum_max": 1.0,
+        "release_Bq_s_min": 0.0,
+        "release_Bq_s_max": 0.0,
+        "source_x": [
+          29.0
+        ],
+        "source_y": [
+          95.0
+        ],
+        "source_cell_volume_ratio": 0.9880078432765641
+      },
+      {
+        "name": "roms_rivers_production_online_my25_uvtide.nc",
+        "metric_variables": [],
+        "transport_m3_s_min": 1.0,
+        "transport_m3_s_max": 1.0,
+        "vshape_sum_min": 1.0,
+        "vshape_sum_max": 1.0,
+        "release_Bq_s_min": 697615.4236428209,
+        "release_Bq_s_max": 697615.4236428209,
+        "source_x": [
+          29.0
+        ],
+        "source_y": [
+          95.0
+        ],
+        "source_cell_volume_ratio": 0.9880078432765641
+      },
+      {
+        "name": "roms_tides_fdnpp_20241001_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_tides_fdnpp_2025_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_tides_fdnpp_online_my25_uvtide.nc",
+        "metric_variables": []
+      }
+    ],
+    "gravity_wave_cfl_ratio_min": 1.0033444096431505,
+    "gravity_wave_cfl_ratio_max": 1.0088643385443576,
+    "max_gravity_wave_cfl_ratio": 1.0033444096444104,
+    "static_checks": {
+      "validate_staged_data": 0,
+      "validate_roms_ready_inputs": 0,
+      "show_build_plan": 0,
+      "validate_run_prereqs_pilot_1day": 1
+    }
+  },
+  "WOLSONG": {
+    "repair": {
+      "input": "/home/lhy/ROMS/projects/WOLSONG/input/roms_grid_bathy_500m_smoothed.nc",
+      "output": "/home/lhy/ROMS/projects/WOLSONG/output/grid_metrics_audit_20261013/roms_grid_metrics_fixed.nc",
+      "method": "WGS84 adjacent-edge means; one-sided edge spacing and index derivatives v1",
+      "dry_run": false,
+      "input_sha256": "6577f099a2e6dfe277fa84303da2f73d6e2cb79f1faf3bc340de9fa9d112e437",
+      "output_sha256": "c2ecb3c6de85f709203fe7c8cdef8bbc6b349d269bcea66a4c1c116cad06d8be",
+      "fields": {
+        "pm": {
+          "before": {
+            "min": 0.0020016335214469937,
+            "max": 0.0020016335214469937,
+            "mean": 0.0020016335214469933,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": 0.001998231944177545,
+            "max": 0.002020829279211379,
+            "mean": 0.002009447256572647,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 1.9195757764385157e-05,
+          "p95_abs_change": 1.8053266520779918e-05
+        },
+        "pn": {
+          "before": {
+            "min": 0.002006228290813274,
+            "max": 0.002006228290813274,
+            "mean": 0.0020062282908132746,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": 0.0020227130858163486,
+            "max": 0.0020230147343290247,
+            "mean": 0.002022864170139325,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 1.6786443515750572e-05,
+          "p95_abs_change": 1.677225845728202e-05
+        },
+        "dndx": {
+          "before": {
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 0.0,
+          "p95_abs_change": 0.0
+        },
+        "dmde": {
+          "before": {
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": -0.02800584487766855,
+            "max": -0.027399520228527763,
+            "mean": -0.027703222501901714,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 0.02800584487766855,
+          "p95_abs_change": 0.027977335573382334
+        }
+      },
+      "unchanged_variables": [
+        "xl",
+        "el",
+        "spherical",
+        "x_rho",
+        "y_rho",
+        "x_u",
+        "y_u",
+        "x_v",
+        "y_v",
+        "x_psi",
+        "y_psi",
+        "lon_rho",
+        "lat_rho",
+        "lon_u",
+        "lat_u",
+        "lon_v",
+        "lat_v",
+        "lon_psi",
+        "lat_psi",
+        "h",
+        "f",
+        "angle",
+        "mask_rho",
+        "mask_u",
+        "mask_v",
+        "mask_psi"
+      ]
+    },
+    "before": {
+      "status": "FAIL",
+      "metric_relative_tolerance": 1e-06,
+      "derivative_absolute_tolerance_m": 1e-07,
+      "pm_nonfinite_count": 0,
+      "pm_nonpositive_count": 0,
+      "pm_relerr_max": 0.009498950733669215,
+      "pm_relerr_p95": 0.008938646639831353,
+      "pm_relerr_mean": 0.004146287662354542,
+      "pn_nonfinite_count": 0,
+      "pn_nonpositive_count": 0,
+      "pn_relerr_max": 0.008297736655545491,
+      "pn_relerr_p95": 0.008290782947799832,
+      "pn_relerr_mean": 0.008223921200783482,
+      "dndx_nonfinite_count": 0,
+      "dndx_abserr_m_max": 0.0,
+      "dndx_abserr_m_p95": 0.0,
+      "dndx_abserr_m_mean": 0.0,
+      "dmde_nonfinite_count": 0,
+      "dmde_abserr_m_max": 0.02800584487766855,
+      "dmde_abserr_m_p95": 0.027977335573382334,
+      "dmde_abserr_m_mean": 0.027703222501901714
+    },
+    "after": {
+      "status": "PASS",
+      "metric_relative_tolerance": 1e-06,
+      "derivative_absolute_tolerance_m": 1e-07,
+      "pm_nonfinite_count": 0,
+      "pm_nonpositive_count": 0,
+      "pm_relerr_max": 0.0,
+      "pm_relerr_p95": 0.0,
+      "pm_relerr_mean": 0.0,
+      "pn_nonfinite_count": 0,
+      "pn_nonpositive_count": 0,
+      "pn_relerr_max": 0.0,
+      "pn_relerr_p95": 0.0,
+      "pn_relerr_mean": 0.0,
+      "dndx_nonfinite_count": 0,
+      "dndx_abserr_m_max": 0.0,
+      "dndx_abserr_m_p95": 0.0,
+      "dndx_abserr_m_mean": 0.0,
+      "dmde_nonfinite_count": 0,
+      "dmde_abserr_m_max": 0.0,
+      "dmde_abserr_m_p95": 0.0,
+      "dmde_abserr_m_mean": 0.0
+    },
+    "shape": [
+      203,
+      201
+    ],
+    "wet_area_before_m2": 8812835156.709694,
+    "wet_area_after_m2": 8707858530.716633,
+    "wet_volume_before_m3": 4781828066194.766,
+    "wet_volume_after_m3": 4715191127963.077,
+    "wet_cell_area_change_percent_min": -1.757137922685592,
+    "wet_cell_area_change_percent_max": -0.6609568329099202,
+    "cfl_x_ratio_min": 0.9983005993689644,
+    "cfl_x_ratio_max": 1.009590046109194,
+    "cfl_y_ratio_min": 1.008216809163025,
+    "cfl_y_ratio_max": 1.008367165188836,
+    "input_inventory": [
+      {
+        "name": "roms_atm_wolsong_20241001_20250101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_atm_wolsong_20241001_20260101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_atm_wolsong_2025.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_wolsong_glorys12v1_20241001_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_wolsong_glorys12v1_20241001_20260101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_wolsong_glorys12v1_2025_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_ini_wolsong_glorys12v1_20241001_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_ini_wolsong_glorys12v1_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rad_wolsong_20241001_20250101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rad_wolsong_20241001_20260101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rad_wolsong_2025.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rivers_production_online_my25_uvtide.nc",
+        "metric_variables": [],
+        "transport_m3_s_min": 1.0,
+        "transport_m3_s_max": 1.0,
+        "vshape_sum_min": 1.0,
+        "vshape_sum_max": 1.0,
+        "release_Bq_s_min": 1227168.9497716895,
+        "release_Bq_s_max": 1227168.9497716895,
+        "source_x": [
+          34.0
+        ],
+        "source_y": [
+          101.0
+        ],
+        "source_cell_volume_ratio": 0.9879945464463034
+      },
+      {
+        "name": "roms_rivers_wolsong_online_continuous_my25_uvtide.nc",
+        "metric_variables": [],
+        "transport_m3_s_min": 1.0,
+        "transport_m3_s_max": 1.0,
+        "vshape_sum_min": 1.0,
+        "vshape_sum_max": 1.0,
+        "release_Bq_s_min": 0.0,
+        "release_Bq_s_max": 1227168.9497716895,
+        "source_x": [
+          34.0
+        ],
+        "source_y": [
+          101.0
+        ],
+        "source_cell_volume_ratio": 0.9879945464463034
+      },
+      {
+        "name": "roms_rivers_wolsong_online_spinup_3mo_my25_uvtide_zero_source.nc",
+        "metric_variables": [],
+        "transport_m3_s_min": 1.0,
+        "transport_m3_s_max": 1.0,
+        "vshape_sum_min": 1.0,
+        "vshape_sum_max": 1.0,
+        "release_Bq_s_min": 0.0,
+        "release_Bq_s_max": 0.0,
+        "source_x": [
+          34.0
+        ],
+        "source_y": [
+          101.0
+        ],
+        "source_cell_volume_ratio": 0.9879945464463034
+      },
+      {
+        "name": "roms_tides_wolsong_20241001_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_tides_wolsong_2025_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_tides_wolsong_online_my25_uvtide.nc",
+        "metric_variables": []
+      }
+    ],
+    "gravity_wave_cfl_ratio_min": 1.0033580475556392,
+    "gravity_wave_cfl_ratio_max": 1.0089020869470482,
+    "max_gravity_wave_cfl_ratio": 1.008902086945746,
+    "static_checks": {
+      "validate_staged_data": 0,
+      "validate_roms_ready_inputs": 0,
+      "show_build_plan": 0,
+      "validate_run_prereqs_pilot_1day": 0
+    }
+  },
+  "LAHAGUE": {
+    "repair": {
+      "input": "/home/lhy/ROMS/projects/LAHAGUE/input/roms_grid_bathy_500m_maskclean_smoothed.nc",
+      "output": "/home/lhy/ROMS/projects/LAHAGUE/output/grid_metrics_audit_20261013/roms_grid_metrics_fixed.nc",
+      "method": "WGS84 adjacent-edge means; one-sided edge spacing and index derivatives v1",
+      "dry_run": false,
+      "input_sha256": "dc3bbb9cf36ee80d92b6b9df8cce0a82d456df13585784625772113d8cddf8a8",
+      "output_sha256": "356a3bcc6cf8deb5477db9bf4bdcb47d5ff4e9a301b2ea3109c76df9ab00348b",
+      "fields": {
+        "pm": {
+          "before": {
+            "min": 0.0020002518256664265,
+            "max": 0.0020002518256664265,
+            "mean": 0.002000251825666426,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": 0.001990060756995003,
+            "max": 0.002022128135013537,
+            "mean": 0.002005978423086202,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 2.1876309347110528e-05,
+          "p95_abs_change": 2.0379565268403323e-05
+        },
+        "pn": {
+          "before": {
+            "min": 0.00200392492882613,
+            "max": 0.00200392492882613,
+            "mean": 0.0020039249288261304,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": 0.0020170727813455247,
+            "max": 0.0020173443899370253,
+            "mean": 0.0020172084852220296,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 1.3419461110895318e-05,
+          "p95_abs_change": 1.3407729332504548e-05
+        },
+        "dndx": {
+          "before": {
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 0.0,
+          "p95_abs_change": 0.0
+        },
+        "dmde": {
+          "before": {
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "nonfinite_count": 0
+          },
+          "after": {
+            "min": -0.04579963895707806,
+            "max": -0.04527005748781221,
+            "mean": -0.045535526060517896,
+            "nonfinite_count": 0
+          },
+          "max_abs_change": 0.04579963895707806,
+          "p95_abs_change": 0.04577698214421844
+        }
+      },
+      "unchanged_variables": [
+        "xl",
+        "el",
+        "spherical",
+        "x_rho",
+        "y_rho",
+        "x_u",
+        "y_u",
+        "x_v",
+        "y_v",
+        "x_psi",
+        "y_psi",
+        "lon_rho",
+        "lat_rho",
+        "lon_u",
+        "lat_u",
+        "lon_v",
+        "lat_v",
+        "lon_psi",
+        "lat_psi",
+        "h",
+        "f",
+        "angle",
+        "mask_rho",
+        "mask_u",
+        "mask_v",
+        "mask_psi"
+      ]
+    },
+    "before": {
+      "status": "FAIL",
+      "metric_relative_tolerance": 1e-06,
+      "derivative_absolute_tolerance_m": 1e-07,
+      "pm_nonfinite_count": 0,
+      "pm_nonpositive_count": 0,
+      "pm_relerr_max": 0.010818458518190827,
+      "pm_relerr_p95": 0.01008574119942523,
+      "pm_relerr_mean": 0.00450597748037076,
+      "pn_nonfinite_count": 0,
+      "pn_nonpositive_count": 0,
+      "pn_relerr_max": 0.006652042743834249,
+      "pn_relerr_p95": 0.006646265938480743,
+      "pn_relerr_mean": 0.006585116708025957,
+      "dndx_nonfinite_count": 0,
+      "dndx_abserr_m_max": 0.0,
+      "dndx_abserr_m_p95": 0.0,
+      "dndx_abserr_m_mean": 0.0,
+      "dmde_nonfinite_count": 0,
+      "dmde_abserr_m_max": 0.04579963895707806,
+      "dmde_abserr_m_p95": 0.04577698214421844,
+      "dmde_abserr_m_mean": 0.045535526060517896
+    },
+    "after": {
+      "status": "PASS",
+      "metric_relative_tolerance": 1e-06,
+      "derivative_absolute_tolerance_m": 1e-07,
+      "pm_nonfinite_count": 0,
+      "pm_nonpositive_count": 0,
+      "pm_relerr_max": 0.0,
+      "pm_relerr_p95": 0.0,
+      "pm_relerr_mean": 0.0,
+      "pn_nonfinite_count": 0,
+      "pn_nonpositive_count": 0,
+      "pn_relerr_max": 0.0,
+      "pn_relerr_p95": 0.0,
+      "pn_relerr_mean": 0.0,
+      "dndx_nonfinite_count": 0,
+      "dndx_abserr_m_max": 0.0,
+      "dndx_abserr_m_p95": 0.0,
+      "dndx_abserr_m_mean": 0.0,
+      "dmde_nonfinite_count": 0,
+      "dmde_abserr_m_max": 0.0,
+      "dmde_abserr_m_p95": 0.0,
+      "dmde_abserr_m_mean": 0.0
+    },
+    "shape": [
+      176,
+      211
+    ],
+    "wet_area_before_m2": 8244779752.284177,
+    "wet_area_after_m2": 8163926853.647236,
+    "wet_volume_before_m3": 461431789421.7261,
+    "wet_volume_after_m3": 456457288005.7628,
+    "wet_cell_area_change_percent_min": -1.7266224380974804,
+    "wet_cell_area_change_percent_max": -0.15651240598527627,
+    "cfl_x_ratio_min": 0.9949051071766785,
+    "cfl_x_ratio_max": 1.0109367775929023,
+    "cfl_y_ratio_min": 1.0065610504317128,
+    "cfl_y_ratio_max": 1.0066965887383597,
+    "input_inventory": [
+      {
+        "name": "roms_atm_lahague_20241001_20250101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_atm_lahague_20241001_20260101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_atm_lahague_2025.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_lahague_glorys12v1_20241001_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_lahague_glorys12v1_20241001_20260101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_bdy_lahague_glorys12v1_2025_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_ini_lahague_glorys12v1_20241001_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_ini_lahague_glorys12v1_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rad_lahague_20241001_20250101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rad_lahague_20241001_20260101.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rad_lahague_2025.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_rivers_lahague_online_continuous_my25_uvtide.nc",
+        "metric_variables": [],
+        "transport_m3_s_min": 1.0,
+        "transport_m3_s_max": 1.0,
+        "vshape_sum_min": 1.0,
+        "vshape_sum_max": 1.0,
+        "release_Bq_s_min": 0.0,
+        "release_Bq_s_max": 353564180.61897516,
+        "source_x": [
+          163.0
+        ],
+        "source_y": [
+          86.0
+        ],
+        "source_cell_volume_ratio": 0.990832353749133
+      },
+      {
+        "name": "roms_rivers_lahague_online_spinup_3mo_my25_uvtide_zero_source.nc",
+        "metric_variables": [],
+        "transport_m3_s_min": 1.0,
+        "transport_m3_s_max": 1.0,
+        "vshape_sum_min": 1.0,
+        "vshape_sum_max": 1.0,
+        "release_Bq_s_min": 0.0,
+        "release_Bq_s_max": 0.0,
+        "source_x": [
+          163.0
+        ],
+        "source_y": [
+          86.0
+        ],
+        "source_cell_volume_ratio": 0.990832353749133
+      },
+      {
+        "name": "roms_rivers_production_online_my25_uvtide.nc",
+        "metric_variables": [],
+        "transport_m3_s_min": 1.0,
+        "transport_m3_s_max": 1.0,
+        "vshape_sum_min": 1.0,
+        "vshape_sum_max": 1.0,
+        "release_Bq_s_min": 353564180.61897516,
+        "release_Bq_s_max": 353564180.61897516,
+        "source_x": [
+          163.0
+        ],
+        "source_y": [
+          86.0
+        ],
+        "source_cell_volume_ratio": 0.990832353749133
+      },
+      {
+        "name": "roms_tides_lahague_20241001_20250101_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_tides_lahague_2025_online_my25_uvtide.nc",
+        "metric_variables": []
+      },
+      {
+        "name": "roms_tides_lahague_online_my25_uvtide.nc",
+        "metric_variables": []
+      }
+    ],
+    "gravity_wave_cfl_ratio_min": 1.0008290300613336,
+    "gravity_wave_cfl_ratio_max": 1.0087472726970506,
+    "max_gravity_wave_cfl_ratio": 1.0065338892620581,
+    "static_checks": {
+      "validate_staged_data": 0,
+      "validate_roms_ready_inputs": 0,
+      "show_build_plan": 0,
+      "validate_run_prereqs_pilot_1day": 1
+    }
+  }
+}
