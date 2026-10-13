@@ -13,6 +13,7 @@ import numpy as np
 from netCDF4 import Dataset
 from PIL import Image, ImageDraw
 from scipy import ndimage
+from pyproj import Geod
 
 from case_naming import load_case_naming
 from pilot_grid_utils import locate_source_on_grid
@@ -122,20 +123,73 @@ def angle_metrics(angle: np.ndarray, lon: np.ndarray, lat: np.ndarray) -> dict[s
     }
 
 
-def metric_consistency(pm: np.ndarray, pn: np.ndarray, lon: np.ndarray, lat: np.ndarray) -> dict[str, float]:
-    x, y = projected_xy(lon, lat)
-    dxi = np.hypot(np.gradient(x, axis=1), np.gradient(y, axis=1))
-    deta = np.hypot(np.gradient(x, axis=0), np.gradient(y, axis=0))
-    dx_nominal = np.where(pm > 0.0, 1.0 / pm, np.nan)
-    dy_nominal = np.where(pn > 0.0, 1.0 / pn, np.nan)
-    dx_rel = np.abs(dx_nominal - dxi) / np.where(dxi > 0.0, dxi, np.nan)
-    dy_rel = np.abs(dy_nominal - deta) / np.where(deta > 0.0, deta, np.nan)
-    return {
-        "pm_relerr_max": float(np.nanmax(dx_rel)),
-        "pm_relerr_mean": float(np.nanmean(dx_rel)),
-        "pn_relerr_max": float(np.nanmax(dy_rel)),
-        "pn_relerr_mean": float(np.nanmean(dy_rel)),
-    }
+def metric_consistency(pm, pn, lon, lat, dndx=None, dmde=None) -> dict:
+    """Independent geometry audit; does not call the production metric builder.
+
+    1e-6 relative metric tolerance permits float32 storage (<6e-8 rounding)
+    with margin. Derivative tolerance bounds cancellation of rounded spacings:
+    16 storage eps * largest spacing, with a 1e-7 metre floor for f8 geodesy.
+    Derivatives are compared in metres per grid index, never divided by dx/dy.
+    """
+    info = {"status": "FAIL", "metric_relative_tolerance": 1e-6}
+    geod = Geod(ellps="WGS84")
+    lon = np.asarray(np.ma.filled(lon, np.nan), dtype=float)
+    lat = np.asarray(np.ma.filled(lat, np.nan), dtype=float)
+    if lon.shape != lat.shape or lon.ndim != 2 or min(lon.shape) < 2:
+        info["reason"] = "invalid coordinate shapes"
+        return info
+    if not np.isfinite(lon).all() or not np.isfinite(lat).all() or (np.abs(lat) > 90).any():
+        info["reason"] = "invalid coordinates"
+        return info
+    # Flatten each edge pair independently of the generator's vectorized calls.
+    xi = geod.inv(lon[:, :-1].ravel(), lat[:, :-1].ravel(),
+                  lon[:, 1:].ravel(), lat[:, 1:].ravel())[2].reshape(lon.shape[0], -1)
+    eta = geod.inv(lon[:-1].ravel(), lat[:-1].ravel(),
+                   lon[1:].ravel(), lat[1:].ravel())[2].reshape(-1, lon.shape[1])
+    if any(not np.isfinite(e).all() or (e <= 0).any() for e in (xi, eta)):
+        info["reason"] = "invalid geodesic edge lengths"
+        return info
+    # Pad with the nearest incident edge, then take adjacent means.
+    px = np.pad(xi, ((0, 0), (1, 1)), mode="edge")
+    py = np.pad(eta, ((1, 1), (0, 0)), mode="edge")
+    dx = (px[:, :-1] + px[:, 1:]) / 2
+    dy = (py[:-1] + py[1:]) / 2
+    expected = {"pm": 1 / dx, "pn": 1 / dy}
+    ex = np.empty_like(dx)
+    ey = np.empty_like(dy)
+    ex[:, 1:-1] = (dy[:, 2:] - dy[:, :-2]) / 2
+    ex[:, 0], ex[:, -1] = dy[:, 1] - dy[:, 0], dy[:, -1] - dy[:, -2]
+    ey[1:-1] = (dx[2:] - dx[:-2]) / 2
+    ey[0], ey[-1] = dx[1] - dx[0], dx[-1] - dx[-2]
+    expected.update(dndx=ex, dmde=ey)
+    passed = True
+    eps = max((np.finfo(np.asarray(v).dtype).eps for v in (pm, pn)
+               if np.asarray(v).dtype.kind == "f"), default=np.finfo(float).eps)
+    derivative_tol = max(1e-7, 16 * eps * max(dx.max(), dy.max()))
+    info["derivative_absolute_tolerance_m"] = float(derivative_tol)
+    for name, stored in (("pm", pm), ("pn", pn), ("dndx", dndx), ("dmde", dmde)):
+        if stored is None or np.shape(stored) != lon.shape:
+            info[name + "_missing_or_wrong_shape"] = True
+            passed = False
+            continue
+        arr = np.asarray(np.ma.filled(stored, np.nan), dtype=float)
+        invalid = ~np.isfinite(arr)
+        info[name + "_nonfinite_count"] = int(invalid.sum())
+        if name in ("pm", "pn"):
+            info[name + "_nonpositive_count"] = int((arr <= 0).sum())
+            invalid |= arr <= 0
+            err = np.abs(arr - expected[name]) / expected[name]
+            suffix, tol = "_relerr", 1e-6
+        else:
+            err = np.abs(arr - expected[name])
+            suffix, tol = "_abserr_m", derivative_tol
+        finite = err[np.isfinite(err)]
+        info[name + suffix + "_max"] = float(finite.max()) if finite.size else None
+        info[name + suffix + "_p95"] = float(np.percentile(finite, 95)) if finite.size else None
+        info[name + suffix + "_mean"] = float(finite.mean()) if finite.size else None
+        passed &= not invalid.any() and bool(finite.size) and bool(np.all(finite <= tol))
+    info["status"] = "PASS" if passed else "FAIL"
+    return info
 
 
 def local_rx0_field(h: np.ndarray, mask_rho: np.ndarray) -> np.ndarray:
@@ -245,6 +299,9 @@ def main() -> None:
     json_output = Path(args.json_output) if args.json_output else output_dir / "grid_quality_summary.json"
 
     with Dataset(grid_path) as ds:
+        stored_metrics = {name: ds.variables[name][:] for name in ("pm", "pn")}
+        derivatives = {name: ds.variables[name][:] if name in ds.variables else None
+                       for name in ("dndx", "dmde")}
         x_rho = np.asarray(ds.variables["x_rho"][:, :], dtype=float) if "x_rho" in ds.variables else None
         y_rho = np.asarray(ds.variables["y_rho"][:, :], dtype=float) if "y_rho" in ds.variables else None
         mask_u_file = np.asarray(ds.variables["mask_u"][:, :], dtype=np.int8)
@@ -300,7 +357,7 @@ def main() -> None:
 
     orth_metrics = orthogonality_metrics(grid.lon_rho, grid.lat_rho)
     angle_info = angle_metrics(grid.angle, grid.lon_rho, grid.lat_rho)
-    pm_pn_info = metric_consistency(grid.pm, grid.pn, grid.lon_rho, grid.lat_rho)
+    pm_pn_info = metric_consistency(stored_metrics["pm"], stored_metrics["pn"], grid.lon_rho, grid.lat_rho, **derivatives)
 
     figures = {
         "bathymetry": output_dir / "grid_h.png",
@@ -436,12 +493,15 @@ def main() -> None:
         f"distance_m:{placement.snapped_distance_m:.3f}"
     )
     print(f"orthogonality_error_max_deg={summary['orthogonality']['max_deg']:.6f}")
-    print(f"pm_relerr_max={summary['pm_pn_consistency']['pm_relerr_max']:.6e}")
-    print(f"pn_relerr_max={summary['pm_pn_consistency']['pn_relerr_max']:.6e}")
+    print(f"pm_relerr_max={pm_pn_info.get('pm_relerr_max')}")
+    print(f"pn_relerr_max={pm_pn_info.get('pn_relerr_max')}")
+    print(f"geometry_metrics_status={pm_pn_info['status']}")
     print(f"shoreline_source={summary['shoreline_source']}")
     print(f"json_output={json_output}")
     for key, path in figures.items():
         print(f"{key}_png={path}")
+    if pm_pn_info["status"] != "PASS":
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

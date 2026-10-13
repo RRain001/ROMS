@@ -14,6 +14,7 @@ from scipy.interpolate import RegularGridInterpolator
 
 from case_context import get_case_config_path, get_case_root
 from case_naming import bathymetry_subset_path, load_case_naming
+from grid_metrics import compute_grid_metrics, METHOD
 
 ROOT = get_case_root()
 PARAMS = get_case_config_path("project_parameters.json")
@@ -88,8 +89,7 @@ def write_grid(
 ) -> None:
     eta_rho, xi_rho = lon_rho.shape
     out.parent.mkdir(parents=True, exist_ok=True)
-    dx = width_m / lm
-    dy = height_m / mm
+    metrics = compute_grid_metrics(lon_rho, lat_rho)
     omega = 7.2921159e-5
     coriolis = 2.0 * omega * np.sin(np.deg2rad(lat_rho))
 
@@ -106,6 +106,8 @@ def write_grid(
         ds.bathymetry_source = str(source_path)
         ds.bathymetry_variable = source_var
         ds.resolution_m = dx_m
+        ds.grid_metrics_method = METHOD
+        ds.grid_auxiliary_coordinates = "x/y and xl/el retain legacy approximate domain extents; use pm/pn for physical spacing"
         ds.land_mask_rule = "mask_rho=1 where interpolated bathymetry is ocean; 0 on land"
 
         def create(name: str, dims: tuple[str, ...] = (), dtype: str = "f8"):
@@ -148,10 +150,10 @@ def write_grid(
 
         create("h", ("eta_rho", "xi_rho"), "f4")[:] = h.astype("f4")
         create("f", ("eta_rho", "xi_rho"))[:] = coriolis
-        create("pm", ("eta_rho", "xi_rho"))[:] = np.full((eta_rho, xi_rho), 1.0 / dx)
-        create("pn", ("eta_rho", "xi_rho"))[:] = np.full((eta_rho, xi_rho), 1.0 / dy)
-        create("dndx", ("eta_rho", "xi_rho"))[:] = np.zeros((eta_rho, xi_rho))
-        create("dmde", ("eta_rho", "xi_rho"))[:] = np.zeros((eta_rho, xi_rho))
+        for name, values in metrics.items():
+            var = create(name, ("eta_rho", "xi_rho"))
+            var.units = "meter-1" if name in ("pm", "pn") else "meter"
+            var[:] = values
         create("angle", ("eta_rho", "xi_rho"))[:] = np.zeros((eta_rho, xi_rho))
 
         mask_u = (mask_rho[:, :-1] * mask_rho[:, 1:]).astype("i1")
