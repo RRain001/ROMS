@@ -1,0 +1,35 @@
+{
+  "product_id": "GLOBAL_MULTIYEAR_PHY_001_030",
+  "dataset_id_daily": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
+  "dataset_id_static": "cmems_mod_glo_phy_my_0.083deg_static",
+  "static_dataset_parts": [
+    {
+      "name": "default",
+      "dataset_id": "cmems_mod_glo_phy_my_0.083deg_static",
+      "variables": ["mask", "deptho"],
+      "output_name": "static_default.nc"
+    },
+    {
+      "name": "mdt",
+      "dataset_id": "cmems_mod_glo_phy_my_0.083deg_static",
+      "dataset_part": "mdt",
+      "variables": ["mdt"],
+      "output_name": "static_mdt.nc"
+    }
+  ],
+  "variables_3d": ["thetao", "so", "uo", "vo"],
+  "variables_2d": ["zos"],
+  "static_variables": ["mask", "deptho", "mdt"],
+  "time_start": "2024-10-01T00:00:00",
+  "time_stop": "2026-01-01T00:00:00",
+  "time_mean_center": "12:00:00",
+  "chunk": "month",
+  "longitude_buffer_deg": 0.25,
+  "latitude_buffer_deg": 0.25,
+  "boundary_download_strategy": "domain",
+  "boundary_band_buffer_points": 3,
+  "maximum_depth": 6000.0,
+  "output_raw_dir": "data/raw/ocean/glorys12v1",
+  "output_input_dir": "input",
+  "source_name": "glorys12v1"
+}
