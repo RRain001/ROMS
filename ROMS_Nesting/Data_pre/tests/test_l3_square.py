@@ -89,34 +89,36 @@ class AnchoredL3Tests(unittest.TestCase):
         self.assertEqual(data["lon_v"].shape,(142,176))
         self.assertEqual(data["lon_psi"].shape,(142,175))
 
-    def test_parent_exact_user_bounds_and_nominal_spacing(self):
+    def test_parent_exact_one_over_108_with_rounded_dms_bounds(self):
         data,dx,dy=make_geometry(self.parent_spec)
-        self.assertEqual(float(data["angle"].max()),0)
         west=128+21/60+55.9/3600
-        east=132+24/60+24.2/3600
         south=34+57/60+55.7/3600
-        north=37+38/60+18.6/3600
-        self.assertEqual(self.parent_spec["angular_boundary_policy"],
-                         "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR")
-        self.assertAlmostEqual(float(data["lon_rho"].min()),west,places=10)
-        self.assertAlmostEqual(float(data["lon_rho"].max()),east,places=10)
-        self.assertAlmostEqual(float(data["lat_rho"].min()),south,places=10)
-        self.assertAlmostEqual(float(data["lat_rho"].max()),north,places=10)
-        self.assertEqual(data["lon_rho"].shape,(290,437))
-        for coordinate in (np.diff(data["lon_rho"][0]),np.diff(data["lat_rho"][:,0])):
-            self.assertLess(float(np.max(np.abs(coordinate/(1/108)-1))),.002)
+        requested_east=132+24/60+42.6/3600
+        requested_north=37+38/60+29.0/3600
+        step=1/108
+        self.assertEqual(data["lon_rho"].shape,(290,438))
+        self.assertEqual(float(data["angle"].max()),0)
+        np.testing.assert_allclose(np.diff(data["lon_rho"][0]),step,atol=1e-12)
+        np.testing.assert_allclose(np.diff(data["lat_rho"][:,0]),step,atol=1e-12)
+        self.assertAlmostEqual(float(data["lon_rho"][0,0]),west,places=12)
+        self.assertAlmostEqual(float(data["lat_rho"][0,0]),south,places=12)
+        self.assertAlmostEqual(float(data["lon_rho"][0,-1]),west+437*step,places=12)
+        self.assertAlmostEqual(float(data["lat_rho"][-1,0]),south+289*step,places=12)
+        self.assertLess(abs((float(data["lon_rho"][0,-1])-requested_east)*3600),0.05)
+        self.assertLess(abs((float(data["lat_rho"][-1,0])-requested_north)*3600),0.05)
 
-    def test_user_defined_ud1k_four_bounds_supersede_old_south_extension(self):
+    def test_latest_ud1k_approval_and_l3_parent_geometry_locked(self):
         family=json.loads((ROOT.parent/"configs/grid_family.json").read_text())
         parent=next(x for x in family["grids"] if x["id"]=="UD1K")
-        self.assertEqual(parent["geometry_approval"],"USER_EXACT_BOUNDS_2026_10_14")
+        self.assertEqual(parent["geometry_approval"],
+                         "USER_UPDATED_NORTH_EAST_ROUNDED_DMS_2026_10_14")
         self.assertEqual(parent["proposed_modification"]["status"],
                          "SUPERSEDED_BY_NEW_USER_DMS_FOUR_BOUNDARIES")
         self.assertEqual(parent["proposed_modification"]["physical_approval"],
                          "PENDING_GEBCO_GSHHG_PARENT_BOUNDARY")
-        self.assertEqual(self.parent_spec["geometry_approval"],
-                         "USER_EXACT_BOUNDS_2026_10_14")
-        self.assertLess(self.parent_spec["lat_min"],35.0)
+        self.assertEqual(self.parent_spec["angular_boundary_policy"],
+                         "ANCHOR_WEST_SOUTH_EXACT_1_OVER_108_ROUNDED_DMS")
+        self.assertEqual(self.parent_spec["expected_rho_shape_eta_xi"],[290,438])
 
     def test_opposite_inland_side_is_explicitly_rejected(self):
         bad={**self.spec,"offshore_side":"left_of_A_to_B"}
