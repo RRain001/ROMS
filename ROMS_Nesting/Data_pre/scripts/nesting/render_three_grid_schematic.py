@@ -2,7 +2,7 @@
 """Reproducible 3-level Japan Sea ROMS research-domain SCHEMATIC.
 
 Inputs: source-of-truth user AB, approved UD1K south limit, and a
-NON-SCIENTIFIC paper-Fig1 ES3K polygon. Generates PNG, SVG and a
+user-specified ES3K four-corner outline. Generates PNG, SVG and a
 machine-readable geometry preflight; does NOT certify wet GSHHG masks,
 production ROMS grids, physics, or offline HTO conservation.
 """

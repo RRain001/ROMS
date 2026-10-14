@@ -7,7 +7,7 @@
     "description": "I0/I3 isolated Japanese Sea nested-domain scaffold; ES3K user-supplied corners fixed but ROMS curvilinear grid/physics NOT GENERATED"
   },
   "domain": {
-    "lon_min": 121,
+    "lon_min": 121.9,
     "lon_max": 150.4,
     "lat_min": 30.8,
     "lat_max": 52,

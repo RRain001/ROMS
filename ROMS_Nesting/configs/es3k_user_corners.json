@@ -7,7 +7,7 @@
   "user_corners_lat_lon": {
     "W": [
       37.821077,
-      121
+      121.9
     ],
     "S": [
       30.8,
@@ -23,7 +23,7 @@
     ]
   },
   "nominal_angular_resolution_fraction": "1/36 deg",
-  "original_paper_comparison": "USER_WEST_121_0_DIFFERS_FROM_KIM_TABLE_WEST_121_9",
+  "original_paper_comparison": "USER_WEST_121_9_AGREES_WITH_KIM_2020_REPORTED_EXTREME",
   "projection_status": "NOT_SELECTED",
   "roms_grid_status": "NOT_GENERATED",
   "metric_rotation_status": "SPATIALLY_VARYING_AND_UNDETERMINED"

@@ -24,7 +24,7 @@
       "corners_deg": {
         "W": [
           37.821077,
-          121
+          121.9
         ],
         "S": [
           30.8,
@@ -51,7 +51,7 @@
       "corner_perimeter_order": "W_N_E_S_W",
       "source_of_corners": "USER_SUPPLIED_2026_10_14",
       "user_defined_envelope_deg": [
-        121,
+        121.9,
         150.4,
         30.8,
         52

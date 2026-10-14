@@ -35,7 +35,7 @@ def main() -> None:
     require(p["vertical"]["N"] == 41, "unexpected sigma levels")
     require(p["domain"]["domain_status"] == "ES3K_USER_SUPPLIED_FOUR_CORNERS_GRID_NOT_GENERATED",
             "ES3K geometric input status inconsistent with user-defined corners")
-    require(p["domain"]["lon_min"]==121.0 and p["domain"]["nominal_resolution_deg"]==1/36,
+    require(p["domain"]["lon_min"]==121.9 and p["domain"]["nominal_resolution_deg"]==1/36,
             "ES3K case extent or user-selected angular resolution changed")
 
     from case_context import resolve_case_context

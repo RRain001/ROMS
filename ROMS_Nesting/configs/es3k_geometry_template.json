@@ -7,7 +7,7 @@
   "width_points": null,
   "height_points": null,
   "angle_deg": null,
-  "provenance": "Four precise user-provided ES3K corners, replacing rough Fig.1 digitization. Source data, but not yet a validated orthogonal grid or 1/36-degree discretization.",
+  "provenance": "Exact user-provided ES3K four corners, western longitude corrected to 121.9E on 2026-10-14. Orthogonal curvilinear ROMS mesh and exact 1/36-degree mapping remain unverified.",
   "nominal_resolution_deg": 0.027777777777777776,
   "nominal_resolution_fraction": "1/36 deg",
   "angular_spacing_implementation": "NOT_IMPLEMENTED",
@@ -20,7 +20,7 @@
   "user_corners_lat_lon": {
     "W": [
       37.821077,
-      121
+      121.9
     ],
     "S": [
       30.8,
@@ -37,6 +37,6 @@
   },
   "corner_order": "W_N_E_S_W",
   "reference_source": "USER_SUPPLIED_ON_2026_10_14",
-  "first_long_edge_W_to_N_geodesic_orientation_deg_ccw_from_east_approx": 51.36,
+  "first_long_edge_W_to_N_geodesic_orientation_deg_ccw_from_east_approx": null,
   "geometry_generator_status": "NOT_IMPLEMENTED"
 }
