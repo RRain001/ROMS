@@ -31,6 +31,27 @@ For ES3K, **first** fill an independently reviewed `es3k_geometry.json` with cen
 
 For **synthetic CI only**, `--allow-gebco-only-mask --synthetic-test-only` allows a fixture without a real GSHHG shapefile; its metadata explicitly says the shoreline has not been validated. Formal runs should supply the full GSHHG base path and then perform separate mask cleanup and review.
 
+## GEBCO 2026 large-file contract and reproducibility
+
+The official [GEBCO_2026 grid](https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2026-grid) stores roughly 3.73 **billion** 15-arcsecond elevations as an approximately 7 GB uncompressed NetCDF grid (2-byte signed integer elevation). A naive `elevation[:]` causes uncontrolled memory consumption. The nesting candidate generator now reads only 1-D longitude/latitude axes from the full file, computes an interpolation-halo window from **actual rotated grid corners and all RHO points**, and reads just that 2-D `elevation[latitude_slice,longitude_slice]` section. This supports globally stored or official [user-selected GEBCO subsets](https://download.gebco.net/), reversed coordinate axes, and either `(lat,lon)` or `(lon,lat)` source variable order. The output includes `bathymetry_source_window` (file indices, source grid, extracted shape, sign/order) and preserves the file's provenance.
+
+`--max-source-cells 50000000` is a **hard extracted-window limit**, not a claim of fixed peak process memory. Increase only after estimating per-run memory; for a full ES3K footprint at 15 arcseconds the subset itself may occupy hundreds of MB before interpolation work arrays. A too-small source bbox or larger-than-allowed window must FAIL rather than extrapolate, skip cells, or silently downsample. Longitudes crossing the antimeridian are not yet supported.
+
+**Use a real source file; CI synthetic products are not inputs for publications:**
+
+```bash
+python ROMS_Nesting/Data_pre/scripts/nesting/create_bathymetry_grid.py \
+  --geometry-json /path/to/verified_or_declared_approx_es3k_geometry.json \
+  --bathymetry /data/GEBCO_2026.nc \
+  --gshhg-base /data/GSHHG/GSHHS_shp \
+  --gshhg-resolution h \
+  --max-source-cells 50000000 \
+  --output /data/JAPAN_SEA/ES3K_candidate.nc \
+  --report-json /data/JAPAN_SEA/ES3K_window_report.json
+```
+
+The official GEBCO source requires attribution: GEBCO Bathymetric Compilation Group 2026, GEBCO_2026 Grid, DOI [10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa](https://doi.org/10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa). Note that 15-arcsecond bathymetry resolution is **source sampling**, distinct from ROMS ES3K/UD1K grid spacing.
+
 ## Reproducible GitHub-hosted Ubuntu gate (2026-10-14)
 
 - [Run #38523156039 — SUCCESS](https://github.com/RRain001/ROMS/actions/runs/38523156039): WGS84 metric, rotated coordinates, real NetCDF encoding of **synthetic** GEBCO-like elevations; end-to-end candidate ES3K/UD1K outputs. Separate tests exercise the **real GSHHG Shapefile parser with a generated synthetic polygon** and GEBCO-like signed int16 bathymetry. Neither test uses a real Japanese coastline.

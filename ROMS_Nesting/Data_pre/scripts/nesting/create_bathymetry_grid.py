@@ -17,6 +17,8 @@ def main() -> None:
     parser.add_argument("--bathymetry",required=True)
     parser.add_argument("--output",required=True)
     parser.add_argument("--min-depth-m",type=float,default=10.0)
+    parser.add_argument("--max-source-cells",type=int,default=50_000_000,
+                        help="Hard upper limit for cropped source raster, NEVER global GEBCO read")
     parser.add_argument("--gshhg-base",default=None)
     parser.add_argument("--gshhg-resolution",choices=["l","i","h","f","c"],default="h")
     parser.add_argument("--allow-gebco-only-mask",action="store_true",
@@ -30,7 +32,8 @@ def main() -> None:
                       gshhg_base=Path(args.gshhg_base) if args.gshhg_base else None,
                       gshhg_resolution=args.gshhg_resolution,
                       allow_gebco_only_mask=args.allow_gebco_only_mask,
-                      synthetic_fixture=args.synthetic_test_only)
+                      synthetic_fixture=args.synthetic_test_only,
+                      max_source_cells=args.max_source_cells)
     if args.report_json:
         Path(args.report_json).parent.mkdir(parents=True,exist_ok=True)
         Path(args.report_json).write_text(json.dumps(report,indent=2)+"\n")

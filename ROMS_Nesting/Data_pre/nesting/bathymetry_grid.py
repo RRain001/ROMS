@@ -104,34 +104,101 @@ def make_geometry(spec: dict) -> tuple[dict[str, np.ndarray], float, float]:
     raise ValueError("geometry_type must be rotated_lcc or axis_aligned_lonlat")
 
 
-def _read_bathy(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
+def _source_axis_window(axis: np.ndarray, lower: float, upper: float,
+                        label: str) -> tuple[slice, np.ndarray, bool]:
+    """Smallest covering file slice plus an interpolation-cell halo.
+
+    Handles GEBCO lat/lon stored in either increasing or decreasing
+    coordinate order without allocating/reading the global raster.
+    """
+    axis=np.asarray(axis,dtype=float)
+    if axis.ndim!=1 or axis.size<3 or not np.isfinite(axis).all():
+        raise ValueError(f"{label}: source coordinate axis invalid")
+    descending=bool(axis[0]>axis[-1])
+    ordered=axis[::-1] if descending else axis
+    if not (np.diff(ordered)>0).all():
+        raise ValueError(f"{label}: source coordinate axis must be strictly monotonic")
+    if lower<ordered[0] or upper>ordered[-1]:
+        raise ValueError(
+            "GEBCO subset does not cover full physical grid; increase geographic margin"
+        )
+    lo=max(0,int(np.searchsorted(ordered,lower,side="right"))-2)
+    hi=min(len(ordered),int(np.searchsorted(ordered,upper,side="left"))+2)
+    if hi-lo<2 or ordered[lo]>lower or ordered[hi-1]<upper:
+        raise ValueError(f"{label}: insufficient GEBCO interpolation halo")
+    if descending:
+        original=slice(len(ordered)-hi,len(ordered)-lo)
+    else:
+        original=slice(lo,hi)
+    return original,ordered[lo:hi],descending
+
+
+def _read_bathy_window(path: Path, target_lon: np.ndarray,
+                       target_lat: np.ndarray, *,
+                       max_source_cells: int=50_000_000
+                       ) -> tuple[np.ndarray,np.ndarray,np.ndarray,str,dict]:
+    """Open a global rectilinear GEBCO file but read only a bounded window.
+
+    max_source_cells is a hard guard on the extracted window; a single
+    global read from variable[:] must not appear anywhere in this code.
+    """
+    if max_source_cells<4:
+        raise ValueError("max_source_cells must be >=4")
     with Dataset(path) as nc:
         def var(*names):
             for name in names:
                 if name in nc.variables:
                     return name
             raise ValueError(f"bathymetry missing any of {names}")
-        lon_key = var("lon", "longitude", "x")
-        lat_key = var("lat", "latitude", "y")
-        z_key = var("elevation", "z", "bathymetry", "depth", "Band1")
-        lon = np.asarray(nc[lon_key][:], dtype=float)
-        lat = np.asarray(nc[lat_key][:], dtype=float)
-        # GEBCO elevation is often an integer NetCDF variable. Cast the
-        # masked array to floating point *before* filling NaN.
-        z = np.ma.asarray(nc[z_key][:]).astype(np.float64).filled(np.nan)
-    if lon.ndim != 1 or lat.ndim != 1:
-        raise ValueError("only rectilinear GEBCO bathymetry supported")
-    if z.shape == (lon.size, lat.size) and z.shape != (lat.size, lon.size):
-        z = z.T
-    if z.shape != (lat.size, lon.size):
-        raise ValueError("bathymetry dimensions do not match latitude/longitude")
-    if lon[0] > lon[-1]:
-        lon, z = lon[::-1], z[:, ::-1]
-    if lat[0] > lat[-1]:
-        lat, z = lat[::-1], z[::-1, :]
-    if not (np.diff(lon)>0).all() or not (np.diff(lat)>0).all():
-        raise ValueError("GEBCO coordinate axes must be strictly increasing")
-    return lon, lat, z, z_key
+        lon_key=var("lon","longitude","x")
+        lat_key=var("lat","latitude","y")
+        z_key=var("elevation","z","bathymetry","depth","Band1")
+        cvlon=nc[lon_key]
+        cvlat=nc[lat_key]
+        cvz=nc[z_key]
+        if cvlon.ndim!=1 or cvlat.ndim!=1:
+            raise ValueError("only rectilinear GEBCO bathymetry supported")
+        # Loading longitude/latitude 1-D axes is cheap. The 2-D elevation
+        # variable is intentionally never loaded until the cropped slice.
+        all_lon=np.asarray(cvlon[:],dtype=np.float64)
+        all_lat=np.asarray(cvlat[:],dtype=np.float64)
+        if len(cvlon.dimensions)!=1 or len(cvlat.dimensions)!=1:
+            raise ValueError("GEBCO coordinate variables must be 1D")
+        lon_slice,lon,flip_lon=_source_axis_window(
+            all_lon,float(np.min(target_lon)),float(np.max(target_lon)),"longitude")
+        lat_slice,lat,flip_lat=_source_axis_window(
+            all_lat,float(np.min(target_lat)),float(np.max(target_lat)),"latitude")
+        cells=len(lon)*len(lat)
+        if cells>max_source_cells:
+            raise ValueError(f"GEBCO cropped window {cells} cells exceeds "
+                             f"max_source_cells={max_source_cells}; "
+                             "stage a smaller source or raise explicit memory bound")
+        lon_dim=cvlon.dimensions[0]
+        lat_dim=cvlat.dimensions[0]
+        if cvz.dimensions==(lat_dim,lon_dim):
+            clipped=cvz[lat_slice,lon_slice]
+        elif cvz.dimensions==(lon_dim,lat_dim):
+            clipped=cvz[lon_slice,lat_slice].T
+        else:
+            raise ValueError("GEBCO raster dimensions are not latitude/longitude")
+        z=np.ma.asarray(clipped).astype(np.float64).filled(np.nan)
+        if flip_lon: z=z[:,::-1]
+        if flip_lat: z=z[::-1,:]
+        if z.shape!=(len(lat),len(lon)):
+            raise ValueError("GEBCO cropped raster has unexpected shape")
+        provenance={
+            "reader":"NETCDF_BOUNDED_WINDOW_V1",
+            "original_source_shape":[int(cvz.shape[0]),int(cvz.shape[1])],
+            "window_shape":[len(lat),len(lon)],
+            "window_cells":int(cells),
+            "max_source_cells":int(max_source_cells),
+            "longitude_file_slice":[lon_slice.start,lon_slice.stop],
+            "latitude_file_slice":[lat_slice.start,lat_slice.stop],
+            "source_longitude_descending":flip_lon,
+            "source_latitude_descending":flip_lat,
+            "data_variable":z_key,
+        }
+    return lon,lat,z,z_key,provenance
 
 
 def _read_gshhg_land(spec: dict, lon: np.ndarray, lat: np.ndarray, root: Path,
@@ -153,7 +220,8 @@ def _read_gshhg_land(spec: dict, lon: np.ndarray, lat: np.ndarray, root: Path,
 def build_grid(spec: dict, bathymetry: Path, output: Path, *,
                min_depth_m: float=10.0, gshhg_base: Path | None=None,
                gshhg_resolution: str="h", allow_gebco_only_mask: bool=False,
-               synthetic_fixture: bool=False) -> dict:
+               synthetic_fixture: bool=False,
+               max_source_cells: int=50_000_000) -> dict:
     """Build C-grid candidate with actual bathy, not default 100-m flat ocean."""
     if min_depth_m <= 0 or not np.isfinite(min_depth_m):
         raise ValueError("min_depth_m must be finite positive")
@@ -168,10 +236,8 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
     lon_grid, lat_grid=values["lon_rho"], values["lat_rho"]
     if not (-180 <= lon_grid.min() <= lon_grid.max() <= 180):
         raise ValueError("grid has longitude outside supported GSHHG range")
-    lon, lat, z, zvar = _read_bathy(Path(bathymetry))
-    if not (lon[0] <= lon_grid.min() and lon[-1] >= lon_grid.max() and
-            lat[0] <= lat_grid.min() and lat[-1] >= lat_grid.max()):
-        raise ValueError("GEBCO subset does not cover full physical grid; increase geographic margin")
+    lon, lat, z, zvar, bathy_window = _read_bathy_window(
+        Path(bathymetry),lon_grid,lat_grid,max_source_cells=max_source_cells)
     z_on_grid = RegularGridInterpolator((lat, lon), z, bounds_error=True)(
         np.column_stack([lat_grid.ravel(), lon_grid.ravel()])
     ).reshape(lon_grid.shape)
@@ -224,6 +290,7 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
         ds.shoreline_source=shp or "NOT_APPLIED"
         ds.bathymetry_source=str(bathymetry)
         ds.bathymetry_variable=zvar
+        ds.bathymetry_source_window=json.dumps(bathy_window,sort_keys=True)
         ds.grid_metrics_method=METHOD
         ds.actual_bathymetry_interpolated="TRUE"
         ds.bathymetry_smoothing_status="NOT_RUN"
@@ -249,6 +316,7 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
             "rho_shape":[ny,nx],"wet_fraction":float(water.mean()),
             "h_min":float(values["h"].min()),"h_max":float(values["h"].max()),
             "shoreline_status":shore_status,"quality":quality,
+            "source_window":bathy_window,
             "still_required":["Kim 2020 ES3K geometry provenance","GSHHG/manual mask review",
                               "bathymetry smoothing and rx0/volume checks",
                               "ROMS rotated-grid 1h/6h actual model test",
