@@ -172,6 +172,31 @@ class WetParentQuadCoverage(unittest.TestCase):
         np.testing.assert_array_equal(result, [True, False, True])
         self.assertTrue(self.wet[2, 3])  # nearby wet does not imply a full quad
 
+    def test_strongly_skewed_quad_outside_nearest_16_centroids(self):
+        # A synthetic valid quad can contain a receiver point even when its
+        # centroid is far behind >16 unrelated nearby cells. Fixed-k
+        # centroid searches therefore report false coastal stencil gaps.
+        # This fixture tests only geometric completeness, not ROMS physics.
+        j, i = np.indices((18, 18))
+        xy = np.stack((i * 1000., j * 1000.), axis=-1)
+        xy[10, 10] = (-2000., -2000.)
+        wet = np.ones((18, 18), dtype=bool)
+        wet[9, 10] = wet[10, 9] = wet[9, 9] = False
+        points = np.array([[-500., -500.], [-5000., -5000.]])
+        # The warped quad at (10,10) is valid and includes (-500,-500),
+        # but its centroid has more than 16 other eligible centers closer.
+        candidate = np.array((10, 10))
+        eligible = wet[:-1, :-1] & wet[:-1, 1:] & wet[1:, :-1] & wet[1:, 1:]
+        qj, qi = np.nonzero(eligible)
+        cent = (xy[qj, qi] + xy[qj, qi + 1] +
+                xy[qj + 1, qi] + xy[qj + 1, qi + 1]) / 4.
+        selected = np.flatnonzero((qj == candidate[0]) & (qi == candidate[1]))
+        self.assertEqual(len(selected), 1)
+        target_d = np.linalg.norm(cent - points[0], axis=1)
+        self.assertGreater(np.count_nonzero(target_d < target_d[selected[0]]), 16)
+        result = _full_wet_quad_coverage(xy, wet, points)
+        np.testing.assert_array_equal(result, [True, False])
+
     def test_empty_wet_quads_and_bad_shapes(self):
         self.wet[:] = False
         point = np.array([[1500., 1500.]])
