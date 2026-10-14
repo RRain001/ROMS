@@ -1,0 +1,13 @@
+{
+  "grid_id": "ES3K",
+  "scope": "I3_candidate_only",
+  "N": 41,
+  "theta_s": 7.0,
+  "theta_b": 0.1,
+  "Tcline_m": 200.0,
+  "Hmin_m": 10.0,
+  "Vtransform": 2,
+  "Vstretching": 4,
+  "status": "INITIAL_TEST_PARAMETERS_NOT_FINAL_PHYSICS_APPROVED",
+  "source": "ROMS_Nesting copied single-grid MY25 vertical defaults for theta_s/b/Tcline/Hmin; N=41 adopted from Japan Sea nesting plan. Review vertical stretching before ROMS science run."
+}
