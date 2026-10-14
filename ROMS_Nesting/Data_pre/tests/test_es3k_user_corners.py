@@ -91,10 +91,13 @@ class UserES3KCorners(unittest.TestCase):
         es=poly([(self.points[k][1],self.points[k][0])
                  for k in ("W","N","E","S")])
         self.assertEqual(ud["angular_boundary_policy"],
-                         "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR")
-        south=ud["lat_min"]
-        parent=poly([(ud["lon_min"],south),(ud["lon_max"],south),
-                     (ud["lon_max"],ud["lat_max"]),(ud["lon_min"],ud["lat_max"])])
+                         "ANCHOR_WEST_SOUTH_EXACT_1_OVER_108_ROUNDED_DMS")
+        west,south=ud["lon_min"],ud["lat_min"]
+        east=west+437/108
+        north=south+289/108
+        self.assertLess(abs((east-ud["lon_max"])*3600),0.05)
+        self.assertLess(abs((north-ud["lat_max"])*3600),0.05)
+        parent=poly([(west,south),(east,south),(east,north),(west,north)])
         self.assertTrue(es.contains(parent))
         corners=square_corners(l3)["corners_lat_lon"]
         child=poly([(corners[k][1],corners[k][0])
