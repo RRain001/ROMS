@@ -13,7 +13,7 @@ import json
 import numpy as np
 from netCDF4 import Dataset
 from pyproj import CRS,Transformer
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point
 from scipy.spatial import cKDTree
 
 
@@ -57,6 +57,50 @@ def _rim(arr: np.ndarray, n: int=0) -> np.ndarray:
 def _xy(xform: Transformer, lon, lat) -> np.ndarray:
     xx,yy=xform.transform(lon,lat)
     return np.column_stack((xx,yy))
+
+
+
+def _full_wet_quad_coverage(parent_xy: np.ndarray, parent_wet: np.ndarray,
+                            child_boundary_xy: np.ndarray, *,
+                            nearest_quads: int = 16) -> np.ndarray:
+    """Diagnostic: boundary points geometrically inside an all-wet parent RHO quad.
+
+    This identifies coastal locations where the nearest wet RHO point is NOT
+    enough to construct an ordinary four-corner interpolation stencil. It is
+    deliberately *not* a proof of interpolation, conservative flux or
+    ROMS boundary-condition readiness.
+    """
+    xy = np.asarray(parent_xy, dtype=np.float64)
+    wet = np.asarray(parent_wet, dtype=bool)
+    targets = np.asarray(child_boundary_xy, dtype=np.float64)
+    if (xy.ndim != 3 or xy.shape[2] != 2 or xy.shape[:2] != wet.shape
+            or targets.ndim != 2 or targets.shape[1] != 2
+            or not np.isfinite(xy).all() or not np.isfinite(targets).all()
+            or nearest_quads < 1):
+        raise ValueError("invalid parent wet quad stencil geometry")
+    eligible = (wet[:-1, :-1] & wet[:-1, 1:]
+                & wet[1:, :-1] & wet[1:, 1:])
+    quads = np.argwhere(eligible)
+    covered = np.zeros(len(targets), dtype=bool)
+    if not len(quads) or not len(targets):
+        return covered
+    centers = (xy[:-1, :-1] + xy[:-1, 1:]
+               + xy[1:, 1:] + xy[1:, :-1]) / 4.0
+    nearest_count = min(nearest_quads, len(quads))
+    _, candidate_ids = cKDTree(centers[eligible]).query(
+        targets, k=nearest_count)
+    candidate_ids = np.asarray(candidate_ids).reshape(len(targets), -1)
+    for n, (position, ids) in enumerate(zip(targets, candidate_ids)):
+        point = Point(float(position[0]), float(position[1]))
+        for quad_id in ids:
+            j, i = quads[int(quad_id)]
+            corners = (xy[j, i], xy[j, i + 1],
+                       xy[j + 1, i + 1], xy[j + 1, i])
+            polygon = Polygon(corners)
+            if polygon.is_valid and polygon.area > 0 and polygon.covers(point):
+                covered[n] = True
+                break
+    return covered
 
 
 def check_pair(parent_grid: Path, child_grid: Path, *,
@@ -119,6 +163,26 @@ def check_pair(parent_grid: Path, child_grid: Path, *,
     distance=np.asarray(distance)
     max_gap=float(np.max(distance))
     wet_coverage=bool(np.all(distance<=wet_parent_search_cells*pcell))
+    parent_xy = _xy(tr, p["lon_rho"].ravel(), p["lat_rho"].ravel()).reshape(
+        (*wet_parent.shape, 2))
+    full_quad = _full_wet_quad_coverage(parent_xy, wet_parent, cwet)
+    first_missing = np.flatnonzero(~full_quad)[:12]
+    stencil_diagnostic = {
+        "method": "PROJECTED_ALL_FOUR_WET_PARENT_RHO_QUAD_CONTAINS_CHILD_POINT",
+        "candidate_nearest_quads": 16,
+        "child_wet_boundary_rho_points": int(len(full_quad)),
+        "with_full_wet_parent_rho_quad": int(full_quad.sum()),
+        "without_full_wet_parent_rho_quad": int((~full_quad).sum()),
+        "fraction_with_full_wet_quad": float(full_quad.mean()),
+        "first_uncovered_lon_lat": [
+            [float(c["lon_rho"][wet_boundary][i]),
+             float(c["lat_rho"][wet_boundary][i])] for i in first_missing
+        ],
+        "disposition": ("FULL_WET_RHO_QUAD_DIAGNOSTIC_ONLY"
+                        if full_quad.all() else
+                        "COASTAL_STENCIL_REVIEW_REQUIRED_NOT_A_PHYSICS_FAILURE"),
+        "physical_velocity_rotation_vertical_remap_and_flux": "NOT_RUN",
+    }
     return {
         "status":"PASS_PRELIMINARY_ONLY" if wet_coverage else "FAIL",
         "parent_grid_id":p["id"],"child_grid_id":c["id"],
@@ -127,6 +191,7 @@ def check_pair(parent_grid: Path, child_grid: Path, *,
         "buffered_parent_boundary_gap_min_m":gap,
         "wet_boundary_points_checked":int(wet_boundary.sum()),
         "farthest_nearest_parent_wet_m":max_gap,
+        "full_wet_parent_quad_stencil":stencil_diagnostic,
         "wet_parent_search_cells":wet_parent_search_cells,
         "parent_nominal_cell_m":pcell,
         "child_nominal_cell_m":ccell,
