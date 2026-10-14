@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install self-contained synthetic test dependencies
-        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4
+        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4 pyproj shapely
       - name: Verify original single-grid source trees are unchanged
         shell: bash
         run: |
@@ -34,6 +34,39 @@ jobs:
           test "$(git rev-parse HEAD:ROMS_Build)" = "f14572866c49373c792598a56fefbe27afd07c11"
           test "$(git rev-parse HEAD:ROMS_Run)" = "29b27190340080a9bf4937264b86e9221b06f377"
           test "$(git rev-parse HEAD:roms_src/roms)" = "278b82148d31f9ffe01193560e959e0e95aebd62"
+      - name: Full-size conformal geometry occupancy (not wet mask)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ES3K_GEOMETRY_OCCUPANCY"
+          python - <<'PY'
+          import json, sys, os
+          from pathlib import Path
+          d = Path("ROMS_Nesting/Data_pre")
+          sys.path[:0] = [str(d/"nesting"), str(d/"core")]
+          from es3k_conformal import conformal_corner_grid
+          from es3k_wet_domain_audit import REGIONS
+          spec = json.loads(Path("ROMS_Nesting/configs/es3k_conformal_candidate.json").read_text())
+          coords, _, _, geom = conformal_corner_grid(spec)
+          lo,la = coords["lon_rho"],coords["lat_rho"]
+          occupancy = {
+            name: int(box.contains(lo,la).sum()) for name,box in REGIONS.items()
+          }
+          report = {
+            "science_status": "GEOMETRY_ONLY_NOT_GEBCO_GSHHG",
+            "rho_shape": list(lo.shape),
+            "total_rho_points": int(lo.size),
+            "region_grid_points": occupancy,
+            "geom_orthogonality_error_max_deg": geom["orthogonality_error_max_deg"],
+            "wet_mask": "NOT_RUN",
+            "hydrodynamics": "NOT_RUN"
+          }
+          out=Path(os.environ["RUNNER_TEMP"])/"ES3K_GEOMETRY_OCCUPANCY"/"full_ES3K_geometry_occupancy.json"
+          out.write_text(json.dumps(report,indent=2)+"\n")
+          print(json.dumps(report,indent=2))
+          assert geom["orthogonality_gate"]=="PRELIMINARY_PASS_ONLY"
+          assert list(lo.shape)==[732,464]
+          PY
       - name: Python syntax and synthetic NetCDF topology integration
         run: |
           set -euo pipefail
@@ -44,3 +77,10 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests \
             -p 'test_es3k_wet_domain_audit.py' -v
           echo "SYNTHETIC_TOPOLOGY_PASS_ONLY: real GEBCO/GSHHG and ROMS not run"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: es3k-full-conformal-geometric-occupancy-not-wet-mask
+          path: ${{ runner.temp }}/ES3K_GEOMETRY_OCCUPANCY/
+          if-no-files-found: warn
+          retention-days: 14
