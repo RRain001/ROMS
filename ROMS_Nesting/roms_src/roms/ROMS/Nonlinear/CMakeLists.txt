@@ -43,6 +43,7 @@ list( APPEND _files
       ROMS/Nonlinear/main3d.F
       ROMS/Nonlinear/main3d_offline.F
       ROMS/Nonlinear/offline_tracer_stage.F
+      ROMS/Nonlinear/offline_hydro_reader.F
       ROMS/Nonlinear/mpdata_adiff.F
       ROMS/Nonlinear/my25_corstep.F
       ROMS/Nonlinear/my25_prestep.F

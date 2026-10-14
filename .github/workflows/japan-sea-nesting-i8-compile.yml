@@ -55,6 +55,12 @@ jobs:
           cmake --build "$out" --parallel 2
           test -s "$out/romsS"
           echo "I8_FULL_ROMS_LINK_${{ matrix.variant }}_PASS"
+      - name: Native Fortran NetCDF offline snapshots (small-grid contract)
+        if: matrix.variant == 'offline_scaffold'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/scripts/test_offline_hydro_reader_fortran.py
       - name: Record compilation evidence
         if: always()
         run: |
