@@ -7,6 +7,8 @@ on:
     paths:
       - 'ROMS_Nesting/Data_pre/scripts/nesting/fetch_es3k_online_data.py'
       - '.github/workflows/japan-sea-es3k-online-native.yml'
+      - 'ROMS_Nesting/Data_pre/nesting/es3k_core_component_filter.py'
+      - 'ROMS_Nesting/Data_pre/scripts/nesting/export_es3k_core_mask_candidate.py'
       - 'ROMS_Nesting/Data_pre/nesting/es3k_wet_domain_audit.py'
   workflow_dispatch:
 
@@ -83,6 +85,25 @@ jobs:
           (root/"real_wet_summary.json").write_text(json.dumps(report,indent=2)+"\n")
           print(json.dumps(report,indent=2))
           PY
+      - name: Export disconnected-only exclusion as separate candidate mask
+        run: |
+          python ROMS_Nesting/Data_pre/scripts/nesting/export_es3k_core_mask_candidate.py \
+            --grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_GEBCO2026_GSHHG237_CANDIDATE.nc" \
+            --output "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_MASK_ONLY_CANDIDATE.nc" \
+            --report-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/real_es3k_core_component_filter_report.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          a=json.loads((root/"real_es3k_core_component_filter_report.json").read_text())
+          assert a["no_existing_shared_wet_face_cut"]
+          assert a["derived_yellow_sea_proxy_wet_rho"]==0
+          assert all(a["straits_after_filter"].values())
+          assert a["retained_core_wet_rho_points"]==193920
+          assert a["excluded_noncore_wet_rho_points"]>15000
+          assert a["ROMS_physics"]=="NOT_RUN"
+          print("MASK_CANDIDATE_ONLY; original GEBCO/GSHHG and ES3K grid unchanged")
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -92,6 +113,8 @@ jobs:
             ${{ runner.temp }}/ES3K_REAL_SOURCE/real_i3_grid_report.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/real_es3k_wet_domain_audit.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/real_wet_summary.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/real_es3k_core_component_filter_report.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_MASK_ONLY_CANDIDATE.nc
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_GEBCO2026_GSHHG237_CANDIDATE.nc
           if-no-files-found: warn
           retention-days: 14
