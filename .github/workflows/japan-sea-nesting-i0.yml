@@ -44,6 +44,7 @@ jobs:
           python -m unittest discover -s Data_pre/tests -p 'test_grid_metrics.py' -v
           python -m unittest discover -s Data_pre/tests -p 'test_nesting_rotation.py' -v
           python -m unittest discover -s tests -p 'test_tritium_budget.py' -v
+          python -m unittest discover -s tests -p 'test_offline_hydro_contract.py' -v
           python Data_pre/scripts/nesting/create_synthetic_rotated_grid.py --output "$RUNNER_TEMP/rotated_i2_synthetic.nc" --angle-deg 20
       - name: I8 native Fortran zeta snapshot contract (offline and standard)
         shell: bash
