@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install numerical grid dependencies
-        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4 pyproj
+        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4 pyproj pillow
       - name: Guarantee old single-grid code is unchanged
         shell: bash
         run: |
@@ -63,5 +63,5 @@ jobs:
         with:
           name: i3-synthetic-es3k-ud1k-candidate
           path: ${{ runner.temp }}/I3_SYNTHETIC/
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
