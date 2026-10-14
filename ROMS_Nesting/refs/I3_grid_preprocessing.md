@@ -96,6 +96,14 @@ Synthetic CI artifacts now use an actually *contained* small UD1K rectangle with
 
 **Actual I3 status: NOT_RUN / BLOCKED_BY_REAL_DATA_AND_GEOMETRY.** These CI successes verify executable preprocessing logic and synthetic output artifacts only. No real GEBCO 2026 / GSHHG Japan Sea grid files, no physical ROMS I2 gate, no GLORYS/ERA5/TPXO forcing or ES3K→UD1K run have been generated in this repo.
 
+## GLORYS12V1 initial/boundary sigma-depth correctness (I4 preflight)
+
+The copied single-grid GLORYS preprocessing computes `sigma_depths(h,vertical)` with **zero sea-surface height**, which is inaccurate when the real GLORYS `zos` is nonzero or time-dependent. In ROMS Vtransform=2, both RHO-depth and interface thickness depend on local `h+zeta`. The **isolated nesting copy only** now computes interpolated `zeta` first, validates the wet water column, recomputes `z_r/Hz` with the selected initial timestamp, and then interpolates GLORYS `temp/salt/u/v` vertically and depth-averages staggered `ubar/vbar`.
+
+For the open boundaries, sigma geometry is recomputed **for each GLORYS source time and two-cell RHO boundary strip**, rather than once at `zeta=0` for the entire 3D ES3K domain. This avoids allocating full-domain `N*ny*nx` `z_r/Hz` merely to generate four narrow boundary strips. Geometry and wind/current vector rotation are separate concerns; east/north GLORYS velocities are explicitly transformed using the ROMS `angle` field.
+
+The new `test_glorys_dynamic_sigma.py` uses an explicitly **synthetic**, time-changing and nonzero free surface, an analytic depth-dependent temperature field, and a rotated ES3K candidate grid; it tests the real copied preprocessing routines for all four boundary edges as well as a complete synthetic initial-condition NetCDF output. Scientific I4 remains **NOT RUN** until actual CMEMS source, approved coastline/geometry, initial+boundary time continuity and a ROMS integrator smoke.
+
 ## Remaining I3 acceptance barriers
 
 1. Real ES3K rotated corners/rotation/actual wet domain versus Kim (2020), with any approximation clearly disclosed.

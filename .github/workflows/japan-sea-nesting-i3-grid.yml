@@ -44,6 +44,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_bathymetry_grid.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_gebco_bounded_read.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_real_gebco_contract.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_glorys_dynamic_sigma.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_nesting_pair_preflight.py' -v
       - name: Persist explicit synthetic ES3K and UD1K NetCDF candidates
         run: |

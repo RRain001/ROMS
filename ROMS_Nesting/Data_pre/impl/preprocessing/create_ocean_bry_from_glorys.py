@@ -169,7 +169,7 @@ def edge_source_with_fallback(lon, lat, values, bbox: tuple[float, float, float,
     return lon, lat, values
 
 
-def edge_target_geometry(grid, z_r, hz, edge: str):
+def edge_target_geometry(grid, vertical, edge: str):
     wet_rho = grid.mask_rho == 1
     wet_u = wet_rho[:, :-1] & wet_rho[:, 1:]
     wet_v = wet_rho[:-1, :] & wet_rho[1:, :]
@@ -178,8 +178,10 @@ def edge_target_geometry(grid, z_r, hz, edge: str):
             "rho_lon": grid.lon_rho[:, :2],
             "rho_lat": grid.lat_rho[:, :2],
             "angle": grid.angle[:, :2],
-            "z_r": z_r[:, :, :2],
-            "hz": hz[:, :, :2],
+            "h": grid.h[:, :2],
+            "vertical": vertical,
+            
+            
             "rho_mask": wet_rho[:, :2],
             "u_mask": wet_u[:, :1],
             "v_mask": wet_v[:, :2],
@@ -189,8 +191,10 @@ def edge_target_geometry(grid, z_r, hz, edge: str):
             "rho_lon": grid.lon_rho[:, -2:],
             "rho_lat": grid.lat_rho[:, -2:],
             "angle": grid.angle[:, -2:],
-            "z_r": z_r[:, :, -2:],
-            "hz": hz[:, :, -2:],
+            "h": grid.h[:, -2:],
+            "vertical": vertical,
+            
+            
             "rho_mask": wet_rho[:, -2:],
             "u_mask": wet_u[:, -1:],
             "v_mask": wet_v[:, -2:],
@@ -200,8 +204,10 @@ def edge_target_geometry(grid, z_r, hz, edge: str):
             "rho_lon": grid.lon_rho[:2, :],
             "rho_lat": grid.lat_rho[:2, :],
             "angle": grid.angle[:2, :],
-            "z_r": z_r[:, :2, :],
-            "hz": hz[:, :2, :],
+            "h": grid.h[:2, :],
+            "vertical": vertical,
+            
+            
             "rho_mask": wet_rho[:2, :],
             "u_mask": wet_u[:2, :],
             "v_mask": wet_v[:1, :],
@@ -210,8 +216,10 @@ def edge_target_geometry(grid, z_r, hz, edge: str):
         "rho_lon": grid.lon_rho[-2:, :],
         "rho_lat": grid.lat_rho[-2:, :],
         "angle": grid.angle[-2:, :],
-        "z_r": z_r[:, -2:, :],
-        "hz": hz[:, -2:, :],
+            "h": grid.h[-2:, :],
+            "vertical": vertical,
+        
+        
         "rho_mask": wet_rho[-2:, :],
         "u_mask": wet_u[-2:, :],
         "v_mask": wet_v[-1:, :],
@@ -220,6 +228,15 @@ def edge_target_geometry(grid, z_r, hz, edge: str):
 
 def interpolate_edge_state(lon, lat, depth, zeta_src, temp_src, salt_src, u_src, v_src, geometry):
     zeta_rho = interpolate_2d_filled(lon, lat, zeta_src, geometry["rho_lon"], geometry["rho_lat"])
+    if not np.all(np.isfinite(zeta_rho[geometry["rho_mask"]])):
+        raise ValueError("GLORYS boundary zeta has nonfinite wet points")
+    zeta_rho = np.where(geometry["rho_mask"], zeta_rho, 0.0)
+    if np.any((geometry["h"] + zeta_rho)[geometry["rho_mask"]] <= 0):
+        raise ValueError("GLORYS boundary water column is nonpositive")
+    z_r, _, hz = sigma_depths(geometry["h"], geometry["vertical"], zeta=zeta_rho)
+    # Target sigma depths are recomputed for EVERY boundary time record,
+    # using only the relevant 2-rho-cell strip, not a full ES3K volume.
+    geometry = dict(geometry, z_r=z_r, hz=hz)
     temp_rho = interpolate_3d(lon, lat, depth, temp_src, geometry["rho_lon"], geometry["rho_lat"], geometry["z_r"])
     salt_rho = interpolate_3d(lon, lat, depth, salt_src, geometry["rho_lon"], geometry["rho_lat"], geometry["z_r"])
     u_rho_east = interpolate_3d(lon, lat, depth, u_src, geometry["rho_lon"], geometry["rho_lat"], geometry["z_r"])
@@ -273,8 +290,7 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     grid = load_grid(grid_path)
     vertical = load_vertical_config()
-    z_r, _, hz = sigma_depths(grid.h, vertical)
-
+    # Sigma depths for real zeta are now evaluated per boundary strip/time.
     with Dataset(src_path) as src:
         lon, lat, lon_name, lat_name = get_rectilinear_lon_lat(src)
         depth_name = infer_variable(src, ("depth", "lev", "level", "z"))
@@ -314,6 +330,7 @@ def main() -> None:
             ds.model_time_start = requested_start.isoformat()
             ds.model_time_stop = requested_stop.isoformat()
             ds.time_reference = f"MJD / {MJD_UNITS}"
+            ds.vertical_interpolation_geometry = "TIME_SPECIFIC_ZETA_SIGMA_VTRANSFORM2_EDGE_ONLY"
 
             selected_source_times = [times[index] for index in selected]
             selected_model_times = [glorys_model_time_from_source_time(config, item) for item in selected_source_times]
@@ -352,7 +369,7 @@ def main() -> None:
                     _, _, edge_salt = edge_source_with_fallback(lon, lat, salt_src, edge_bboxes[edge])
                     _, _, edge_u = edge_source_with_fallback(lon, lat, u_src, edge_bboxes[edge])
                     _, _, edge_v = edge_source_with_fallback(lon, lat, v_src, edge_bboxes[edge])
-                    state = interpolate_edge_state(edge_lon, edge_lat, depth, edge_zeta, edge_temp, edge_salt, edge_u, edge_v, edge_target_geometry(grid, z_r, hz, edge))
+                    state = interpolate_edge_state(edge_lon, edge_lat, depth, edge_zeta, edge_temp, edge_salt, edge_u, edge_v, edge_target_geometry(grid, vertical, edge))
 
                     if edge == "west":
                         zeta_vars[edge][out_index, :] = state["zeta_rho"][:, 0]

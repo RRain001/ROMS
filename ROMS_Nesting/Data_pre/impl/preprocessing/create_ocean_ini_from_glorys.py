@@ -89,7 +89,6 @@ def main() -> None:
     requested_start = datetime.fromisoformat(params["time"]["start"])
     model_time = target_ini_time(config, args)
     desired_source_time = glorys_source_time_from_model_time(config, model_time)
-    z_r, _, hz = sigma_depths(grid.h, vertical)
     wet_rho = grid.mask_rho == 1
     wet_u = wet_rho[:, :-1] & wet_rho[:, 1:]
     wet_v = wet_rho[:-1, :] & wet_rho[1:, :]
@@ -117,18 +116,26 @@ def main() -> None:
         temp_units = getattr(src.variables[temp_name], "units", "")
         salt_units = getattr(src.variables[salt_name], "units", "")
 
+    # The sigma geometry MUST use the actual selected zeta snapshot,
+    # not an artificial zero sea level. Recomputing after zeta also
+    # gives depth-averaged ubar/vbar the matching Hz.
     zeta_rho = interpolate_rectilinear_2d(lon, lat, zeta_src, grid.lon_rho, grid.lat_rho)
+    zeta_rho = fill_rho_field_2d(zeta_rho, wet_rho)
+    zeta_rho = np.where(wet_rho, zeta_rho, 0.0)
+    if not np.all(np.isfinite(zeta_rho[wet_rho])):
+        raise ValueError("GLORYS zeta contains nonfinite wet grid values")
+    if np.any((grid.h + zeta_rho)[wet_rho] <= 0):
+        raise ValueError("GLORYS zeta yields nonpositive wet water column")
+    z_r, _, hz = sigma_depths(grid.h, vertical, zeta=zeta_rho)
     temp_rho = interpolate_3d(lon, lat, depth, temp_src, grid.lon_rho, grid.lat_rho, z_r)
     salt_rho = interpolate_3d(lon, lat, depth, salt_src, grid.lon_rho, grid.lat_rho, z_r)
     u_rho_east = interpolate_3d(lon, lat, depth, u_src, grid.lon_rho, grid.lat_rho, z_r)
     v_rho_north = interpolate_3d(lon, lat, depth, v_src, grid.lon_rho, grid.lat_rho, z_r)
 
-    zeta_rho = fill_rho_field_2d(zeta_rho, wet_rho)
     temp_rho = fill_rho_field_3d(temp_rho, wet_rho)
     salt_rho = fill_rho_field_3d(salt_rho, wet_rho)
     u_rho_east = fill_rho_field_3d(u_rho_east, wet_rho)
     v_rho_north = fill_rho_field_3d(v_rho_north, wet_rho)
-    zeta_rho = np.where(wet_rho, zeta_rho, 0.0)
     temp_rho = zero_masked_uv(temp_rho, wet_rho)
     salt_rho = zero_masked_uv(salt_rho, wet_rho)
 
@@ -162,6 +169,7 @@ def main() -> None:
         ds.model_time = model_time.isoformat()
         ds.time_reference = f"MJD / {MJD_UNITS}"
         ds.requested_model_start = requested_start.isoformat()
+        ds.vertical_interpolation_geometry = "TIME_SPECIFIC_ZETA_SIGMA_VTRANSFORM2"
 
         create_time_variable(ds, "ocean_time", [model_time], "time since reference date")
         ocean_time = ds.variables["ocean_time"]
