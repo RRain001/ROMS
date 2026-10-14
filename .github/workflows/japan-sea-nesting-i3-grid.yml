@@ -52,6 +52,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_es3k_user_corners.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_es3k_transfinite.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_es3k_conformal.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_es3k_conformal_full.py' -v
       - name: Generate user-corner-constrained ES3K geometric diagnostic
         shell: bash
         run: |
@@ -91,6 +92,31 @@ jobs:
           for suffix in ("png","svg"):
               assert (p/f"ES3K_conformal_vs_bilinear_CANDIDATE.{suffix}").stat().st_size>1000
           print("ES3K CONFORMAL GEOMETRY PILOT PASS, SCIENTIFIC I2/I3 NOT COMPLETE")
+          PY
+      - name: Record full-resolution ES3K conformal grid diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/I2_ES3K_FULL_RESOLUTION"
+          python - <<'PY'
+          import sys,json,os
+          from pathlib import Path
+          d=Path("ROMS_Nesting/Data_pre/nesting")
+          sys.path[:0]=[str(d),str(Path("ROMS_Nesting/Data_pre/core"))]
+          from es3k_conformal import conformal_corner_grid
+          cfg=json.loads(Path("ROMS_Nesting/configs/es3k_conformal_candidate.json").read_text())
+          _,_,_,report=conformal_corner_grid(cfg,sample_scale=1)
+          assert report["orthogonality_gate"]=="PRELIMINARY_PASS_ONLY"
+          assert report["sample_scale"]==1
+          assert report["corner_max_wgs84_error_m"]<1e-5
+          assert report["ROMS_integration"]=="NOT_RUN"
+          out=Path(os.environ["RUNNER_TEMP"])/"I2_ES3K_FULL_RESOLUTION"
+          (out/"full_resolution_conformal_quality.json").write_text(json.dumps(report,indent=2)+"\n")
+          print(json.dumps({k:report[k] for k in (
+              "actual_rho_shape","orthogonality_error_max_deg",
+              "orthogonality_error_p95_deg","geodesic_dx_min_m",
+              "geodesic_dx_max_m","geodesic_dy_min_m",
+              "geodesic_dy_max_m")},indent=2))
           PY
       - name: Persist explicit synthetic ES3K and UD1K NetCDF candidates
         run: |
@@ -182,6 +208,13 @@ jobs:
               assert (p/f"Japan_Sea_Three_Grids_CANDIDATE.{ext}").stat().st_size > 1000
           print("THREE GRID SCHEMATIC / APPROVED GEOMETRY PASS, real GSHHG and ROMS NOT RUN")
           PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: i2-es3k-conformal-full-resolution-quality
+          path: ${{ runner.temp }}/I2_ES3K_FULL_RESOLUTION/
+          if-no-files-found: warn
+          retention-days: 21
       - uses: actions/upload-artifact@v4
         if: always()
         with:
