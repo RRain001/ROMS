@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install numerical grid dependencies
-        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4 pyproj pillow
+        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4 pyproj pillow pyshp
       - name: Guarantee old single-grid code is unchanged
         shell: bash
         run: |

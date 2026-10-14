@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import numpy as np
 from netCDF4 import Dataset
+import shapefile
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"nesting"))
@@ -104,6 +105,51 @@ class BathyGridTests(unittest.TestCase):
         with Dataset(path) as ds:
             self.assertEqual(ds["mask_rho"][0,0],0)
             self.assertEqual(ds.shoreline_source,"synthetic-gshhg.shp")
+
+    def test_real_gshhg_shapefile_parser_masks_wet_grid(self):
+        # This exercises the actual independent GSHHG shapefile loader,
+        # unlike the above mocked test. Synthetic polygon, not Japan Sea.
+        coords, _, _ = make_geometry(ES)
+        lo = float(coords["lon_rho"][6, 5])
+        la = float(coords["lat_rho"][6, 5])
+        base=self.folder/"gshhg-shp-2"/"GSHHS_shp"
+        folder=base/"h"
+        folder.mkdir(parents=True)
+        shp_path=folder/"GSHHS_h_L1.shp"
+        with shapefile.Writer(str(shp_path),shapeType=shapefile.POLYGON) as sh:
+            sh.field("ID","N")
+            sh.poly([[[lo-.018,la-.018],[lo+.018,la-.018],
+                      [lo+.018,la+.018],[lo-.018,la+.018],
+                      [lo-.018,la-.018]]])
+            sh.record(1)
+        unmasked,_=self.build(ES,"unmasked.nc")
+        masked=self.folder/"gshhg_masked.nc"
+        report=build_grid(ES,self.source,masked,gshhg_base=base,
+                          gshhg_resolution="h",synthetic_fixture=True)
+        self.assertEqual(report["shoreline_status"],"GSHHG_L1_INTERSECTED_WITH_GEBCO")
+        with Dataset(unmasked) as old,Dataset(masked) as updated:
+            self.assertEqual(old["mask_rho"][6,5],1)
+            self.assertEqual(updated["mask_rho"][6,5],0)
+            self.assertEqual(updated["mask_u"][6,5],0)
+            self.assertIn("GSHHS_h_L1.shp",updated.shoreline_source)
+
+    def test_integer_gebco_elevation(self):
+        # GEBCO elevation is often stored as signed integer NetCDF.
+        integer_path=self.folder/"gebco_int16.nc"
+        with Dataset(self.source) as original,Dataset(integer_path,"w") as target:
+            for name in ("lon","lat"):
+                target.createDimension(name,len(original.dimensions[name]))
+                var=target.createVariable(name,"f8",(name,))
+                var[:]=original[name][:]
+            elev=target.createVariable("elevation","i2",("lat","lon"),fill_value=-32768)
+            elev[:]=np.rint(original["elevation"][:]).astype("i2")
+        output=self.folder/"int16_grid.nc"
+        report=build_grid(ES,integer_path,output,
+                          allow_gebco_only_mask=True,synthetic_fixture=True)
+        self.assertEqual(report["status"],NESTING_ONLY)
+        with Dataset(output) as grid:
+            self.assertTrue(np.isfinite(grid["h"][:]).all())
+            self.assertGreater(float(np.ptp(grid["h"][:])),20)
 
     def test_mask_required_unless_explicit_test_policy(self):
         with self.assertRaisesRegex(ValueError,"--gshhg-base"):
