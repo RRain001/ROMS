@@ -24,7 +24,7 @@ CHILD={
     "resolution_m":1000,
 }
 OUTSIDE={
-    **CHILD, "lon_min":131.70, "lon_max":131.79,
+    **CHILD, "lon_min":130.72, "lon_max":130.81,
     "lat_min":37.59,"lat_max":37.66
 }
 
