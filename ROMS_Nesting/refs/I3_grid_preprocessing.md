@@ -53,7 +53,7 @@ For **synthetic CI only**, `--allow-gebco-only-mask --synthetic-test-only` allow
 
 ## Official GEBCO_2026 NetCDF schema and safe staging
 
-The official [CEDA GEBCO_2026 NetCDF catalogue](https://data.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/netcdf) lists the scientific variables `longitude`, `latitude`, **`height_above_mean_sea_level`**, and `crs`. Earlier copied staging code recognized only `z/elevation/Band1`; that would fail on the official file. The independent candidate reader and `stage_and_subset_bathymetry.py` now handle the CEDA source alias, validate dimensions and perform **bounded spatial-window extraction**. The staging script no longer calls unrestricted `ZipExtFile.read()` on the 7 GB NetCDF member; it uses an 8 MiB streaming copy and an atomic `.part` extraction target. Adequate on-disk space is still required for both compressed and extracted inputs.
+**ES3K staging minimum:** since the user's ES3K westernmost boundary is **121.000000°E**, the previous example `--west 121.5 --margin 0.25` would miss it and must **not** be used. The current approximate example starts `--west 120.5`; the final source window must be checked against every RHO node of the eventual curvilinear mesh, not merely its four corners.\n\nThe official [CEDA GEBCO_2026 NetCDF catalogue](https://data.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/netcdf) lists the scientific variables `longitude`, `latitude`, **`height_above_mean_sea_level`**, and `crs`. Earlier copied staging code recognized only `z/elevation/Band1`; that would fail on the official file. The independent candidate reader and `stage_and_subset_bathymetry.py` now handle the CEDA source alias, validate dimensions and perform **bounded spatial-window extraction**. The staging script no longer calls unrestricted `ZipExtFile.read()` on the 7 GB NetCDF member; it uses an 8 MiB streaming copy and an atomic `.part` extraction target. Adequate on-disk space is still required for both compressed and extracted inputs.
 
 When using the local official GEBCO ZIP or already extracted NetCDF:
 
@@ -62,7 +62,7 @@ python ROMS_Nesting/Data_pre/scripts/bathymetry/stage_and_subset_bathymetry.py \
   --case-name JAPAN_SEA \
   --global-file /workspace/GEBCO/GEBCO_2026.nc \
   --zip-file /workspace/GEBCO/GEBCO_2026.zip \
-  --west 121.5 --east 150.8 --south 30.4 --north 52.4 --margin 0.25 \
+  --west 120.5 --east 150.8 --south 30.4 --north 52.4 --margin 0.25 \
   --max-source-cells 50000000 \
   --work-dir /workspace/JAPAN_SEA/GEBCO \
   --output gebco_2026_japan_sea_CANDIDATE.nc

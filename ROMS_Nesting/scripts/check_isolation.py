@@ -33,7 +33,10 @@ def main() -> None:
     p = json.loads((cfg / "project_parameters.json").read_text())
     require(p["ocean"]["default_source"] == "glorys12v1", "changed ocean source")
     require(p["vertical"]["N"] == 41, "unexpected sigma levels")
-    require(p["domain"]["domain_status"] == "REFERENCE_BBOX_ONLY_ROTATED_ES3K_CORNERS_UNRESOLVED", "rotated ES3K incorrectly finalized")
+    require(p["domain"]["domain_status"] == "ES3K_USER_SUPPLIED_FOUR_CORNERS_GRID_NOT_GENERATED",
+            "ES3K geometric input status inconsistent with user-defined corners")
+    require(p["domain"]["lon_min"]==121.0 and p["domain"]["nominal_resolution_deg"]==1/36,
+            "ES3K case extent or user-selected angular resolution changed")
 
     from case_context import resolve_case_context
     from build_context import resolve_build_context

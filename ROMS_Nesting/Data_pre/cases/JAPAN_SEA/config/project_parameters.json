@@ -4,10 +4,10 @@
     "slug": "japan_sea",
     "title": "Japan Sea ROMS nesting (I0 configuration only)",
     "cpp_name": "JAPAN_SEA",
-    "description": "I0 configuration scaffold; ES3K domain reference envelope only, no production grid"
+    "description": "I0/I3 isolated Japanese Sea nested-domain scaffold; ES3K user-supplied corners fixed but ROMS curvilinear grid/physics NOT GENERATED"
   },
   "domain": {
-    "lon_min": 121.9,
+    "lon_min": 121,
     "lon_max": 150.4,
     "lat_min": 30.8,
     "lat_max": 52,
@@ -15,8 +15,19 @@
     "pilot_resolution_m": 10000,
     "source_lon": 130,
     "source_lat": 37,
-    "domain_status": "REFERENCE_BBOX_ONLY_ROTATED_ES3K_CORNERS_UNRESOLVED",
-    "source_status": "PLACEHOLDER_NO_PHYSICAL_RELEASE"
+    "domain_status": "ES3K_USER_SUPPLIED_FOUR_CORNERS_GRID_NOT_GENERATED",
+    "source_status": "PLACEHOLDER_NO_PHYSICAL_RELEASE",
+    "corner_config": "ROMS_Nesting/configs/es3k_user_corners.json",
+    "corner_perimeter_order": "W_N_E_S_W",
+    "nominal_resolution_deg": 0.027777777777777776,
+    "nominal_resolution_fraction": "1/36 deg",
+    "target_resolution_m_status": "LEGACY_APPROXIMATE_METRIC_PILOT_ONLY_NOT_EXACT_ANGULAR",
+    "paper_reference_envelope_deg": [
+      121.9,
+      150.4,
+      30.8,
+      52
+    ]
   },
   "time": {
     "start": "2018-01-01T00:00:00",

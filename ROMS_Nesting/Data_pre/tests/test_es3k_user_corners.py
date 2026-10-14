@@ -69,7 +69,12 @@ class UserES3KCorners(unittest.TestCase):
         # on a curved ellipsoid and the shape is not an exact rectangle.
         s,e=self.points["S"],self.points["E"]
         az2,_,dist=G.inv(s[1],s[0],e[1],e[0])
-        self.assertGreater(abs(az-az2),5)
+        # Both long sides have nearly parallel *initial* bearings
+        # (~1 degree apart), not >5 degrees. Variation of the grid
+        # angle along each curved geodesic must be determined by the
+        # eventually generated curvilinear grid, not assumed constant.
+        self.assertGreater(abs(az-az2),0.5)
+        self.assertLess(abs(az-az2),2.0)
         self.assertGreater(abs(dist/1000-km/1000),50)
 
     def test_full_ud1k_interior_and_l3_user_square(self):
