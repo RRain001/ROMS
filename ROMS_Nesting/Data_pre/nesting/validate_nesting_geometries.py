@@ -68,8 +68,8 @@ def check_pair(parent_grid: Path, child_grid: Path, *,
         raise ValueError("wet-parent search radius invalid")
     p=_grid(parent_grid)
     c=_grid(child_grid)
-    if p["id"]!="ES3K" or c["id"]!="UD1K":
-        raise ValueError("expected ES3K parent and UD1K child")
+    if (p["id"],c["id"]) not in (("ES3K","UD1K"),("UD1K","L3_300m")):
+        raise ValueError("expected ES3K parent and UD1K child OR UD1K parent and L3_300m child")
     if p["status"]!="CANDIDATE_NOT_VALIDATED_FOR_ROMS" or c["status"]!="CANDIDATE_NOT_VALIDATED_FOR_ROMS":
         raise ValueError("only audited I3 candidate grids are supported in this preflight")
     if p["lon_rho"].shape[0]<2*margin_parent_rho_cells+5 or p["lon_rho"].shape[1]<2*margin_parent_rho_cells+5:
@@ -90,8 +90,9 @@ def check_pair(parent_grid: Path, child_grid: Path, *,
     pcell=float(np.median(1.0/np.sqrt(p["pm"]*p["pn"])))
     ccell=float(np.median(1.0/np.sqrt(c["pm"]*c["pn"])))
     if not is_inside:
-        return {"status":"FAIL","reason":"UD1K intersects/outside buffered ES3K footprint",
+        return {"status":"FAIL","reason":f'{c["id"]} intersects/outside buffered {p["id"]} footprint',
                 "margin_parent_rho_cells":margin_parent_rho_cells,
+                "parent_grid_id":p["id"],"child_grid_id":c["id"],
                 "distance_to_buffered_parent_m":0.0,
                 "resolution_ratio":pcell/ccell,
                 "physical_nesting":"NOT_RUN"}
@@ -120,6 +121,7 @@ def check_pair(parent_grid: Path, child_grid: Path, *,
     wet_coverage=bool(np.all(distance<=wet_parent_search_cells*pcell))
     return {
         "status":"PASS_PRELIMINARY_ONLY" if wet_coverage else "FAIL",
+        "parent_grid_id":p["id"],"child_grid_id":c["id"],
         "reason":"preflight footprint and parent wet coverage" if wet_coverage else "child wet boundary lacks nearby parent wet cells",
         "margin_parent_rho_cells":margin_parent_rho_cells,
         "buffered_parent_boundary_gap_min_m":gap,

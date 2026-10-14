@@ -67,6 +67,58 @@ def make_geometry(spec: dict) -> tuple[dict[str, np.ndarray], float, float]:
             raise ValueError("rho point counts must be integers")
         result = create_geometry(rotated)
         return result, rotated.dx_m, rotated.dy_m
+    if typ == "geodesic_square_from_side":
+        if spec.get("grid_id") != "L3_300m":
+            raise ValueError("side-anchored square is reserved for L3_300m")
+        from l3_square import square_grid_geometry
+        values, dx, dy, metadata = square_grid_geometry(spec)
+        return values, dx, dy
+    if typ == "axis_aligned_lonlat_angular":
+        if spec.get("grid_id") != "UD1K":
+            raise ValueError("axis_aligned_lonlat_angular currently reserved for UD1K")
+        west, east, south_target, north = [
+            _float_finite(spec.get(k),k)
+            for k in ("lon_min","lon_max","lat_min","lat_max")]
+        step=_float_finite(spec.get("nominal_resolution_deg"),"nominal_resolution_deg")
+        if not np.isclose(step,1/108,rtol=0,atol=1e-12):
+            raise ValueError("UD1K nominal angular resolution must be 1/108 degree")
+        if not (-180<west<east<180 and -85<south_target<north<85):
+            raise ValueError("invalid geographic angular grid bounds")
+        nx_intervals=int(round((east-west)/step))
+        ny_intervals=int(round((north-south_target)/step))
+        if nx_intervals<3 or ny_intervals<3:
+            raise ValueError("UD1K angular bounds too small")
+        if (nx_intervals+1)*(ny_intervals+1)>int(spec.get("max_rho_points",500000)):
+            raise ValueError("UD1K angular grid exceeds max_rho_points")
+        # Preserve west and north authoritative bounds; snap east and
+        # south to true integer multiples of the exact 1/108 degree.
+        lon_axis=west+np.arange(nx_intervals+1,dtype=float)*step
+        lat_axis=north-ny_intervals*step+np.arange(ny_intervals+1,dtype=float)*step
+        if (abs(lon_axis[-1]-east)>step/2+1e-12 or
+            abs(lat_axis[0]-south_target)>step/2+1e-12):
+            raise ValueError("UD1K anchor snapping changed bounds beyond half a cell")
+        lon,lat=np.meshgrid(lon_axis,lat_axis)
+        result:dict[str,np.ndarray]={"lon_rho":lon,"lat_rho":lat}
+        for kind,lons,lats in (
+            ("u",(lon[:,:-1]+lon[:,1:])/2,lat[:,:-1]),
+            ("v",lon[:-1,:],(lat[:-1,:]+lat[1:,:])/2),
+            ("psi",(lon[:-1,:-1]+lon[1:,1:])/2,
+                   (lat[:-1,:-1]+lat[1:,1:])/2)):
+            result["lon_"+kind],result["lat_"+kind]=lons,lats
+        center_lat=float(np.mean(lat_axis))
+        center_lon=float(np.mean(lon_axis))
+        _,_,dx=WGS84.inv(center_lon,center_lat,center_lon+step,center_lat)
+        _,_,dy=WGS84.inv(center_lon,center_lat,center_lon,center_lat+step)
+        for kind in KINDS:
+            lon_loc,lat_loc=result["lon_"+kind],result["lat_"+kind]
+            result["x_"+kind]=(lon_loc-west)/step*dx
+            result["y_"+kind]=(lat_loc-lat_axis[0])/step*dy
+        result.update(compute_grid_metrics(lon,lat))
+        # Geographic coordinate axes are unrotated; physical sizes
+        # still depend on latitude, as captured in WGS84 pm and pn.
+        result["angle"]=np.zeros(lon.shape,dtype=float)
+        result["f"]=2*7.2921159e-5*np.sin(np.deg2rad(lat))
+        return result,dx,dy
     if typ == "axis_aligned_lonlat":
         if spec.get("grid_id") != "UD1K":
             raise ValueError("axis_aligned_lonlat candidate currently reserved for UD1K")
@@ -228,8 +280,8 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
     if spec.get("geometry_status") != "CANDIDATE_APPROXIMATE":
         raise ValueError("explicit geometry_status=CANDIDATE_APPROXIMATE required")
     grid_id = spec.get("grid_id")
-    if grid_id not in ("ES3K", "UD1K"):
-        raise ValueError("only the first two grid domains may be built before L3 is defined")
+    if grid_id not in ("ES3K", "UD1K","L3_300m"):
+        raise ValueError("grid_id must be ES3K, UD1K or L3_300m")
     if gshhg_base is None and not allow_gebco_only_mask:
         raise ValueError("provide --gshhg-base or explicitly enable candidate GEBCO-only mask")
     values, dx, dy = make_geometry(spec)
@@ -285,7 +337,22 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
         ds.title=f"{grid_id} JAPAN_SEA ROTATED/AXIS candidate grid (NOT ACCEPTED)"
         ds.grid_id=str(grid_id)
         ds.geometry_status=NESTING_ONLY
-        ds.geometry_reference_status="KIM_2020_CORNERS_NOT_VERIFIED"
+        ds.geometry_reference_status=("USER_ANCHORED_CANDIDATE_NOT_SHORELINE_VERIFIED"
+                                      if grid_id=="L3_300m"
+                                      else "KIM_2020_CORNERS_NOT_VERIFIED")
+        ds.geometry_input_json=json.dumps(spec,sort_keys=True)
+        if "nominal_resolution_deg" in spec:
+            ds.nominal_resolution_deg=float(spec["nominal_resolution_deg"])
+            ds.angular_spacing_claim=(
+                "LOCAL_METRIC_EQUIVALENT_NOT_EXACT_ANGULAR" if grid_id=="L3_300m"
+                else "GEOGRAPHIC_EXACT_1_OVER_108_DEG"
+                if spec.get("geometry_type")=="axis_aligned_lonlat_angular"
+                else "NOT_IMPLEMENTED")
+        if grid_id=="L3_300m":
+            from l3_square import square_corners
+            geometry=square_corners(spec)
+            ds.coastal_square_corners_lat_lon=json.dumps(geometry["corners_lat_lon"])
+            ds.coastal_square_side_m=float(geometry["side_m"])
         ds.shoreline_status=shore_status
         ds.shoreline_source=shp or "NOT_APPLIED"
         ds.bathymetry_source=str(bathymetry)
@@ -317,7 +384,9 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
             "h_min":float(values["h"].min()),"h_max":float(values["h"].max()),
             "shoreline_status":shore_status,"quality":quality,
             "source_window":bathy_window,
-            "still_required":["Kim 2020 ES3K geometry provenance","GSHHG/manual mask review",
+            "still_required":["ES3K Kim 2020 orientation provenance" if grid_id=="ES3K" else
+                              "verified parent grid and L3 coastline topology",
+                              "GSHHG/manual mask review",
                               "bathymetry smoothing and rx0/volume checks",
                               "ROMS rotated-grid 1h/6h actual model test",
                               "forcing and parent-child boundary construction"]}

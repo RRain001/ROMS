@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "L3_300m anchored offshore square",
+        "status": "CANDIDATE_NOT_VALIDATED",
+        "source": "User-provided AB, WGS84 AEQD-derived CD",
+        "nominal_grid": "1/324 deg angular local equivalent"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              129.407703,
+              35.545437
+            ],
+            [
+              129.93238835473852,
+              35.45075404284758
+            ],
+            [
+              130.05013114990004,
+              35.87949888065
+            ],
+            [
+              129.522766,
+              35.974688
+            ],
+            [
+              129.407703,
+              35.545437
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

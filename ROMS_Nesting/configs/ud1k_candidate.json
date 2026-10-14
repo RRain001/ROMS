@@ -1,15 +1,22 @@
 {
   "grid_id": "UD1K",
   "geometry_status": "CANDIDATE_APPROXIMATE",
-  "geometry_type": "axis_aligned_lonlat",
+  "geometry_type": "axis_aligned_lonlat_angular",
   "lon_min": 127.5,
   "lon_max": 134,
-  "lat_min": 35.5,
+  "lat_min": 35.35,
   "lat_max": 39,
-  "resolution_m": 1000,
   "max_rho_points": 500000,
-  "provenance": "Kim et al. 2020 approximate reference envelope, NOT verified ROMS original vertices; paper Table 1 1/108 degree target, current 1000 m candidate generator NOT equivalent",
+  "provenance": "Kim et al. (2020) UD1K reference 127.5–134 E /35.5–39 N; user-defined L3 requires proposed 35.35 N southern extension; west=127.5 and north=39 anchor the exact 1/108-degree axes; real parent wet/physics not validated",
   "nominal_resolution_deg": 0.009259259259259259,
   "nominal_resolution_fraction": "1/108 deg",
-  "resolution_generator_status": "EXISTING_RESOLUTION_M_GENERATOR_SYNTHETIC_ONLY_ANGULAR_IMPLEMENTATION_PENDING"
+  "resolution_generator_status": "CANDIDATE_EXACT_LONGITUDE_LATITUDE_1_OVER_108",
+  "parent_expansion": "PROPOSED_SOUTHWARD_TO_INCLUDE_USER_DEFINED_L3",
+  "official_reference_envelope_deg": [
+    127.5,
+    134,
+    35.5,
+    39
+  ],
+  "legacy_resolution_m_for_synthetic_only": 1000
 }

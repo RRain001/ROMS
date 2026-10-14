@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "status": "ANGULAR_RESOLUTION_DESIGN_APPROVED_REAL_GRID_NOT_RUN",
+  "schema_version": 3,
+  "status": "L3_ANCHORS_CONFIRMED_REAL_GRID_AND_UD1K_EXPANSION_PENDING",
   "mode": "offline_one_way",
   "ocean_source_default": "glorys12v1",
   "reference": {
@@ -44,18 +44,66 @@
       "nominal_resolution_deg": 0.009259259259259259,
       "nominal_resolution_fraction": "1/108 deg",
       "old_metric_resolution_m_for_synthetic_only": 1000,
-      "angular_grid_generator_status": "NOT_IMPLEMENTED"
+      "angular_grid_generator_status": "PRELIMINARY_EXACT_GEOGRAPHIC_1_OVER_108_IMPLEMENTED",
+      "proposed_modification": {
+        "reason": "L3 southern corner at 35.450754N lies outside published 35.5N UD1K limit",
+        "original_paper_bounds_deg": [
+          127.5,
+          134,
+          35.5,
+          39
+        ],
+        "south_bound_proposal_deg": 35.35,
+        "south_bound_snapped_1_over_108_deg": 35.35185185185185,
+        "physics_approval": "PENDING"
+      }
     },
     {
       "id": "L3_300m",
       "parent": "UD1K",
-      "orientation": "optional_rotation",
-      "domain": null,
-      "geometry_status": "USER_TO_DEFINE",
+      "orientation": "rotated_user_anchored_coastal_square",
+      "domain": {
+        "side_start_A_lat_lon": [
+          35.545437,
+          129.407703
+        ],
+        "side_end_B_lat_lon": [
+          35.974688,
+          129.522766
+        ],
+        "side": "eastern_offshore_right_hand_from_A_to_B",
+        "derived_corners_lat_lon": {
+          "A": [
+            35.545437,
+            129.407703
+          ],
+          "B": [
+            35.974688,
+            129.522766
+          ],
+          "C": [
+            35.87949888065,
+            130.05013114990004
+          ],
+          "D": [
+            35.45075404284758,
+            129.93238835473852
+          ]
+        },
+        "side_length_km": 48.7508486027,
+        "square_local_area_km2": 2376.64523949,
+        "rho_shape_preliminary": [
+          143,
+          176
+        ],
+        "coastline_wet_mask": "NOT_RUN",
+        "parent_containment": "PENDING_UD1K_SOUTHERN_EXPANSION_AND_REAL_SHORELINE"
+      },
+      "geometry_status": "USER_ANCHORED_CANDIDATE_REQUIRES_SHORELINE_AND_PARENT_VALIDATION",
       "nominal_resolution_deg": 0.0030864197530864196,
       "nominal_resolution_fraction": "1/324 deg",
       "old_metric_resolution_m_for_synthetic_only": 300,
-      "angular_grid_generator_status": "NOT_IMPLEMENTED"
+      "angular_grid_generator_status": "LOCAL_METRIC_EQUIVALENT_OF_1_OVER_324_IMPLEMENTED_EXACT_ROTATED_ANGULAR_NOT_IMPLEMENTED"
     }
   ],
   "nominal_angular_resolution_policy": "KIM_2020_1_OVER_36_108_324",

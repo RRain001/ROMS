@@ -12,11 +12,21 @@ The accessible [original Figure 1](https://www.jkscoe.or.kr/upload/thumbnails/jk
 
 User input is **not required** for a reproducible approximate geometry candidate. Exact paper reproduction would require original `grid.nc`, author-provided grid-generation parameters or original grid scripts/metadata; if this is unavailable, Figure 1 digitization must carry explicit uncertainty. The third-domain placement remains user-defined unless they later elect the paper's reference envelope.
 
+## 2026-10-14: user-defined southern Korean coast L3 square
+
+**Frozen anchor points:** A=(35.545437°N,129.407703°E), B=(35.974688°N,129.522766°E). Treat AB as the L3 coastal side and construct the square to the **eastern offshore side (right of A→B)**, not into Korean land. WGS84 local AEQD square corners: C=(35.879499°N,130.050131°E), D=(35.450754°N,129.932388°E); AB=48.750849 km, planar area 2376.645 km², bearing A→B 12.291° clockwise from north. A/B are exact input anchors, C/D are derived candidate corners, not external observations.
+
+The user selects Kim et al. (2020)'s nominal `1/36° / 1/108° / 1/324°`. The L3 square is a **physical square**, whose nominal angular **local metric equivalent** sampling yields candidate `rho_shape=(143,176)`, xi about 279 m / eta about 343 m; it does **NOT** make every rotated cell an exactly constant angular 1/324° longitude/latitude step. Such an exact angular rule requires an independently declared rotated spherical-coordinate definition and can conflict with a physically square prescribed AB/CD perimeter. The candidate metadata must disclose `ANGULAR_EQUIVALENT_LOCAL_METRIC_NOT_CONSTANT_DDEG`; no exact-Kim reproduction claim.
+
+The original UD1K reference south boundary 35.5°N **excludes** L3's D at 35.450754°N by ~5.5 km. `configs/ud1k_candidate.json` proposes extending south to ~35.35°N; its **new geographic exact-1/108-degree generator** anchors the north at 39°N and snaps the actual south to 35.351852°N. This remains **provisional**, pending actual parent-child wet-boundary interpolation and shoreline validation. A/B may be coastal/terrestrial vertices; do not falsely assume all L3 boundary cells are wet/open ocean.
+
+Source of truth: `ROMS_Nesting/configs/l3_coastal_square_candidate.json` and `Data_pre/nesting/l3_square.py`. L3 research domain now defined; **I6 geometry status candidate**, `BLOCKED_BY_DOMAIN` lifted, real `grid.nc`/forcing/hydrodynamics/cross-grid Bq conservation still `NOT_RUN`.
+
 ## Geometry and grids
 
 - `ES3K` is a **rotated WGS84 Lambert-conformal candidate**. Kim et al. (2020) report an approximate geographical envelope, **not sufficient to recover the four corners/rotation**; `ROMS_Nesting/configs/es3k_geometry_template.json` therefore has intentionally **null** coordinates/angle/counts and **cannot run** until a provenance-backed or transparently approximate geometry is explicitly provided.
 - `UD1K` is truly **unrotated geographic-axis-aligned** (constant longitude per xi column, constant latitude per eta row, `angle=0`). The existing [candidate config](../configs/ud1k_candidate.json) uses Kim et al.'s approximate envelope only; it is **not a paper-exact final grid**.
-- `L3_300m` is blocked pending the user's area/corners. Nothing in this workflow invents it.
+- `L3_300m` now has two exact user-given AB vertices and offshore WGS84-derived C/D. Geographic square candidate only; **real wet grid and parent validation pending**.
 - `Data_pre/nesting/bathymetry_grid.py` creates `lon/lat/x/y` at RHO/U/V/PSI, WGS84 `pm/pn/dndx/dmde`, geodesic `angle`, real interpolated `h`, GEBCO+optional GSHHG `mask_rho/u/v/psi`, and metadata **`geometry_status=CANDIDATE_NOT_VALIDATED_FOR_ROMS`**.
 - No silent fallback: the copied legacy `create_grid_from_bathymetry.py` **refuses JAPAN_SEA**, because it always writes `angle=0`. Use the new nesting CLI.
 

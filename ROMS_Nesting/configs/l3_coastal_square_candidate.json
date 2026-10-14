@@ -1,0 +1,21 @@
+{
+  "grid_id": "L3_300m",
+  "geometry_status": "CANDIDATE_APPROXIMATE",
+  "geometry_type": "geodesic_square_from_side",
+  "side_start_A": [
+    35.545437,
+    129.407703
+  ],
+  "side_end_B": [
+    35.974688,
+    129.522766
+  ],
+  "offshore_side": "right_of_A_to_B",
+  "nominal_resolution_deg": 0.0030864197530864196,
+  "nominal_resolution_fraction": "1/324 deg",
+  "max_rho_points": 500000,
+  "geometry_provenance": "USER_SUPPLIED_AB_FIXED_WGS84_LOCAL_AEQD_SQUARE_C_D_DERIVED",
+  "angular_resolution_interpretation": "Local WGS84 longitude and latitude metric equivalents 1/324 degree; physical square corners exact, not constant rotated dlon/dlat",
+  "GSHHG_GEBCO_SHORELINE_STATUS": "NOT_RUN",
+  "UD1K_PARENT_STATUS": "SOUTH_BOUNDARY_EXPANSION_PROPOSED_NOT_VALIDATED"
+}

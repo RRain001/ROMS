@@ -47,6 +47,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_glorys_dynamic_sigma.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_glorys_bounded_time.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_nesting_pair_preflight.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_l3_square.py' -v
       - name: Persist explicit synthetic ES3K and UD1K NetCDF candidates
         run: |
           set -euo pipefail
@@ -96,6 +97,28 @@ jobs:
                                     rx0=float(y.final_rx0),rx1=float(y.final_rx1),
                                     iterations=int(y.smoothing_iterations))))
           PY
+      - name: Archive user-anchored L3 square with synthetic bathymetry only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/tests/create_l3_ci_artifacts.py --output "$RUNNER_TEMP/I6_SYNTHETIC"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ["RUNNER_TEMP"])/"I6_SYNTHETIC"/"L3_geometry_preflight.json"
+          x=json.loads(p.read_text())
+          assert x["geometry"]["rho_shape"]==[143,176]
+          assert x["parent_child_geometric_preflight"]["status"]=="PASS_PRELIMINARY_ONLY"
+          assert x["real_GEBCO_and_GSHHG"]=="NOT_RUN"
+          print("USER L3 GEOMETRY CANDIDATE PASS; ACTUAL ROMS/HTO NOT RUN")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: i6-user-l3-square-synthetic-offshore
+          path: ${{ runner.temp }}/I6_SYNTHETIC/
+          if-no-files-found: warn
+          retention-days: 21
       - uses: actions/upload-artifact@v4
         if: always()
         with:
