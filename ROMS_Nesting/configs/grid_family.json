@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "status": "I0_SCAFFOLD_NOT_VERIFIED",
+  "mode": "offline_one_way",
+  "ocean_source_default": "glorys12v1",
+  "reference": {
+    "paper": "Kim et al. 2020",
+    "doi": "10.9765/KSCOE.2020.32.6.587"
+  },
+  "vertical": {
+    "N": 41
+  },
+  "grids": [
+    {
+      "id": "ES3K",
+      "parent": null,
+      "resolution_m": 3000,
+      "orientation": "rotated",
+      "reference_envelope_deg": [
+        121.9,
+        150.4,
+        30.8,
+        52
+      ],
+      "corners_deg": null,
+      "geometry_status": "UNVERIFIED_CORNERS"
+    },
+    {
+      "id": "UD1K",
+      "parent": "ES3K",
+      "resolution_m": 1000,
+      "orientation": "axis_aligned",
+      "reference_envelope_deg": [
+        127.5,
+        134,
+        35.5,
+        39
+      ]
+    },
+    {
+      "id": "L3_300m",
+      "parent": "UD1K",
+      "resolution_m": 300,
+      "orientation": "optional_rotation",
+      "domain": null,
+      "geometry_status": "USER_TO_DEFINE"
+    }
+  ]
+}

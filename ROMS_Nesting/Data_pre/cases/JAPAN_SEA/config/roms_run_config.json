@@ -1,0 +1,22 @@
+{
+  "launcher": "mpirun",
+  "np": 1,
+  "shell_init_files": [],
+  "library_paths": [],
+  "env": {},
+  "build_layout": {
+    "build_root": "build",
+    "build_dir": "build/Build_romsM",
+    "bin_dir": "bin"
+  },
+  "default_run_mode": "smoke",
+  "run_modes": {
+    "smoke": {
+      "build_variant": "default",
+      "binary": "romsM_japan_sea",
+      "fallback_binaries": [],
+      "infile": "ocean_japan_sea_smoke.in",
+      "log_file": "smoke.log"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+name: Japan Sea Nesting I0
+
+on:
+  push:
+    branches:
+      - feature/japan-sea-nesting
+    paths:
+      - 'ROMS_Nesting/**'
+      - '.github/workflows/japan-sea-nesting-i0.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-i0:
+    name: Isolated copy, paths, metrics
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Original single-grid code is unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:Data_pre)" = "95c1143f079e6a70143a0840e94ebe063ef6d29f"
+          test "$(git rev-parse HEAD:ROMS_Build)" = "f14572866c49373c792598a56fefbe27afd07c11"
+          test "$(git rev-parse HEAD:ROMS_Run)" = "29b27190340080a9bf4937264b86e9221b06f377"
+          test "$(git rev-parse HEAD:roms_src/roms)" = "278b82148d31f9ffe01193560e959e0e95aebd62"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Python testing dependencies
+        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4 pyproj pillow pytest
+      - name: Work from a copy containing only ROMS_Nesting
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/roms-i0"
+          cp -a ROMS_Nesting "$RUNNER_TEMP/roms-i0/ROMS_Nesting"
+          cd "$RUNNER_TEMP/roms-i0/ROMS_Nesting"
+          export PYTHONPATH=""
+          python scripts/check_isolation.py
+          python -m unittest discover -s Data_pre/tests -p 'test_grid_metrics.py' -v
+      - name: Python syntax compilation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import py_compile
+          for p in Path('ROMS_Nesting').rglob('*.py'):
+              py_compile.compile(str(p), doraise=True)
+          print('Nested Python syntax PASS')
+          PY
