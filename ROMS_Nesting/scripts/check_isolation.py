@@ -24,7 +24,10 @@ def main() -> None:
     # The copied subtree must run without the legacy paths available.
     for name in ("Data_pre", "ROMS_Build", "ROMS_Run", "roms_src/roms"):
         require((ROOT / name).is_dir(), "missing independent copy: " + name)
-    cfg = ROOT / "Data_pre" / "cases" / "JAPAN_SEA" / "config"
+    cases_root = ROOT / "Data_pre" / "cases"
+    cases = {p.name for p in cases_root.iterdir() if p.is_dir()}
+    require(cases == {"JAPAN_SEA"}, f"unsafe inherited case configurations: {sorted(cases)}")
+    cfg = cases_root / "JAPAN_SEA" / "config"
     for name in ("project_parameters.json", "roms_build_config.json", "roms_run_config.json"):
         require((cfg / name).is_file(), "missing nested-only case config: " + name)
     p = json.loads((cfg / "project_parameters.json").read_text())
