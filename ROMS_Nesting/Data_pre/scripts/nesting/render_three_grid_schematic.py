@@ -34,8 +34,10 @@ def produce(destination: Path) -> dict:
     es=json.loads((CONF/"es3k_user_corners.json").read_text())
     ud=json.loads((CONF/"ud1k_candidate.json").read_text())
     l3=json.loads((CONF/"l3_coastal_square_candidate.json").read_text())
-    if ud["parent_expansion"]!="APPROVED_BY_USER_2026_10_14_GEOMETRY_ONLY":
-        raise ValueError("unapproved UD1K southern boundary")
+    if ud["geometry_approval"]!="USER_EXACT_BOUNDS_2026_10_14":
+        raise ValueError("UD1K exact user DMS bounds not approved")
+    if ud["angular_boundary_policy"]!="PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR":
+        raise ValueError("UD1K generator would silently shift user DMS boundaries")
     if l3["side_start_A"]!=[35.545437,129.407703] or l3["side_end_B"]!=[35.974688,129.522766]:
         raise ValueError("user-given L3 fixed AB changed")
 
@@ -45,9 +47,17 @@ def produce(destination: Path) -> dict:
     if family_es["corners_deg"] != points:
         raise ValueError("ES3K user corner config drift")
     outer=[[points[k][1],points[k][0]] for k in ("W","N","E","S")]
-    # North-anchored exact integer 1/108 degree geographic lattice.
+    # New user DMS bounds are authoritative, and must NOT be snapped.
+    # Intervals use the nearest integer count to nominal 1/108 degree.
     step=1/108
-    south=ud["lat_max"]-round((ud["lat_max"]-ud["lat_min"])/step)*step
+    south=ud["lat_min"]
+    nx=round((ud["lon_max"]-ud["lon_min"])/step)
+    ny=round((ud["lat_max"]-south)/step)
+    effective_lon_step=(ud["lon_max"]-ud["lon_min"])/nx
+    effective_lat_step=(ud["lat_max"]-south)/ny
+    if max(abs(effective_lon_step/step-1),
+           abs(effective_lat_step/step-1))>0.005:
+        raise AssertionError("UD1K angular spacing exceeds nominal tolerance")
     middle=[[ud["lon_min"],south],[ud["lon_max"],south],
             [ud["lon_max"],ud["lat_max"]],[ud["lon_min"],ud["lat_max"]]]
     inner=[[corners[k][1],corners[k][0]] for k in ("A","B","C","D")]
@@ -55,9 +65,9 @@ def produce(destination: Path) -> dict:
         raise AssertionError("L3 not inside approved UD1K geographic extent")
     if not Polygon(outer).is_valid or not Polygon(outer).contains(Polygon(middle)):
         raise AssertionError("user ES3K four-corner perimeter invalid or fails to contain UD1K")
-    if Polygon([[ud["lon_min"],35.5],[ud["lon_max"],35.5],
-                [ud["lon_max"],39.0],[ud["lon_min"],39.0]]).contains(Polygon(inner)):
-        raise AssertionError("paper original UD1K south incorrectly contains L3")
+    old_approved_south=35.35
+    if not (south<old_approved_south):
+        raise AssertionError("new user DMS south must supersede 35.35 N")
     _,_,margin=WGS84.inv(corners["D"][1],corners["D"][0],
                          corners["D"][1],south)
     if margin<=10000:
@@ -72,6 +82,11 @@ def produce(destination: Path) -> dict:
                 "lon_min":ud["lon_min"],"lon_max":ud["lon_max"],
                 "lat_north":ud["lat_max"],"lat_south_requested":ud["lat_min"],
                 "lat_south_grid":south,
+                "bounds_exact_user_dms":ud["requested_bounds_dms"],
+                "grid_spacing_policy":ud["angular_boundary_policy"],
+                "rho_shape":[ny+1,nx+1],
+                "actual_lon_step_deg":effective_lon_step,
+                "actual_lat_step_deg":effective_lat_step,
                 "GSHHG_wet_mask":"NOT_RUN"},
         "L3":{"nominal_deg":1/324,"AB":"USER_FIXED",
               "C_D":"GEODESICALLY_DERIVED_CANDIDATES",
@@ -88,7 +103,7 @@ def produce(destination: Path) -> dict:
     fig.suptitle("Japan Sea ROMS: ES3K / UD1K / user-anchored L3 (schematic only)",
                  weight="bold",fontsize=17)
     domains=(("1  ES3K | 1/36 deg | USER CORNERS",(120,152),(30,53),42),
-             ("2  UD1K | 1/108 deg | south extended",(126.8,134.8),(35.0,39.4),37),
+             ("2  UD1K | 1/108 deg | new DMS bounds",(127.9,132.9),(34.7,37.95),36.5),
              ("3  L3 | 1/324 deg | A-B offshore",(129.12,130.28),(35.25,36.18),36))
     colors={"ES3K":"#3d526e","UD1K":"#09819f","L3":"#db673e"}
     for i,(title,xlim,ylim,latitude) in enumerate(domains):
@@ -112,6 +127,8 @@ def produce(destination: Path) -> dict:
         if i==1:
             a.axhline(35.5,c="#727c86",ls="--",lw=1,label="Kim UD1K south")
             a.axhline(south,c=colors["UD1K"],ls="-.",lw=1.4)
+            a.axhline(35.35,c="#9a9191",ls=":",lw=1.1)
+            a.text(ud["lon_min"]+.05,south+.04,"New south DMS",fontsize=8,color=colors["UD1K"])
         if i==2:
             for key,(lat,lon) in corners.items():
                 a.plot(lon,lat,marker="o",markersize=5,c=colors["L3"])
@@ -119,7 +136,9 @@ def produce(destination: Path) -> dict:
             a.axhline(south,c=colors["UD1K"],ls="-.",lw=1)
             a.axhline(35.5,c="#727c86",ls="--",lw=1)
     fig.text(.5,.025,
-             f"UD1K south {south:.6f} N; L3 south 35.450754 N (buffer {margin/1000:.1f} km). "
+             f"UD1K user DMS W {ud['lon_min']:.6f} E, E {ud['lon_max']:.6f} E; "
+             f"S {south:.6f} N, N {ud['lat_max']:.6f} N; "
+             f"L3 south buffer {margin/1000:.1f} km. "
              "Coast/bathymetry NOT assessed. ES3K corners user-supplied; grid not yet built.",
              ha="center",fontsize=9,color="#85504a")
     destination.mkdir(parents=True,exist_ok=True)

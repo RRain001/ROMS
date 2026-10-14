@@ -90,7 +90,9 @@ class UserES3KCorners(unittest.TestCase):
             return Polygon([tf.transform(lon,lat) for lon,lat in vertices])
         es=poly([(self.points[k][1],self.points[k][0])
                  for k in ("W","N","E","S")])
-        south=ud["lat_max"]-round((ud["lat_max"]-ud["lat_min"])*108)/108
+        self.assertEqual(ud["angular_boundary_policy"],
+                         "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR")
+        south=ud["lat_min"]
         parent=poly([(ud["lon_min"],south),(ud["lon_max"],south),
                      (ud["lon_max"],ud["lat_max"]),(ud["lon_min"],ud["lat_max"])])
         self.assertTrue(es.contains(parent))

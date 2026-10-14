@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "status": "UD1K_SOUTH_EXTENSION_USER_APPROVED_GEOMETRY_ONLY_ES3K_AND_WETMASK_UNVERIFIED",
+  "status": "UD1K_ALL_FOUR_BOUNDARIES_USER_APPROVED_EXACT_DMS_ES3K_L3_REAL_WETMASK_NOT_RUN",
   "mode": "offline_one_way",
   "ocean_source_default": "glorys12v1",
   "reference": {
@@ -73,22 +73,34 @@
       "nominal_resolution_deg": 0.009259259259259259,
       "nominal_resolution_fraction": "1/108 deg",
       "old_metric_resolution_m_for_synthetic_only": 1000,
-      "angular_grid_generator_status": "PRELIMINARY_EXACT_GEOGRAPHIC_1_OVER_108_IMPLEMENTED",
+      "angular_grid_generator_status": "EXACT_USER_BOUNDARIES_NOMINAL_1_OVER_108_GRID_437x290",
       "proposed_modification": {
-        "reason": "L3 southern corner at 35.450754N lies outside published 35.5N UD1K limit",
-        "original_paper_bounds_deg": [
-          127.5,
-          134,
-          35.5,
-          39
-        ],
-        "south_bound_proposal_deg": 35.35,
-        "south_bound_snapped_1_over_108_deg": 35.35185185185185,
-        "physics_approval": "PENDING_GEBCO_GSHHG_PARENT_BOUNDARY",
-        "user_decision": "APPROVED_SOUTHWARD_EXPANSION_TO_35_35N",
-        "geometry_approval": "APPROVED_BY_USER_2026_10_14",
-        "snapped_south_grid_deg": 35.35185185185185
-      }
+        "previous": "USER_APPROVED_UD1K_SOUTH_35_35_N",
+        "status": "SUPERSEDED_BY_NEW_USER_DMS_FOUR_BOUNDARIES",
+        "current_south_deg": 34.965472222222225,
+        "physical_approval": "PENDING_GEBCO_GSHHG_PARENT_BOUNDARY"
+      },
+      "user_defined_bounds_deg": [
+        128.36552777777777,
+        132.40672222222221,
+        34.965472222222225,
+        37.6385
+      ],
+      "user_defined_bounds_source": "USER_SUPPLIED_2026_10_14_FOUR_DMS_LIMITS",
+      "requested_bounds_dms": {
+        "south": "34°57'55.7\"N",
+        "west": "128°21'55.9\"E",
+        "north": "37°38'18.6\"N",
+        "east": "132°24'24.2\"E"
+      },
+      "geometry_approval": "USER_EXACT_BOUNDS_2026_10_14",
+      "estimated_rho_shape_eta_xi": [
+        290,
+        437
+      ],
+      "grid_spacing_policy": "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR",
+      "actual_lon_step_deg": 0.00926879459734964,
+      "actual_lat_step_deg": 0.009249231064975003
     },
     {
       "id": "L3_300m",
@@ -139,5 +151,5 @@
     }
   ],
   "nominal_angular_resolution_policy": "KIM_2020_1_OVER_36_108_324",
-  "geometry_authority": "ES3K_USER_CORNERS_2026_10_14_UD1K_USER_APPROVED_SOUTH_L3_USER_AB"
+  "geometry_authority": "ES3K_USER_CORNERS_UD1K_USER_EXACT_DMS_BOUNDS_L3_USER_AB"
 }

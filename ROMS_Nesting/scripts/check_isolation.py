@@ -75,10 +75,21 @@ def main() -> None:
             l3_cfg["offshore_side"]=="right_of_A_to_B" and
             l3_cfg["nominal_resolution_deg"]==1/324,
             "L3 offshore/1-324-degree candidate deviates from user specification")
-    require(grid["grids"][1]["proposed_modification"]["geometry_approval"]=="APPROVED_BY_USER_2026_10_14",
-            "UD1K south boundary must remain user approved")
-    require(grid["grids"][1]["proposed_modification"]["physics_approval"]=="PENDING_GEBCO_GSHHG_PARENT_BOUNDARY",
-            "UD1K southward expansion incorrectly marked physically accepted")
+    ud_cfg=json.loads((ROOT/"configs/ud1k_candidate.json").read_text())
+    ud_family=grid["grids"][1]
+    require(ud_cfg["geometry_approval"]=="USER_EXACT_BOUNDS_2026_10_14",
+            "UD1K latest four DMS bounds are not authoritative")
+    require(ud_family["user_defined_bounds_deg"]==[
+        ud_cfg["lon_min"],ud_cfg["lon_max"],ud_cfg["lat_min"],ud_cfg["lat_max"]],
+        "UD1K family and geometry config disagree about four user bounds")
+    require(ud_cfg["angular_boundary_policy"]=="PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR",
+            "UD1K DMS bounds must not be silently snapped to an exact 1/108 lattice")
+    require(ud_family["proposed_modification"]["status"]==
+            "SUPERSEDED_BY_NEW_USER_DMS_FOUR_BOUNDARIES",
+            "Old 35.35 degree UD1K south limit still treated as authoritative")
+    require(ud_family["proposed_modification"]["physical_approval"]==
+            "PENDING_GEBCO_GSHHG_PARENT_BOUNDARY",
+            "UD1K geometry mistakenly marked physically verified")
     print("I0 copied-path isolation/config PASS (not a physical ROMS integration test)")
 
 if __name__ == "__main__":

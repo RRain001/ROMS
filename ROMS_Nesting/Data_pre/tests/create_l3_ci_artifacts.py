@@ -47,6 +47,9 @@ def main():
     synthetic_sea(fake)
     child=output/"L3_SYNTHETIC_ONLY.nc"
     build_grid(spec,fake,child,allow_gebco_only_mask=True,synthetic_fixture=True)
+    # Compact non-production synthetic fixture deliberately keeps a
+    # smaller region for fast CI. It MUST NOT replace the real UD1K DMS
+    # domain in configs/ud1k_candidate.json.
     study_parent={**parent,"lon_min":129.15,"lon_max":130.3,
                   "lat_min":35.35,"lat_max":36.15}
     parent_path=output/"UD1K_SOUTH_EXTENDED_SYNTHETIC_ONLY.nc"
@@ -58,7 +61,9 @@ def main():
         "geometry":metadata,
         "parent_child_geometric_preflight":pair,
         "reference_parent_original_south_deg":35.5,
-        "proposed_real_UD1K_south_deg":35.35,
+        "approved_real_UD1K_bounds":{k:parent[k] for k in
+            ("lon_min","lon_max","lat_min","lat_max")},
+        "synthetic_parent_is_smaller_fixture_not_real_UD1K":True,
         "real_GEBCO_and_GSHHG":"NOT_RUN",
         "ROMS_hydrodynamics":"NOT_RUN",
         "real_offline_HTO":"NOT_RUN",

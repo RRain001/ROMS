@@ -94,13 +94,38 @@ def make_geometry(spec: dict) -> tuple[dict[str, np.ndarray], float, float]:
             raise ValueError("UD1K angular bounds too small")
         if (nx_intervals+1)*(ny_intervals+1)>int(spec.get("max_rho_points",500000)):
             raise ValueError("UD1K angular grid exceeds max_rho_points")
-        # Preserve west and north authoritative bounds; snap east and
-        # south to true integer multiples of the exact 1/108 degree.
-        lon_axis=west+np.arange(nx_intervals+1,dtype=float)*step
-        lat_axis=north-ny_intervals*step+np.arange(ny_intervals+1,dtype=float)*step
-        if (abs(lon_axis[-1]-east)>step/2+1e-12 or
-            abs(lat_axis[0]-south_target)>step/2+1e-12):
-            raise ValueError("UD1K anchor snapping changed bounds beyond half a cell")
+        policy=spec.get("angular_boundary_policy","SNAP_TO_EXACT_ANGULAR_STEP")
+        if policy=="PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR":
+            # Four user-given DMS limits are AUTHORITATIVE. Their span
+            # is not an integer multiple of 1/108 degree. Choose the
+            # nearest integer cell counts, retain exact four boundaries,
+            # and report the actual angular increments rather than
+            # secretly shifting the east/south limits.
+            lon_axis=np.linspace(west,east,nx_intervals+1,dtype=float)
+            lat_axis=np.linspace(south_target,north,ny_intervals+1,dtype=float)
+            true_dlon=(east-west)/nx_intervals
+            true_dlat=(north-south_target)/ny_intervals
+            tolerance=_float_finite(spec.get("max_nominal_spacing_deviation_fraction",0.005),
+                                    "max_nominal_spacing_deviation_fraction")
+            if tolerance<=0 or tolerance>0.1:
+                raise ValueError("invalid maximum nominal angular spacing deviation")
+            worst=max(abs(true_dlon/step-1),abs(true_dlat/step-1))
+            if worst>tolerance:
+                raise ValueError(
+                    f"UD1K fixed bounds require {worst:.3%} nominal spacing deviation "
+                    f"> allowed {tolerance:.3%}; choose new bounds/counts deliberately")
+        elif policy=="SNAP_TO_EXACT_ANGULAR_STEP":
+            # Legacy scientific reference geometry mode. The requested
+            # east/south limits may shift up to half a cell; never
+            # select this mode silently for user-specified exact bounds.
+            lon_axis=west+np.arange(nx_intervals+1,dtype=float)*step
+            lat_axis=north-ny_intervals*step+np.arange(ny_intervals+1,dtype=float)*step
+            if (abs(lon_axis[-1]-east)>step/2+1e-12 or
+                abs(lat_axis[0]-south_target)>step/2+1e-12):
+                raise ValueError("UD1K anchor snapping changed bounds beyond half a cell")
+            true_dlon=true_dlat=step
+        else:
+            raise ValueError(f"unknown UD1K angular_boundary_policy={policy!r}")
         lon,lat=np.meshgrid(lon_axis,lat_axis)
         result:dict[str,np.ndarray]={"lon_rho":lon,"lat_rho":lat}
         for kind,lons,lats in (
@@ -115,8 +140,8 @@ def make_geometry(spec: dict) -> tuple[dict[str, np.ndarray], float, float]:
         _,_,dy=WGS84.inv(center_lon,center_lat,center_lon,center_lat+step)
         for kind in KINDS:
             lon_loc,lat_loc=result["lon_"+kind],result["lat_"+kind]
-            result["x_"+kind]=(lon_loc-west)/step*dx
-            result["y_"+kind]=(lat_loc-lat_axis[0])/step*dy
+            result["x_"+kind]=(lon_loc-west)/true_dlon*dx
+            result["y_"+kind]=(lat_loc-lat_axis[0])/true_dlat*dy
         result.update(compute_grid_metrics(lon,lat))
         # Geographic coordinate axes are unrotated; physical sizes
         # still depend on latitude, as captured in WGS84 pm and pn.
@@ -361,11 +386,24 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
                                       if spec.get("geometry_type")=="four_corner_transfinite_aeqd_candidate"
                                       else "KIM_2020_CORNERS_NOT_VERIFIED")
         ds.geometry_input_json=json.dumps(spec,sort_keys=True)
+        if spec.get("geometry_type")=="axis_aligned_lonlat_angular":
+            ds.ud1k_boundary_policy=str(spec.get(
+                "angular_boundary_policy","SNAP_TO_EXACT_ANGULAR_STEP"))
+            ds.ud1k_actual_lon_step_deg=float(
+                (values["lon_rho"][0,-1]-values["lon_rho"][0,0])/
+                (values["lon_rho"].shape[1]-1))
+            ds.ud1k_actual_lat_step_deg=float(
+                (values["lat_rho"][-1,0]-values["lat_rho"][0,0])/
+                (values["lat_rho"].shape[0]-1))
+            ds.ud1k_nominal_step_deg=float(spec["nominal_resolution_deg"])
+
         if "nominal_resolution_deg" in spec:
             ds.nominal_resolution_deg=float(spec["nominal_resolution_deg"])
             ds.angular_spacing_claim=(
                 "LOCAL_METRIC_EQUIVALENT_NOT_EXACT_ANGULAR" if grid_id=="L3_300m"
-                else "GEOGRAPHIC_EXACT_1_OVER_108_DEG"
+                else ("GEOGRAPHIC_EXACT_USER_LIMITS_NOMINAL_1_OVER_108_DEG"
+                      if spec.get("angular_boundary_policy")=="PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR"
+                      else "GEOGRAPHIC_EXACT_1_OVER_108_DEG")
                 if spec.get("geometry_type")=="axis_aligned_lonlat_angular"
                 else "LOCAL_WGS84_METRIC_EQUIVALENT_NOT_EXACT_ANGULAR"
                 if spec.get("geometry_type")=="four_corner_transfinite_aeqd_candidate"

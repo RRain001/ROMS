@@ -89,26 +89,34 @@ class AnchoredL3Tests(unittest.TestCase):
         self.assertEqual(data["lon_v"].shape,(142,176))
         self.assertEqual(data["lon_psi"].shape,(142,175))
 
-    def test_parent_exact_angular_spacing_and_south_proposal(self):
+    def test_parent_exact_user_bounds_and_nominal_spacing(self):
         data,dx,dy=make_geometry(self.parent_spec)
-        self.assertEqual(data["angle"].max(),0)
-        step=1/108
-        np.testing.assert_allclose(np.diff(data["lon_rho"][0]),step,atol=1e-13)
-        np.testing.assert_allclose(np.diff(data["lat_rho"][:,0]),step,atol=1e-13)
-        self.assertAlmostEqual(float(data["lat_rho"].min()),35.351851851852,places=8)
-        self.assertEqual(data["lon_rho"].shape[0],395)
-        self.assertEqual(data["lon_rho"].shape[1],703)
+        self.assertEqual(float(data["angle"].max()),0)
+        west=128+21/60+55.9/3600
+        east=132+24/60+24.2/3600
+        south=34+57/60+55.7/3600
+        north=37+38/60+18.6/3600
+        self.assertEqual(self.parent_spec["angular_boundary_policy"],
+                         "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR")
+        self.assertAlmostEqual(float(data["lon_rho"].min()),west,places=10)
+        self.assertAlmostEqual(float(data["lon_rho"].max()),east,places=10)
+        self.assertAlmostEqual(float(data["lat_rho"].min()),south,places=10)
+        self.assertAlmostEqual(float(data["lat_rho"].max()),north,places=10)
+        self.assertEqual(data["lon_rho"].shape,(290,437))
+        for coordinate in (np.diff(data["lon_rho"][0]),np.diff(data["lat_rho"][:,0])):
+            self.assertLess(float(np.max(np.abs(coordinate/(1/108)-1))),.002)
 
-    def test_user_approved_south_extension_is_locked(self):
-        import json
+    def test_user_defined_ud1k_four_bounds_supersede_old_south_extension(self):
         family=json.loads((ROOT.parent/"configs/grid_family.json").read_text())
         parent=next(x for x in family["grids"] if x["id"]=="UD1K")
-        extension=parent["proposed_modification"]
-        self.assertEqual(extension["geometry_approval"],"APPROVED_BY_USER_2026_10_14")
-        self.assertEqual(extension["physics_approval"],"PENDING_GEBCO_GSHHG_PARENT_BOUNDARY")
-        self.assertEqual(self.parent_spec["parent_expansion"],
-                         "APPROVED_BY_USER_2026_10_14_GEOMETRY_ONLY")
-        self.assertEqual(self.parent_spec["lat_min"],35.35)
+        self.assertEqual(parent["geometry_approval"],"USER_EXACT_BOUNDS_2026_10_14")
+        self.assertEqual(parent["proposed_modification"]["status"],
+                         "SUPERSEDED_BY_NEW_USER_DMS_FOUR_BOUNDARIES")
+        self.assertEqual(parent["proposed_modification"]["physical_approval"],
+                         "PENDING_GEBCO_GSHHG_PARENT_BOUNDARY")
+        self.assertEqual(self.parent_spec["geometry_approval"],
+                         "USER_EXACT_BOUNDS_2026_10_14")
+        self.assertLess(self.parent_spec["lat_min"],35.0)
 
     def test_opposite_inland_side_is_explicitly_rejected(self):
         bad={**self.spec,"offshore_side":"left_of_A_to_B"}

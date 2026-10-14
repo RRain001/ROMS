@@ -2,16 +2,16 @@
   "grid_id": "UD1K",
   "geometry_status": "CANDIDATE_APPROXIMATE",
   "geometry_type": "axis_aligned_lonlat_angular",
-  "lon_min": 127.5,
-  "lon_max": 134,
-  "lat_min": 35.35,
-  "lat_max": 39,
+  "lon_min": 128.36552777777777,
+  "lon_max": 132.40672222222221,
+  "lat_min": 34.965472222222225,
+  "lat_max": 37.6385,
   "max_rho_points": 500000,
-  "provenance": "Kim et al. (2020) UD1K reference 127.5–134 E /35.5–39 N; user-defined L3 requires proposed 35.35 N southern extension; west=127.5 and north=39 anchor the exact 1/108-degree axes; real parent wet/physics not validated",
+  "provenance": "User-defined UD1K four exact DMS bounds override earlier Kim reference and 35.35N south extension. Exact corners take priority over exact 1/108-degree increments; nearest integer grid counts retain nominal 1/108 degree within 0.11% rather than snapping/replacing user's bounds. GEBCO/GSHHG and physical nesting NOT RUN.",
   "nominal_resolution_deg": 0.009259259259259259,
   "nominal_resolution_fraction": "1/108 deg",
-  "resolution_generator_status": "EXACT_GEOGRAPHIC_1_OVER_108_DEG_PRELIMINARY_WETMASK_PENDING",
-  "parent_expansion": "APPROVED_BY_USER_2026_10_14_GEOMETRY_ONLY",
+  "resolution_generator_status": "GEOGRAPHIC_FIXED_FOUR_USER_BOUNDS_NOMINAL_1_OVER_108_PENDING_REAL_WETMASK",
+  "parent_expansion": "SUPERSEDED_BY_USER_DMS_ALL_FOUR_LIMITS",
   "official_reference_envelope_deg": [
     127.5,
     134,
@@ -19,6 +19,27 @@
     39
   ],
   "legacy_resolution_m_for_synthetic_only": 1000,
-  "geometry_approval": "APPROVED_UD1K_SOUTH_35_35N",
-  "physical_validation": "NOT_RUN"
+  "geometry_approval": "USER_EXACT_BOUNDS_2026_10_14",
+  "physical_validation": "NOT_RUN",
+  "angular_boundary_policy": "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR",
+  "max_nominal_spacing_deviation_fraction": 0.005,
+  "requested_bounds_dms": {
+    "south": "34°57'55.7\"N",
+    "west": "128°21'55.9\"E",
+    "north": "37°38'18.6\"N",
+    "east": "132°24'24.2\"E"
+  },
+  "requested_bounds_source": "USER_SUPPLIED_2026_10_14",
+  "active_boundary_approval": "USER_EXACT_DMS_FOUR_LIMITS",
+  "previous_south_extension_status": "SUPERSEDED_35_35_N_WAS_REPLACED_BY_NEW_FOUR_BOUNDARIES",
+  "expected_rho_shape_eta_xi": [
+    290,
+    437
+  ],
+  "expected_xi_intervals": 436,
+  "expected_eta_intervals": 289,
+  "actual_lon_step_deg": 0.00926879459734964,
+  "actual_lat_step_deg": 0.009249231064975003,
+  "actual_vs_nominal_lon_fraction": 0.001029816513761217,
+  "actual_vs_nominal_lat_fraction": -0.0010830449826996214
 }
