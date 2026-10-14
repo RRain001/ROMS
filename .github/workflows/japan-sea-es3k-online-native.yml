@@ -10,6 +10,9 @@ on:
       - 'ROMS_Nesting/Data_pre/nesting/es3k_core_component_filter.py'
       - 'ROMS_Nesting/Data_pre/scripts/nesting/export_es3k_core_mask_candidate.py'
       - 'ROMS_Nesting/Data_pre/nesting/es3k_wet_domain_audit.py'
+      - 'ROMS_Nesting/Data_pre/nesting/es3k_core_bathymetry_smoothing.py'
+      - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_core_candidate.py'
+      - 'ROMS_Nesting/configs/es3k_i3_vertical_candidate.json'
   workflow_dispatch:
 
 permissions:
@@ -104,6 +107,63 @@ jobs:
           assert a["ROMS_physics"]=="NOT_RUN"
           print("MASK_CANDIDATE_ONLY; original GEBCO/GSHHG and ES3K grid unchanged")
           PY
+      - name: Smooth core-only ES3K bathymetry with explicit 41 sigma layers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_core_candidate.py \
+            --grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_MASK_ONLY_CANDIDATE.nc" \
+            --output "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc" \
+            --report-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/real_es3k_core_slope_report.json" \
+            --vertical-config ROMS_Nesting/configs/es3k_i3_vertical_candidate.json
+          python - <<'PY'
+          from pathlib import Path
+          from netCDF4 import Dataset
+          import json,os,numpy as np
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          q=json.loads((root/"real_es3k_core_slope_report.json").read_text())
+          assert q["status"]=="ES3K_CORE_SLOPE_PRELIMINARY_PASS_ONLY"
+          assert q["rx0_final"]<=.35 and q["rx1_final"]<=8.
+          assert abs(q["volume_change_fraction"])<=.02
+          assert q["wet_rho_points"]==193920
+          a=root/"ES3K_JAPAN_SEA_CORE_MASK_ONLY_CANDIDATE.nc"
+          b=root/"ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc"
+          with Dataset(a) as x, Dataset(b) as y:
+            for field in ("lon_rho","lat_rho","pm","pn","angle","mask_rho",
+                          "mask_u","mask_v","mask_psi","excluded_ocean_component_rho"):
+              np.testing.assert_array_equal(x[field][:],y[field][:])
+          print("REAL ES3K core slope STATIC GATE PASS, ROMS physics NOT RUN")
+          PY
+      - name: Generate real UD1K 1/108-degree candidate on matching sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/scripts/nesting/create_bathymetry_grid.py \
+            --geometry-json ROMS_Nesting/configs/ud1k_candidate.json \
+            --bathymetry "$RUNNER_TEMP/ES3K_REAL_SOURCE/GEBCO_2026_ES3K_15sec.nc" \
+            --gshhg-base "$RUNNER_TEMP/ES3K_REAL_SOURCE/GSHHS_shp" \
+            --gshhg-resolution h \
+            --output "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc" \
+            --report-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/real_ud1k_grid_report.json"
+      - name: Real ES3K smoothed core to UD1K wet-boundary preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/scripts/nesting/validate_nesting_geometries.py \
+            --parent-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc" \
+            --child-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc" \
+            --parent-margin-cells 2 \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/real_es3k_ud1k_preflight.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          x=json.loads((root/"real_es3k_ud1k_preflight.json").read_text())
+          assert x["status"]=="PASS_PRELIMINARY_ONLY"
+          assert x["parent_synthetic"]=="FALSE" and x["child_synthetic"]=="FALSE"
+          assert x["conservative_boundary_fluxes"]=="NOT_RUN"
+          print("REAL WET-BOUNDARY STATIC PREFLIGHT PASS, WATER DYNAMICS NOT RUN")
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -116,5 +176,10 @@ jobs:
             ${{ runner.temp }}/ES3K_REAL_SOURCE/real_es3k_core_component_filter_report.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_MASK_ONLY_CANDIDATE.nc
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_GEBCO2026_GSHHG237_CANDIDATE.nc
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/real_es3k_core_slope_report.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/real_ud1k_grid_report.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/real_es3k_ud1k_preflight.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc
           if-no-files-found: warn
           retention-days: 14
