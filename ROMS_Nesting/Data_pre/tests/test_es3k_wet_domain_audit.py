@@ -16,6 +16,7 @@ from netCDF4 import Dataset
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "nesting"))
 from es3k_wet_domain_audit import analyze, audit_grid, REGIONS
+from validate_nesting_geometries import _full_wet_quad_coverage
 
 
 def sample_arrays():
@@ -144,6 +145,37 @@ class WetDomainAudit(unittest.TestCase):
             netcdf_fixture(path,self.lo,self.la,self.wet,self.pm,self.pn,bad_u=True)
             with self.assertRaisesRegex(ValueError,'staggered masks disagree'):
                 audit_grid(path)
+
+
+
+class WetParentQuadCoverage(unittest.TestCase):
+    """A nearby wet parent rho point is not enough to interpolate across land."""
+
+    def setUp(self):
+        j, i = np.indices((9, 9))
+        self.xy = np.stack((i * 1000., j * 1000.), axis=-1)
+        self.wet = np.ones((9, 9), dtype=bool)
+
+    def test_all_wet_parent_has_valid_stencils(self):
+        points = np.array([[1500., 1500.], [2500., 2500.],
+                           [4500., 4500.]])
+        result = _full_wet_quad_coverage(self.xy, self.wet, points)
+        np.testing.assert_array_equal(result, [True, True, True])
+
+    def test_nearby_wet_parent_cannot_bridge_dry_cell(self):
+        self.wet[2, 2] = False
+        points = np.array([[1500., 1500.], [2500., 2500.],
+                           [4500., 4500.]])
+        result = _full_wet_quad_coverage(self.xy, self.wet, points)
+        np.testing.assert_array_equal(result, [True, False, True])
+        self.assertTrue(self.wet[2, 3])  # nearby wet does not imply a full quad
+
+    def test_empty_wet_quads_and_bad_shapes(self):
+        self.wet[:] = False
+        point = np.array([[1500., 1500.]])
+        self.assertFalse(_full_wet_quad_coverage(self.xy, self.wet, point)[0])
+        with self.assertRaisesRegex(ValueError, "invalid parent wet quad"):
+            _full_wet_quad_coverage(self.xy[:, :, 0], self.wet, point)
 
 
 if __name__=='__main__':
