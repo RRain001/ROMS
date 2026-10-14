@@ -164,7 +164,9 @@ class WetParentQuadCoverage(unittest.TestCase):
 
     def test_nearby_wet_parent_cannot_bridge_dry_cell(self):
         self.wet[2, 2] = False
-        points = np.array([[1500., 1500.], [2500., 2500.],
+        # (1.5,1.5) also touches the dry vertex at (2,2);
+        # use an unambiguous independent wet quad for the positive control.
+        points = np.array([[500., 500.], [2500., 2500.],
                            [4500., 4500.]])
         result = _full_wet_quad_coverage(self.xy, self.wet, points)
         np.testing.assert_array_equal(result, [True, False, True])
