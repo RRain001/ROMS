@@ -51,6 +51,12 @@ jobs:
           set -euo pipefail
           command -v gfortran
           python ROMS_Nesting/scripts/test_offline_zeta_fortran.py
+      - name: I8 native Fortran face mass flux midpoint contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v gfortran
+          python ROMS_Nesting/scripts/test_offline_massflux_fortran.py
       - name: I8 Thyng pinned upstream / local ROMS 4.3 compatibility audit
         shell: bash
         run: |

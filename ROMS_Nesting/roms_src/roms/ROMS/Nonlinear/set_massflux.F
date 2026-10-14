@@ -18,6 +18,9 @@
 !
       PRIVATE
       PUBLIC  :: set_massflux
+# if defined OFFLINE && defined OFFLINE_TPASSIVE
+      PUBLIC  :: set_massflux_avg
+# endif
 # ifdef ADJOINT
       PUBLIC  :: reset_massflux
 # endif
@@ -183,6 +186,153 @@
 
       RETURN
       END SUBROUTINE set_massflux_tile
+
+
+# if defined OFFLINE && defined OFFLINE_TPASSIVE
+!
+!***********************************************************************
+      SUBROUTINE set_massflux_avg (ng, tile, model)
+!***********************************************************************
+!
+!  Offline HTO half-step mass-flux update.  The previous Huon/Hvom
+!  MUST be initialized with set_massflux at the previous snapshot.
+!  GRID%Hz must already represent the depth at the current
+!  offline transport step.  Only after those prerequisites does this
+!  average yield a valid midpoint volume flux.
+!
+!  We intentionally do NOT copy the older local full-grid 3D
+!  Huonnew/Hvomnew temporary arrays (potentially huge in ES3K).
+!
+      USE mod_param
+      USE mod_grid
+      USE mod_ocean
+      USE mod_stepping
+!
+      integer, intent(in) :: ng, tile, model
+!
+# include "tile.h"
+!
+      CALL set_massflux_avg_tile (ng, tile, model,                      &
+     &                            LBi, UBi, LBj, UBj,                   &
+     &                            IminS, ImaxS, JminS, JmaxS,           &
+     &                            nnew(ng),                             &
+     &                            OCEAN(ng) % u,                        &
+     &                            OCEAN(ng) % v,                        &
+#  ifdef WEC
+     &                            OCEAN(ng) % u_stokes,                 &
+     &                            OCEAN(ng) % v_stokes,                 &
+#  endif
+     &                            GRID(ng) % Hz,                       &
+     &                            GRID(ng) % om_v,                     &
+     &                            GRID(ng) % on_u,                     &
+     &                            GRID(ng) % Huon,                     &
+     &                            GRID(ng) % Hvom)
+!
+      RETURN
+      END SUBROUTINE set_massflux_avg
+!
+!***********************************************************************
+      SUBROUTINE set_massflux_avg_tile (ng, tile, model,                &
+     &                                 LBi, UBi, LBj, UBj,             &
+     &                                 IminS, ImaxS, JminS, JmaxS,     &
+     &                                 nnew, u, v,                     &
+#  ifdef WEC
+     &                                 u_stokes, v_stokes,             &
+#  endif
+     &                                 Hz, om_v, on_u,                 &
+     &                                 Huon, Hvom)
+!***********************************************************************
+!
+      USE mod_param
+      USE mod_scalars
+      USE exchange_3d_mod
+#  ifdef DISTRIBUTE
+      USE mp_exchange_mod, ONLY : mp_exchange3d
+#  endif
+!
+      integer, intent(in) :: ng, tile, model
+      integer, intent(in) :: LBi, UBi, LBj, UBj
+      integer, intent(in) :: IminS, ImaxS, JminS, JmaxS
+      integer, intent(in) :: nnew
+#  ifdef ASSUMED_SHAPE
+      real(r8), intent(in) :: u(LBi:,LBj:,:,:)
+      real(r8), intent(in) :: v(LBi:,LBj:,:,:)
+#   ifdef WEC
+      real(r8), intent(in) :: u_stokes(LBi:,LBj:,:)
+      real(r8), intent(in) :: v_stokes(LBi:,LBj:,:)
+#   endif
+      real(r8), intent(in) :: Hz(LBi:,LBj:,:)
+      real(r8), intent(in) :: om_v(LBi:,LBj:)
+      real(r8), intent(in) :: on_u(LBi:,LBj:)
+      real(r8), intent(inout) :: Huon(LBi:,LBj:,:)
+      real(r8), intent(inout) :: Hvom(LBi:,LBj:,:)
+#  else
+      real(r8), intent(in) :: u(LBi:UBi,LBj:UBj,N(ng),2)
+      real(r8), intent(in) :: v(LBi:UBi,LBj:UBj,N(ng),2)
+#   ifdef WEC
+      real(r8), intent(in) :: u_stokes(LBi:UBi,LBj:UBj,N(ng))
+      real(r8), intent(in) :: v_stokes(LBi:UBi,LBj:UBj,N(ng))
+#   endif
+      real(r8), intent(in) :: Hz(LBi:UBi,LBj:UBj,N(ng))
+      real(r8), intent(in) :: om_v(LBi:UBi,LBj:UBj)
+      real(r8), intent(in) :: on_u(LBi:UBi,LBj:UBj)
+      real(r8), intent(inout) :: Huon(LBi:UBi,LBj:UBj,N(ng))
+      real(r8), intent(inout) :: Hvom(LBi:UBi,LBj:UBj,N(ng))
+#  endif
+!
+      real(r8) :: cff
+      integer :: i, j, k
+!
+# include "set_bounds.h"
+!
+!  The previous Huon/Hvom are retained in place.  Form the
+!  next-snapshot volume face flux using the current Hz and average
+!  with the stored previous snapshot.  The arithmetic order matches
+!  Thyng's pairwise midpoint update, without whole-grid scratch.
+!
+      DO k=1,N(ng)
+        DO j=JstrT,JendT
+          DO i=IstrP,IendT
+            cff=0.5_r8*(Hz(i,j,k)+Hz(i-1,j,k))*on_u(i,j)
+            Huon(i,j,k)=0.5_r8*(Huon(i,j,k)+cff*u(i,j,k,nnew))
+#  ifdef WEC
+            Huon(i,j,k)=Huon(i,j,k)+0.5_r8*cff*u_stokes(i,j,k)
+#  endif
+          END DO
+        END DO
+        DO j=JstrP,JendT
+          DO i=IstrT,IendT
+            cff=0.5_r8*(Hz(i,j,k)+Hz(i,j-1,k))*om_v(i,j)
+            Hvom(i,j,k)=0.5_r8*(Hvom(i,j,k)+cff*v(i,j,k,nnew))
+#  ifdef WEC
+            Hvom(i,j,k)=Hvom(i,j,k)+0.5_r8*cff*v_stokes(i,j,k)
+#  endif
+          END DO
+        END DO
+      END DO
+!
+!  Do not silently extend fluxes past land/wet boundaries.  Proper
+!  parent/child flux exchange is a later I10 kernel integration.
+!
+      IF (EWperiodic(ng).or.NSperiodic(ng)) THEN
+        CALL exchange_u3d_tile (ng, tile,                               &
+     &                          LBi, UBi, LBj, UBj, 1, N(ng),           &
+     &                          Huon)
+        CALL exchange_v3d_tile (ng, tile,                               &
+     &                          LBi, UBi, LBj, UBj, 1, N(ng),           &
+     &                          Hvom)
+      END IF
+#  ifdef DISTRIBUTE
+      CALL mp_exchange3d (ng, tile, model, 2,                           &
+     &                    LBi, UBi, LBj, UBj, 1, N(ng),                 &
+     &                    NghostPoints,                                 &
+     &                    EWperiodic(ng), NSperiodic(ng),               &
+     &                    Huon, Hvom)
+#  endif
+!
+      RETURN
+      END SUBROUTINE set_massflux_avg_tile
+# endif
 
 # ifdef ADJOINT
 !

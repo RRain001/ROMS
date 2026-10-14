@@ -18,13 +18,15 @@ The branch `feature/japan-sea-nesting` keeps all implementation code inside `ROM
 | Relevant component | Thyng 2021 pinned source | Independent ROMS 4.3 copy | Implication |
 | --- | --- | --- | --- |
 | Nonlinear offline integration | `ROMS/Nonlinear/main3d_offline.F` includes `OFFLINE_TPASSIVE`, `set_avg_zeta`, `set_massflux_avg`, calls `step3d_t` | **Absent**; current `main3d.F` exists | Need new version-aware offline driver plus correct build and `nl_roms.h` dispatch |
-| Tracer mass transport | `set_massflux.F` contains `set_massflux_avg` and time-averages `Huon/Hvom` | Current `set_massflux.F` does not contain `set_massflux_avg` | Must adapt mass/face flux calculations, test volume and activity budgets |
+| Tracer mass transport | `set_massflux.F` contains `set_massflux_avg` and time-averages `Huon/Hvom` | **Added independently under offline macros, without full-grid scratch buffers**; outer time driver still absent | Native gfortran normal/offline tile contract now required; real sigma/time interpolation and ROMS runtime NOT_RUN |
 | Moving free surface | `set_zeta.F` defines `set_avg_zeta` for offline surface/depth | **Now added behind `OFFLINE && OFFLINE_TPASSIVE` to the independent Fortran source**, but no offline caller exists yet | Time-dependent `Hz`/free surface must match transport scheme; a native mock-module source compile is necessary but not a full ROMS run |
 | Vertical mixing | Upstream `AKSCLIMATOLOGY` and `Aks` pathway | Current ROMS 4.3 `varinfo.yaml` contains `AKs` but does not imply offline forcing works | Trace `get_data`/time records and connection to tracer mixing |
 | Input metadata | Upstream `ROMS/External/varinfo-offline.dat` | Current ROMS has YAML `ROMS/External/varinfo.yaml` | Requires modern variable schema, **do not overwrite** it with upstream `varinfo.dat` |
 | Driver & build | Upstream `nl_ocean.h` and older module layout | Current `nl_roms.h` and `Nonlinear/CMakeLists.txt` | Need explicit dispatch/compilation changes; blind copying will not compile |
 
 **Architecture consequence:** neither `OFFLINE_TPASSIVE` in a paper header nor individual old Fortran routines can safely be dropped into a modern ROMS without source adaptation. **Only the isolated free-surface adapter has been applied.** Do not label I8 PASS.
+
+**Second native port slice — face volume flux:** `ROMS_Nesting/roms_src/roms/ROMS/Nonlinear/set_massflux.F` now defines a guarded `set_massflux_avg` for `OFFLINE && OFFLINE_TPASSIVE`. It expects previous-snapshot `Huon/Hvom` to have been initialized by `set_massflux`, then forms current-snapshot face fluxes using updated `Hz`, `u/v(nnew)`, and `on_u/om_v` and replaces storage by their midpoint average. Unlike Thyng's temporary full-grid `Huonnew/Hvomnew`, it updates values directly per tile. The native two-tile gfortran test checks expected `20→40` and `60→90` face flux values on two synthetic sigma layers, plus **ordinary ROMS source behavior** without offline CPP. **Caution:** test-only stubs, no actual ROMS driver, parallel MPI, WEC, netCDF dynamics or real boundary flux integration has yet been exercised. Before I8 physics PASS must establish exact time-level/Hz sequencing, halo synchronization, and `Aks` integration. The audit retains `BLOCKED_PORT_REQUIRED` until the true offline driver is implemented.
 
 ## CI audit — exact reproduction
 
