@@ -192,13 +192,34 @@ function(link_netcdf)
       )
     endif()
 
-    string( STRIP "${tmp}" linkline )                            # Strip trailing whitespace
-    string( REGEX MATCHALL "-L[^ \t]*" ldirs ${linkline} )       # Create list of dirs
-    string( REGEX MATCHALL "-l[^ \t]*" libs ${linkline} )        # Create list of libs
+    string( STRIP "${tmp}" linkline )
+    # GitHub Ubuntu 24.04: nf-config --flibs includes
+    # -L/usr/lib/x86_64-linux-gnu and -ffat-lto-objects.  A loose
+    # REGEX MATCHALL "-l..." incorrectly captures "-linux-gnu" and
+    # "-lto-objects", which compile but fail at final ROMS linking.
+    # Split shell tokens first and accept only whole -L/-l options.
+    separate_arguments( netcdf_tokens UNIX_COMMAND "${linkline}" )
+    set( ldirs )
+    set( libs )
+    foreach( token IN LISTS netcdf_tokens )
+      if( token MATCHES "^-L(.+)$" )
+        list( APPEND ldirs "${CMAKE_MATCH_1}" )
+      elseif( token MATCHES "^-l(.+)$" )
+        list( APPEND libs "${CMAKE_MATCH_1}" )
+      endif()
+    endforeach()
 
   elseif( DEFINED ENV{NETCDF_LIBS} )
-    string( REGEX MATCHALL "-L[^ \t]*" ldirs $ENV{NETCDF_LIBS} ) # Create list of dirs
-    string( REGEX MATCHALL "-l[^ \t]*" libs $ENV{NETCDF_LIBS} )  # Create list of libs
+    separate_arguments( netcdf_tokens UNIX_COMMAND "$ENV{NETCDF_LIBS}" )
+    set( ldirs )
+    set( libs )
+    foreach( token IN LISTS netcdf_tokens )
+      if( token MATCHES "^-L(.+)$" )
+        list( APPEND ldirs "${CMAKE_MATCH_1}" )
+      elseif( token MATCHES "^-l(.+)$" )
+        list( APPEND libs "${CMAKE_MATCH_1}" )
+      endif()
+    endforeach()
     if( DEFINED ENV{NETCDF_INCDIR} )
       set( idir  "$ENV{NETCDF_INCDIR}" )                         # Set include directory
     elseif( DEFINED ENV{NETCDF} )
@@ -216,8 +237,8 @@ function(link_netcdf)
     endif()
   endif()
 
-  list( TRANSFORM libs  REPLACE "-l([^ \t]*)" "\\1" )           # remove "-l" from libs
-  list( TRANSFORM ldirs REPLACE "-L([^ \t]*)" "\\1" )           # remove "-L" from dirs
+  # The token loops already strip -l/-L; the fallback branch supplies
+  # an unprefixed library name.
 
   if( "${libs}" STREQUAL "" )
     message( FATAL_ERROR "NetCDF library name not found" )
