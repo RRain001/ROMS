@@ -109,6 +109,17 @@ def square_grid_geometry(spec: dict) -> tuple[dict[str,np.ndarray],float,float,d
         result["lon_"+kind]=np.asarray(lon)
         result["lat_"+kind]=np.asarray(lat)
     result.update(compute_grid_metrics(result["lon_rho"],result["lat_rho"]))
+    # ROMS angle is from geographic east to positive xi, in radians.
+    # Compute azimuth geodesically for each row; the last xi column
+    # inherits its nearest valid xi-face angle.
+    az_xi,_,_ = WGS84.inv(result["lon_rho"][:,:-1],
+                           result["lat_rho"][:,:-1],
+                           result["lon_rho"][:,1:],
+                           result["lat_rho"][:,1:])
+    angle=np.empty(result["lon_rho"].shape,dtype=float)
+    angle[:,:-1]=np.deg2rad(90.0-np.asarray(az_xi))
+    angle[:,-1]=angle[:,-2]
+    result["angle"]=angle
     result["f"]=2*7.2921159e-5*np.sin(np.deg2rad(result["lat_rho"]))
 
     # Do not claim exact 1/324-degree increments in map coordinates.

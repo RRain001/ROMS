@@ -53,8 +53,21 @@ def main() -> None:
         require(obj is not None and within(Path(obj.__file__), ROOT), "legacy Python import: " + module)
     grid = json.loads((ROOT / "configs" / "grid_family.json").read_text())
     require([q["id"] for q in grid["grids"]] == ["ES3K", "UD1K", "L3_300m"], "wrong grid family")
-    require(grid["grids"][0]["corners_deg"] is None and grid["grids"][2]["domain"] is None,
-            "invented ES3K corner or local 300m domain")
+    require(grid["grids"][0]["corners_deg"] is None,
+            "unverified ES3K paper corner was silently invented")
+    local=grid["grids"][2]["domain"]
+    l3_cfg=json.loads((ROOT / "configs" / "l3_coastal_square_candidate.json").read_text())
+    require(local is not None and
+            local["side_start_A_lat_lon"] == [35.545437,129.407703] and
+            local["side_end_B_lat_lon"] == [35.974688,129.522766],
+            "user-supplied L3 coastal AB anchors changed or missing")
+    require(l3_cfg["side_start_A"] == local["side_start_A_lat_lon"] and
+            l3_cfg["side_end_B"] == local["side_end_B_lat_lon"] and
+            l3_cfg["offshore_side"]=="right_of_A_to_B" and
+            l3_cfg["nominal_resolution_deg"]==1/324,
+            "L3 offshore/1-324-degree candidate deviates from user specification")
+    require(grid["grids"][1]["proposed_modification"]["physics_approval"]=="PENDING",
+            "UD1K southward expansion incorrectly marked physically accepted")
     print("I0 copied-path isolation/config PASS (not a physical ROMS integration test)")
 
 if __name__ == "__main__":
