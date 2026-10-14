@@ -71,6 +71,18 @@ python ROMS_Nesting/Data_pre/scripts/nesting/create_bathymetry_grid.py \
 
 The official GEBCO source requires attribution: GEBCO Bathymetric Compilation Group 2026, GEBCO_2026 Grid, DOI [10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa](https://doi.org/10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa). Note that 15-arcsecond bathymetry resolution is **source sampling**, distinct from ROMS ES3K/UD1K grid spacing.
 
+## Published Kim et al. (2020) geometry versus this new experiment
+
+The [open-access original paper, Table 1](https://www.jkscoe.or.kr/journal/view.php?number=358), specifies **angular** nominal resolutions, not WGS84 uniform distance: ES3K `1/36 degree` (~3 km), UD1K `1/108 degree` (~1 km), and UD300m `1/324 degree` (~300 m). Its printed *extrema*, not necessarily the four vertices of a rotated domain, are:
+
+| Grid | Published longitude interval | Published latitude interval | Vertical layers |
+|---|---|---|---|
+| ES3K | 121.9–150.4 E | 30.8–52.0 N | 41 |
+| UD1K | 127.5–134.0 E | 35.5–39.0 N | 41 |
+| UD300m | 130.39–132.25 E | 36.85–37.89 N | 41 |
+
+**Scientific distinction:** a `1/36°` geographic grid is not equivalent to a uniform `dx=dy=3000 m` projected Lambert-conformal rotated grid at all latitudes. The currently requested ES3K rotated `dx=dy=3000 m` candidate is a separately declared project grid, **not an exact reconstruction of Kim's mesh**. Do not report paper-equivalent grid spacing or rotation before recovering author/source grid data. The UD300m range is a **published reference region**, not automatic authorization to replace the user's still-undecided custom L3 area. A comparability study could later construct both angular-reference and projected candidates, but the current branch intentionally retains only the user-selected nested scheme.
+
 ## ES3K → UD1K nesting geometry preflight (I3/I5 prerequisite)
 
 When both candidate ROMS grids are present, verify that the **entire UD1K curvilinear perimeter** is strictly enclosed by the ES3K wet-domain geometric footprint with a configurable number of parent RHO grid cells of buffer. The implementation projects both rings into the same WGS84 azimuthal-equidistant local map and evaluates **actual grid-edge polygons** using Shapely; bounding boxes are not sufficient because ES3K is rotated.
