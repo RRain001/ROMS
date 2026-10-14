@@ -12,6 +12,9 @@ on:
       - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_core_candidate.py'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_core_bathymetry_smoothing.py'
       - 'ROMS_Nesting/configs/es3k_i3_vertical_candidate.json'
+      - 'ROMS_Nesting/Data_pre/nesting/es3k_local_slope_projection.py'
+      - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_local_candidate.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_es3k_local_slope_projection.py'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_core_component_filter.py'
       - 'ROMS_Nesting/Data_pre/nesting/es3k_core_component_filter.py'
       - '.github/workflows/japan-sea-es3k-wet-domain.yml'
@@ -88,6 +91,7 @@ jobs:
             -p 'test_es3k_core_component_filter.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests \
             -p 'test_es3k_core_bathymetry_smoothing.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_es3k_local_slope_projection.py' -v
           echo "SYNTHETIC_TOPOLOGY_PASS_ONLY: real GEBCO/GSHHG and ROMS not run"
       - uses: actions/upload-artifact@v4
         if: always()
