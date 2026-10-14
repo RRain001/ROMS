@@ -56,12 +56,25 @@ class ES3KTransfinitePilot(unittest.TestCase):
         self.assertEqual(geo["lon_u"].shape,(rho.shape[0],rho.shape[1]-1))
         self.assertEqual(geo["lon_v"].shape,(rho.shape[0]-1,rho.shape[1]))
         self.assertEqual(geo["lon_psi"].shape,(rho.shape[0]-1,rho.shape[1]-1))
-        self.assertTrue(0<=report["orthogonality_error_max_deg"]<90)
+        self.assertGreater(report["orthogonality_error_max_deg"],1.0)
+        self.assertEqual(report["orthogonality_gate"],"NOT_PASS")
         self.assertGreater(report["geodesic_dx_min_m"],0)
         self.assertGreater(report["geodesic_dy_min_m"],0)
         self.assertEqual(report["nominal_angular_spacing"],"1/36 degree")
         self.assertIn("NOT_EXACT_ANGULAR",report["sampling_interpretation"])
         self.assertEqual(report["ROMS_integration"],"NOT_RUN")
+
+    def test_rejects_failed_grid_before_loading_any_gebco(self):
+        from bathymetry_grid import build_grid
+        # The intentionally missing GEBCO path should never be opened.
+        # A wrong implementation would raise FileNotFoundError instead.
+        with self.assertRaisesRegex(ValueError,"ROT-GATE NOT PASS"):
+            build_grid(self.spec,
+                       Path("/nonexistent/real_GEBCO_2026.nc"),
+                       Path("/tmp/ES3K_SHOULD_NOT_EXIST.nc"),
+                       allow_gebco_only_mask=True,
+                       synthetic_fixture=True)
+
 
     def test_fail_closed_geometry_label(self):
         self.assertEqual(self.spec["geometry_status"],"CANDIDATE_APPROXIMATE")

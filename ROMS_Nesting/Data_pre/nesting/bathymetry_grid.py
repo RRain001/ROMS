@@ -289,6 +289,17 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
     if gshhg_base is None and not allow_gebco_only_mask:
         raise ValueError("provide --gshhg-base or explicitly enable candidate GEBCO-only mask")
     values, dx, dy = make_geometry(spec)
+    # Do not start multi-GB GEBCO I/O for a 4-corner candidate that
+    # fails the geometric orthogonality gate on geometry alone.
+    if spec.get("geometry_type")=="four_corner_transfinite_aeqd_candidate":
+        dry_geometry_quality=geodesic_quality(values,dx,dy)
+        if dry_geometry_quality["orthogonality_error_max_deg"]>1.0:
+            raise ValueError(
+                f"ES3K ROT-GATE NOT PASS, "
+                f"max orthogonality error "
+                f"{dry_geometry_quality['orthogonality_error_max_deg']:.3f}° "
+                f">1°; GEBCO not opened. Improve boundary-aware mesh first."
+            )
     lon_grid, lat_grid=values["lon_rho"], values["lat_rho"]
     if not (-180 <= lon_grid.min() <= lon_grid.max() <= 180):
         raise ValueError("grid has longitude outside supported GSHHG range")

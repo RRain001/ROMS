@@ -33,6 +33,7 @@ def main():
     values,dx,dy,report=corner_grid(spec,sample_scale=args.sample_scale)
     args.output.mkdir(parents=True,exist_ok=True)
     report["warning"]="DIAGNOSTIC_ONLY; orthogonality and true rotated 1/36-degree grid NOT YET PASSED"
+    report["production_grid_approved"]=False
     (args.output/"ES3K_four_corner_quality.json").write_text(json.dumps(report,indent=2)+"\n")
     lon=values["lon_rho"];lat=values["lat_rho"]
     fig,ax=plt.subplots(figsize=(11,8),layout="constrained")
