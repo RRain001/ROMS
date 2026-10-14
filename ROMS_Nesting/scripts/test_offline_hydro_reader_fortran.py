@@ -13,6 +13,9 @@ import subprocess
 import sys
 import tempfile
 
+import numpy as np
+from netCDF4 import Dataset
+
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"tests"))
 from test_offline_hydro_contract import make_file
@@ -52,9 +55,15 @@ program inspect_offline_hydro
  if(size(f%u,1)/=5 .or. size(f%v,2)/=4) error stop 21
  if(size(f%AKs,3)/=3) error stop 22
  if(abs(f%seconds-60d0)>1d-12) error stop 23
- if(any(abs(f%u-0.5d0)>1d-12)) error stop 24
- if(any(abs(f%vbar-0.5d0)>1d-12)) error stop 25
- if(any(abs(f%AKs-0.0001d0)>1d-12)) error stop 26
+ if(abs(f%u(2,3,2)-1121d0)>1d-12) error stop 24
+ if(abs(f%v(4,2,2)-2113d0)>1d-12) error stop 25
+ if(abs(f%zeta(6,5)-145d0)>1d-12) error stop 26
+ if(abs(f%vbar(4,2)-113d0)>1d-12) error stop 27
+ if(abs(f%AKs(3,4,2)-0.00011132d0)>1d-12) error stop 28
+ call read_offline_hydro_frame(trim(fname),3,f,ierr,reason)
+ if(ierr/=0) error stop 29
+ if(abs(f%u(2,3,2)-2121d0)>1d-12) error stop 30
+ if(abs(f%zeta(6,5)-245d0)>1d-12) error stop 31
  call read_offline_hydro_frame(trim(fname),4,f,ierr,reason)
  if(ierr==0) error stop 'record range did not fail'
  print *, 'I8_NATIVE_ROMS_HYDRO_NETCDF_READER_PASS'
@@ -81,6 +90,23 @@ def run(command:list[str], cwd:Path)->None:
         raise RuntimeError(f"command failed with {result.returncode}: {' '.join(command)}\n{result.stdout}\n{result.stderr}")
     print(result.stdout)
 
+def write_spatiotemporal_pattern(path: Path) -> None:
+    """Every time, depth, row and column differs: catches silent index swaps."""
+    with Dataset(path, "a") as ds:
+        for field in ("u", "v"):
+            arr=ds.variables[field]
+            time, level, row, col=np.indices(arr.shape)
+            offset=0 if field=="u" else 1000
+            arr[:]=offset+1000*time+100*level+10*row+col
+        for field in ("zeta", "ubar", "vbar"):
+            arr=ds.variables[field]
+            time,row,col=np.indices(arr.shape)
+            arr[:]=100*time+10*row+col
+        arr=ds.variables["AKs"]
+        time,level,row,col=np.indices(arr.shape)
+        arr[:]=1.0e-4+time*1e-5+level*1e-6+row*1e-7+col*1e-8
+
+
 def main()->None:
     fc=shutil.which("gfortran")
     nf=shutil.which("nf-config")
@@ -102,6 +128,7 @@ def main()->None:
         run([*argv,str(d/"driver_bad.f90"),*nfargs,"-o",str(d/"run_bad")],d)
         good=d/"good.nc"
         make_file(good)
+        write_spatiotemporal_pattern(good)
         run([str(d/"run"),str(good)],d)
         tests={"missing_AKs":{"aks":False},
                "nonmonotonic_time":{"ordered":False},
@@ -110,6 +137,11 @@ def main()->None:
             p=d/(name+".nc")
             make_file(p,**kwargs)
             run([str(d/"run_bad"),str(p)],d)
+        nonfinite=d/"bad_nan.nc"
+        make_file(nonfinite)
+        with Dataset(nonfinite, "a") as ds:
+            ds.variables["u"][1,1,1,1]=np.nan
+        run([str(d/"run_bad"),str(nonfinite)],d)
         run([fc,"-cpp","-ffree-form","-ffree-line-length-none",
              "-I",str(d),"-J",str(d),*finc,"-c",str(SOURCE),
              "-o",str(d/"regular_mode.o")],d)

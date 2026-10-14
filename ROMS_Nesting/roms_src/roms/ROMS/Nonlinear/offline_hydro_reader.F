@@ -10,6 +10,7 @@
       MODULE offline_hydro_reader_mod
       USE mod_param, ONLY : r8
       USE netcdf
+      USE, INTRINSIC :: ieee_arithmetic, ONLY : ieee_is_finite
       IMPLICIT NONE
       PRIVATE
       PUBLIC :: offline_hydro_frame, read_offline_hydro_frame
@@ -176,6 +177,15 @@
         st=nf90_get_var(ncid,ids(6),frame%AKs,                  &
      &                  start=[1,1,1,record],count=[nx,ny,nw,1])
         IF (st.ne.nf90_noerr) GOTO 920
+        IF (.not.ALL(ieee_is_finite(frame%zeta)).or.             &
+     &      .not.ALL(ieee_is_finite(frame%ubar)).or.              &
+     &      .not.ALL(ieee_is_finite(frame%vbar)).or.              &
+     &      .not.ALL(ieee_is_finite(frame%u)).or.                 &
+     &      .not.ALL(ieee_is_finite(frame%v)).or.                 &
+     &      .not.ALL(ieee_is_finite(frame%AKs))) THEN
+          reason='nonfinite offline hydrodynamic value'
+          GOTO 900
+        END IF
         IF (ANY(frame%AKs.lt.0.0_r8)) THEN
           reason='negative AKs in field'
           GOTO 900
