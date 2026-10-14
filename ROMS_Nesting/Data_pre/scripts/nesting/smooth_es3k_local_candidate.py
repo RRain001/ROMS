@@ -13,7 +13,7 @@ def main():
     p.add_argument("--report-json",type=Path,required=True)
     p.add_argument("--vertical-config",type=Path,required=True)
     p.add_argument("--rx1-limit",type=float,default=8.0)
-    p.add_argument("--max-p99-change-m",type=float,default=350.)
+    p.add_argument("--max-p99-change-m",type=float,default=500.)
     args=p.parse_args()
     vertical=json.loads(args.vertical_config.read_text())
     result=local_slope_candidate(args.grid,args.output,args.report_json,
