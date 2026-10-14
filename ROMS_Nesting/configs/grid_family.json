@@ -43,7 +43,7 @@
       "nominal_resolution_deg": 0.027777777777777776,
       "nominal_resolution_fraction": "1/36 deg",
       "old_metric_resolution_m_for_synthetic_only": 3000,
-      "angular_grid_generator_status": "DIAGNOSTIC_TRANSFINITE_METRIC_EQUIVALENT_NOT_EXACT_1_OVER_36",
+      "angular_grid_generator_status": "DIAGNOSTIC_BILINEAR_AND_CONFORMAL_METRIC_EQUIVALENT_NOT_EXACT_1_OVER_36",
       "figure1_rotation_candidate_deg_ccw_from_east": null,
       "figure1_rotation_uncertainty_deg_preliminary": null,
       "figure1_candidate_not_author_supplied": true,
@@ -57,8 +57,10 @@
         52
       ],
       "angle_deg_status": "CURVILINEAR_ANGLE_FIELD_NOT_YET_CALCULATED",
-      "orthogonal_grid_gate": "NOT_RUN_PILOT_QUALITY_DIAGNOSTIC_ONLY",
-      "corner_grid_candidate_config": "ROMS_Nesting/configs/es3k_four_corner_candidate.json"
+      "orthogonal_grid_gate": "CONFORMAL_PILOT_PENDING_GITHUB_CI_GEBCO_GSHHG_NOT_RUN",
+      "corner_grid_candidate_config": "ROMS_Nesting/configs/es3k_four_corner_candidate.json",
+      "conformal_candidate_config": "ROMS_Nesting/configs/es3k_conformal_candidate.json",
+      "conformal_mapping_status": "NEW_CURVED_EDGE_FOUR_CORNER_CONFORMAL_DIAGNOSTIC_NOT_PRODUCTION"
     },
     {
       "id": "UD1K",

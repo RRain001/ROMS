@@ -51,6 +51,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_user_bounds.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_es3k_user_corners.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_es3k_transfinite.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_es3k_conformal.py' -v
       - name: Generate user-corner-constrained ES3K geometric diagnostic
         shell: bash
         run: |
@@ -69,6 +70,27 @@ jobs:
           for ext in ("svg","png"):
               assert (root/("ES3K_four_corner_CANDIDATE."+ext)).stat().st_size>1000
           print("ES3K FOUR CORNERS FIXED; curvilinear I2 SCIENTIFIC PASS NOT ASSUMED")
+          PY
+      - name: Compare ES3K straight-edge and curved-edge conformal candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/scripts/nesting/render_es3k_conformal_comparison.py             --sample-scale 20 --output "$RUNNER_TEMP/I2_ES3K_CONFORMAL"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ["RUNNER_TEMP"])/"I2_ES3K_CONFORMAL"
+          x=json.loads((p/"ES3K_conformal_vs_bilinear_quality.json").read_text())
+          assert x["corner_inputs_match"]
+          assert x["conformal_cubic"]["corner_max_wgs84_error_m"]<1e-5
+          assert x["conformal_cubic"]["orthogonality_gate"]=="PRELIMINARY_PASS_ONLY"
+          assert x["bilinear_baseline"]["orthogonality_gate"]=="NOT_PASS"
+          assert x["max_orthogonality_improvement_factor"]>4
+          assert x["conformal_cubic"]["sampling_interpretation"]=="LOCAL_METRIC_EQUIVALENT_NOT_EXACT_ANGULAR"
+          assert x["GEBCO_2026_and_GSHHG"]=="NOT_RUN"
+          for suffix in ("png","svg"):
+              assert (p/f"ES3K_conformal_vs_bilinear_CANDIDATE.{suffix}").stat().st_size>1000
+          print("ES3K CONFORMAL GEOMETRY PILOT PASS, SCIENTIFIC I2/I3 NOT COMPLETE")
           PY
       - name: Persist explicit synthetic ES3K and UD1K NetCDF candidates
         run: |
@@ -160,6 +182,13 @@ jobs:
               assert (p/f"Japan_Sea_Three_Grids_CANDIDATE.{ext}").stat().st_size > 1000
           print("THREE GRID SCHEMATIC / APPROVED GEOMETRY PASS, real GSHHG and ROMS NOT RUN")
           PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: i2-es3k-conformal-vs-bilinear-pilot
+          path: ${{ runner.temp }}/I2_ES3K_CONFORMAL/
+          if-no-files-found: warn
+          retention-days: 21
       - uses: actions/upload-artifact@v4
         if: always()
         with:

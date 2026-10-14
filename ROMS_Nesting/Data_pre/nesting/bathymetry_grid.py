@@ -46,6 +46,10 @@ def _float_finite(value: object, name: str) -> float:
 def make_geometry(spec: dict) -> tuple[dict[str, np.ndarray], float, float]:
     """One explicit candidate specification; no implicit real ES3K corners."""
     typ = spec.get("geometry_type")
+    if typ == "four_corner_conformal_lcc_candidate":
+        from es3k_conformal import conformal_corner_grid
+        values, dx, dy, _report=conformal_corner_grid(spec)
+        return values, dx, dy
     if typ == "four_corner_transfinite_aeqd_candidate":
         from es3k_corners import corner_grid
         values, dx, dy, _diagnostics=corner_grid(spec)
@@ -339,7 +343,9 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
     values, dx, dy = make_geometry(spec)
     # Do not start multi-GB GEBCO I/O for a 4-corner candidate that
     # fails the geometric orthogonality gate on geometry alone.
-    if spec.get("geometry_type")=="four_corner_transfinite_aeqd_candidate":
+    if spec.get("geometry_type") in (
+        "four_corner_transfinite_aeqd_candidate",
+        "four_corner_conformal_lcc_candidate"):
         dry_geometry_quality=geodesic_quality(values,dx,dy)
         if dry_geometry_quality["orthogonality_error_max_deg"]>1.0:
             raise ValueError(
@@ -406,7 +412,7 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
         ds.geometry_reference_status=("USER_ANCHORED_CANDIDATE_NOT_SHORELINE_VERIFIED"
                                       if grid_id=="L3_300m"
                                       else "USER_FOUR_CORNER_BATHY_NOT_VALIDATED"
-                                      if spec.get("geometry_type")=="four_corner_transfinite_aeqd_candidate"
+                                      if spec.get("geometry_type") in ("four_corner_transfinite_aeqd_candidate", "four_corner_conformal_lcc_candidate")
                                       else "KIM_2020_CORNERS_NOT_VERIFIED")
         ds.geometry_input_json=json.dumps(spec,sort_keys=True)
         if spec.get("geometry_type")=="axis_aligned_lonlat_angular":
@@ -440,7 +446,7 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
                       else "GEOGRAPHIC_EXACT_1_OVER_108_DEG")
                 if spec.get("geometry_type")=="axis_aligned_lonlat_angular"
                 else "LOCAL_WGS84_METRIC_EQUIVALENT_NOT_EXACT_ANGULAR"
-                if spec.get("geometry_type")=="four_corner_transfinite_aeqd_candidate"
+                if spec.get("geometry_type") in ("four_corner_transfinite_aeqd_candidate", "four_corner_conformal_lcc_candidate")
                 else "NOT_IMPLEMENTED")
         if grid_id=="L3_300m":
             from l3_square import square_corners

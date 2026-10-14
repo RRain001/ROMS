@@ -60,9 +60,15 @@ def main() -> None:
     es=grid["grids"][0]
     require(es["corners_deg"] == supplied["user_corners_lat_lon"],
             "user-supplied ES3K corners changed, missing, or in wrong order")
+    conformal=json.loads((ROOT/"configs/es3k_conformal_candidate.json").read_text())
+    require(conformal["user_corners_lat_lon"]==supplied["user_corners_lat_lon"],
+            "ES3K conformal method changed the user's four fixed corners")
+    require(conformal["status"]=="PRELIMINARY_ORTHOGONALITY_GATE_ONLY_NOT_PRODUCTION" and
+            conformal["exact_angular_resolution"]=="NOT_IMPLEMENTED_LOCAL_METRIC_EQUIVALENT_ONLY",
+            "ES3K conformal prototype incorrectly marked physically validated")
     require(es["source_of_corners"]=="USER_SUPPLIED_2026_10_14",
             "ES3K corners attributed to prior paper pixel estimates")
-    require(es["angular_grid_generator_status"]=="DIAGNOSTIC_TRANSFINITE_METRIC_EQUIVALENT_NOT_EXACT_1_OVER_36",
+    require(es["angular_grid_generator_status"]=="DIAGNOSTIC_BILINEAR_AND_CONFORMAL_METRIC_EQUIVALENT_NOT_EXACT_1_OVER_36",
             "ES3K diagnostic grid incorrectly claimed exact angular-resolution pass")
     local=grid["grids"][2]["domain"]
     l3_cfg=json.loads((ROOT / "configs" / "l3_coastal_square_candidate.json").read_text())

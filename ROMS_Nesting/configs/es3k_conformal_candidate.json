@@ -1,0 +1,32 @@
+{
+  "grid_id": "ES3K",
+  "geometry_status": "CANDIDATE_APPROXIMATE",
+  "geometry_type": "four_corner_conformal_lcc_candidate",
+  "user_corners_lat_lon": {
+    "W": [
+      37.821077,
+      121.9
+    ],
+    "N": [
+      52,
+      141.327943
+    ],
+    "E": [
+      45.616255,
+      150.4
+    ],
+    "S": [
+      30.8,
+      131.471973
+    ]
+  },
+  "nominal_resolution_deg": 0.027777777777777776,
+  "nominal_resolution_fraction": "1/36 deg",
+  "logical_rectangle_aspect": 2.1,
+  "max_rho_points": 900000,
+  "geometry_method": "WGS84_LCC_CUBIC_HOLOMORPHIC_FOUR_CORNER_PILOT",
+  "status": "PRELIMINARY_ORTHOGONALITY_GATE_ONLY_NOT_PRODUCTION",
+  "exact_angular_resolution": "NOT_IMPLEMENTED_LOCAL_METRIC_EQUIVALENT_ONLY",
+  "physical_acceptance": "PENDING_GEBCO_GSHHG_AND_HYDRODYNAMICS",
+  "experimental_warning": "Mapping boundaries are curved; same four user corner coordinates; exact 1/36 rotated angular system unknown. Boundary geocoverage and shoreline must be independently checked."
+}
