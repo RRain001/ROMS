@@ -10,13 +10,15 @@
   "provenance": "Kim et al. (2020) UD1K reference 127.5–134 E /35.5–39 N; user-defined L3 requires proposed 35.35 N southern extension; west=127.5 and north=39 anchor the exact 1/108-degree axes; real parent wet/physics not validated",
   "nominal_resolution_deg": 0.009259259259259259,
   "nominal_resolution_fraction": "1/108 deg",
-  "resolution_generator_status": "CANDIDATE_EXACT_LONGITUDE_LATITUDE_1_OVER_108",
-  "parent_expansion": "PROPOSED_SOUTHWARD_TO_INCLUDE_USER_DEFINED_L3",
+  "resolution_generator_status": "EXACT_GEOGRAPHIC_1_OVER_108_DEG_PRELIMINARY_WETMASK_PENDING",
+  "parent_expansion": "APPROVED_BY_USER_2026_10_14_GEOMETRY_ONLY",
   "official_reference_envelope_deg": [
     127.5,
     134,
     35.5,
     39
   ],
-  "legacy_resolution_m_for_synthetic_only": 1000
+  "legacy_resolution_m_for_synthetic_only": 1000,
+  "geometry_approval": "APPROVED_UD1K_SOUTH_35_35N",
+  "physical_validation": "NOT_RUN"
 }

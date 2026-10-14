@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "status": "L3_ANCHORS_CONFIRMED_REAL_GRID_AND_UD1K_EXPANSION_PENDING",
+  "status": "UD1K_SOUTH_EXTENSION_USER_APPROVED_GEOMETRY_ONLY_ES3K_AND_WETMASK_UNVERIFIED",
   "mode": "offline_one_way",
   "ocean_source_default": "glorys12v1",
   "reference": {
@@ -55,7 +55,10 @@
         ],
         "south_bound_proposal_deg": 35.35,
         "south_bound_snapped_1_over_108_deg": 35.35185185185185,
-        "physics_approval": "PENDING"
+        "physics_approval": "PENDING_GEBCO_GSHHG_PARENT_BOUNDARY",
+        "user_decision": "APPROVED_SOUTHWARD_EXPANSION_TO_35_35N",
+        "geometry_approval": "APPROVED_BY_USER_2026_10_14",
+        "snapped_south_grid_deg": 35.35185185185185
       }
     },
     {

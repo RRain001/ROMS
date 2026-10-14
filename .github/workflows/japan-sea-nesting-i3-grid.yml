@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install numerical grid dependencies
-        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4 pyproj pillow pyshp shapely
+        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4 pyproj pillow pyshp shapely matplotlib
       - name: Guarantee old single-grid code is unchanged
         shell: bash
         run: |
@@ -112,6 +112,31 @@ jobs:
           assert x["real_GEBCO_and_GSHHG"]=="NOT_RUN"
           print("USER L3 GEOMETRY CANDIDATE PASS; ACTUAL ROMS/HTO NOT RUN")
           PY
+      - name: Export three-grid user-approved geographic schematic
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/scripts/nesting/render_three_grid_schematic.py --output "$RUNNER_TEMP/I6_SCHEMATIC"
+          python - <<'PY'
+          from pathlib import Path
+          import json, os
+          p=Path(os.environ["RUNNER_TEMP"])/"I6_SCHEMATIC"
+          x=json.loads((p/"three_grid_geometry_preflight.json").read_text())
+          assert 10 < x["L3"]["south_boundary_gap_km"] < 13
+          assert x["UD1K"]["geometry_approval"]=="USER_APPROVED"
+          assert x["L3"]["GSHHG_wet_mask"]=="NOT_RUN"
+          assert x["parent_child_Bq_flux_conservation"]=="NOT_RUN"
+          for ext in ("png","svg"):
+              assert (p/f"Japan_Sea_Three_Grids_CANDIDATE.{ext}").stat().st_size > 1000
+          print("THREE GRID SCHEMATIC / APPROVED GEOMETRY PASS, real GSHHG and ROMS NOT RUN")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: i6-geometry-schematic-png-svg-json
+          path: ${{ runner.temp }}/I6_SCHEMATIC/
+          if-no-files-found: warn
+          retention-days: 21
       - uses: actions/upload-artifact@v4
         if: always()
         with:

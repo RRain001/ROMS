@@ -99,6 +99,17 @@ class AnchoredL3Tests(unittest.TestCase):
         self.assertEqual(data["lon_rho"].shape[0],395)
         self.assertEqual(data["lon_rho"].shape[1],703)
 
+    def test_user_approved_south_extension_is_locked(self):
+        import json
+        family=json.loads((ROOT.parent/"configs/grid_family.json").read_text())
+        parent=next(x for x in family["grids"] if x["id"]=="UD1K")
+        extension=parent["proposed_modification"]
+        self.assertEqual(extension["geometry_approval"],"APPROVED_BY_USER_2026_10_14")
+        self.assertEqual(extension["physics_approval"],"PENDING_GEBCO_GSHHG_PARENT_BOUNDARY")
+        self.assertEqual(self.parent_spec["parent_expansion"],
+                         "APPROVED_BY_USER_2026_10_14_GEOMETRY_ONLY")
+        self.assertEqual(self.parent_spec["lat_min"],35.35)
+
     def test_opposite_inland_side_is_explicitly_rejected(self):
         bad={**self.spec,"offshore_side":"left_of_A_to_B"}
         with self.assertRaisesRegex(ValueError,"seaward"):

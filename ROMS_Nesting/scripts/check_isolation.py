@@ -66,7 +66,9 @@ def main() -> None:
             l3_cfg["offshore_side"]=="right_of_A_to_B" and
             l3_cfg["nominal_resolution_deg"]==1/324,
             "L3 offshore/1-324-degree candidate deviates from user specification")
-    require(grid["grids"][1]["proposed_modification"]["physics_approval"]=="PENDING",
+    require(grid["grids"][1]["proposed_modification"]["geometry_approval"]=="APPROVED_BY_USER_2026_10_14",
+            "UD1K south boundary must remain user approved")
+    require(grid["grids"][1]["proposed_modification"]["physics_approval"]=="PENDING_GEBCO_GSHHG_PARENT_BOUNDARY",
             "UD1K southward expansion incorrectly marked physically accepted")
     print("I0 copied-path isolation/config PASS (not a physical ROMS integration test)")
 

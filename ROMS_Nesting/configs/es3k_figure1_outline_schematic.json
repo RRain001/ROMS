@@ -1,0 +1,28 @@
+{
+  "status": "FIG1_DIGITIZATION_COARSE_SCHEMATIC_ONLY",
+  "source": "Kim et al. 2020 Fig. 1(a) and Table 1 coordinate extrema",
+  "nominal_angular_resolution_deg": 0.027777777777777776,
+  "rotation": "PAPER_GRID_GENERATOR_NOT_RECOVERED; 50 DEG PRELIMINARY ONLY",
+  "points_lon_lat": {
+    "W": [
+      121.9,
+      38.5
+    ],
+    "N": [
+      139.5,
+      52
+    ],
+    "E": [
+      150.4,
+      45
+    ],
+    "S": [
+      132,
+      30.8
+    ]
+  },
+  "polygon_orientation": "W_N_E_S_W",
+  "original_grid_file_status": "NOT_OBTAINED",
+  "actual_3D_ROMS_grid": "NOT_GENERATED",
+  "purpose": "SCHEMATIC containment only; polygon not author-exact scientific model grid"
+}
