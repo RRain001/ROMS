@@ -1,0 +1,13 @@
+{
+  "grid_id": "ES3K",
+  "geometry_status": "CANDIDATE_APPROXIMATE",
+  "geometry_type": "rotated_lcc",
+  "center_lon": null,
+  "center_lat": null,
+  "width_points": null,
+  "height_points": null,
+  "dx_m": 3000,
+  "dy_m": 3000,
+  "angle_deg": null,
+  "provenance": "TEMPLATE ONLY; Kim 2020 exact ES3K corners, orientation, projection and grid counts NOT YET KNOWN. Fill only with documented source/explicit APPROXIMATE assumption."
+}

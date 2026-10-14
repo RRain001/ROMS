@@ -180,6 +180,16 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = json.loads(PARAMS.read_text())
+    # The independent Japan Sea nested flow has its own rotated ES3K
+    # and genuinely geographic-axis UD1K grid generator.  Never let
+    # this copied legacy axis-aligned/angle=0 generator silently
+    # manufacture an incorrect ES3K candidate.
+    if cfg.get("case", {}).get("name") == "JAPAN_SEA":
+        raise SystemExit(
+            "JAPAN_SEA cannot use legacy grid_from_bathymetry (angle=0). "
+            "Use Data_pre/scripts/nesting/create_bathymetry_grid.py with "
+            "an explicit candidate geometry JSON; I3 grid gate remains open."
+        )
     domain = cfg["domain"]
     vertical = cfg["vertical"]
     dx_m = args.resolution_m or (

@@ -1,0 +1,12 @@
+{
+  "grid_id": "UD1K",
+  "geometry_status": "CANDIDATE_APPROXIMATE",
+  "geometry_type": "axis_aligned_lonlat",
+  "lon_min": 127.5,
+  "lon_max": 134.0,
+  "lat_min": 35.5,
+  "lat_max": 39.0,
+  "resolution_m": 1000.0,
+  "max_rho_points": 500000,
+  "provenance": "Kim et al. 2020 approximate reference envelope, NOT verified ROMS original vertices"
+}
