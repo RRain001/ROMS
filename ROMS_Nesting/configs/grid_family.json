@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "status": "UD1K_WEST_SOUTH_ANCHORED_EXACT_1_OVER_108_MATCH_ROUNDED_NEW_N_E_PHYSICAL_GRID_NOT_VALIDATED",
+  "status": "ES3K_CONFORMAL_FULL_GEO_PRELIMINARY_PASS_UD1K_USER_1_OVER_108_EXACT_REAL_WET_GRID_NOT_RUN",
   "mode": "offline_one_way",
   "ocean_source_default": "glorys12v1",
   "reference": {
@@ -39,7 +39,7 @@
           150.4
         ]
       },
-      "geometry_status": "USER_SUPPLIED_CORNERS_ACCEPTED_GRID_NOT_GENERATED",
+      "geometry_status": "USER_FIXED_CORNERS_GEOMETRIC_ORTHOGONALITY_PRELIMINARY_PASS_REAL_GRID_NOT_GENERATED",
       "nominal_resolution_deg": 0.027777777777777776,
       "nominal_resolution_fraction": "1/36 deg",
       "old_metric_resolution_m_for_synthetic_only": 3000,
@@ -57,10 +57,31 @@
         52
       ],
       "angle_deg_status": "CURVILINEAR_ANGLE_FIELD_NOT_YET_CALCULATED",
-      "orthogonal_grid_gate": "CONFORMAL_PILOT_PENDING_GITHUB_CI_GEBCO_GSHHG_NOT_RUN",
+      "orthogonal_grid_gate": "PRELIMINARY_PASS_ONLY_FULL_732x464_WGS84_MAX_0_002765_DEG",
       "corner_grid_candidate_config": "ROMS_Nesting/configs/es3k_four_corner_candidate.json",
       "conformal_candidate_config": "ROMS_Nesting/configs/es3k_conformal_candidate.json",
-      "conformal_mapping_status": "NEW_CURVED_EDGE_FOUR_CORNER_CONFORMAL_DIAGNOSTIC_NOT_PRODUCTION"
+      "conformal_mapping_status": "NEW_CURVED_EDGE_FOUR_CORNER_CONFORMAL_DIAGNOSTIC_NOT_PRODUCTION",
+      "full_resolution_geodesic_quality": {
+        "evidence": "https://github.com/RRain001/ROMS/actions/runs/38565021403",
+        "actual_rho_shape_eta_xi": [
+          732,
+          464
+        ],
+        "orthogonality_error_max_deg": 0.002764822567688871,
+        "orthogonality_error_p95_deg": 0.002236115261940551,
+        "geodesic_dx_min_max_m": [
+          1996.7045222342542,
+          2570.112781236431
+        ],
+        "geodesic_dy_min_max_m": [
+          2655.9509654964104,
+          3418.283132071907
+        ],
+        "full_synthetic_ES3K_to_UD1K_geometric_preflight": "PASS_PRELIMINARY_ONLY",
+        "exact_angular_grid": "NOT_IMPLEMENTED",
+        "GEBCO_GSHHG_real": "NOT_RUN",
+        "physics": "NOT_RUN"
+      }
     },
     {
       "id": "UD1K",
