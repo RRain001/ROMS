@@ -31,6 +31,15 @@ For ES3K, **first** fill an independently reviewed `es3k_geometry.json` with cen
 
 For **synthetic CI only**, `--allow-gebco-only-mask --synthetic-test-only` allows a fixture without a real GSHHG shapefile; its metadata explicitly says the shoreline has not been validated. Formal runs should supply the full GSHHG base path and then perform separate mask cleanup and review.
 
+## Reproducible GitHub-hosted Ubuntu gate (2026-10-14)
+
+- [Run #38523156039 — SUCCESS](https://github.com/RRain001/ROMS/actions/runs/38523156039): WGS84 metric, rotated coordinates, real NetCDF encoding of **synthetic** GEBCO-like elevations; end-to-end candidate ES3K/UD1K outputs. Separate tests exercise the **real GSHHG Shapefile parser with a generated synthetic polygon** and GEBCO-like signed int16 bathymetry. Neither test uses a real Japanese coastline.
+- [Run #38523572015 — SUCCESS](https://github.com/RRain001/ROMS/actions/runs/38523572015): apply the pre-existing but now corrected **nesting-only** wet-mask-preserving bathymetry smoother to a rotated NetCDF candidate and check that `lon/lat`, `pm/pn`, `angle`, all four staggered masks remain unchanged. Synthetic example: unsmoothed `rx0=0.742703, rx1=27.576596`; one smoothing iteration yields `rx0=0.145978, rx1=4.341047`, meeting the *test's* preset `rx0<=0.35, rx1<=8` limits. The smoother now **fails closed** if requested slope thresholds cannot be reached and correctly copies scalar NetCDF variables (no compression for 0-D variables).
+- Output artifact `i3-synthetic-es3k-ud1k-candidate` contains the synthetic bathymetry fixture, original ES3K/UD1K ROMS candidate NetCDF files, smoothed ES3K candidate and a JSON provenance report. All scientific grids are explicitly `CANDIDATE_NOT_VALIDATED_FOR_ROMS`; synthetic fixture `synthetic_test_only=TRUE`.
+- The cited [Kim et al. (2020)](https://doi.org/10.9765/KSCOE.2020.32.6.587) used **KorBathy30s and ETOPO5** for its ES3K bathymetry and HYCOM for open boundary data. Choosing **GEBCO 2026 + GLORYS12V1** here is the user's deliberate scientific adaptation, **not a faithful reproduction of the paper's exact model inputs**. Original grid rotation and corners still require independent verification from publication assets or authors.
+
+**Actual I3 status: NOT_RUN / BLOCKED_BY_REAL_DATA_AND_GEOMETRY.** These CI successes verify executable preprocessing logic and synthetic output artifacts only. No real GEBCO 2026 / GSHHG Japan Sea grid files, no physical ROMS I2 gate, no GLORYS/ERA5/TPXO forcing or ES3K→UD1K run have been generated in this repo.
+
 ## Remaining I3 acceptance barriers
 
 1. Real ES3K rotated corners/rotation/actual wet domain versus Kim (2020), with any approximation clearly disclosed.
