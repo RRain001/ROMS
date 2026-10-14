@@ -61,22 +61,22 @@ def _xy(xform: Transformer, lon, lat) -> np.ndarray:
 
 
 def _full_wet_quad_coverage(parent_xy: np.ndarray, parent_wet: np.ndarray,
-                            child_boundary_xy: np.ndarray, *,
-                            nearest_quads: int = 16) -> np.ndarray:
-    """Diagnostic: boundary points geometrically inside an all-wet parent RHO quad.
+                            child_boundary_xy: np.ndarray) -> np.ndarray:
+    """Read-only preflight for all-wet parent RHO quads that contain targets.
 
-    This identifies coastal locations where the nearest wet RHO point is NOT
-    enough to construct an ordinary four-corner interpolation stencil. It is
-    deliberately *not* a proof of interpolation, conservative flux or
-    ROMS boundary-condition readiness.
+    Unlike a fixed k-nearest centroid search, the query radius bounds
+    *every point* in *every* eligible quadrilateral. Therefore a distant
+    centroid of a warped but valid cell cannot create a false uncovered
+    child-boundary point. This tests geometry and wet vertices only; it
+    does not verify shoreline intersection, a ROMS interpolation kernel,
+    staggered velocities, or conservative physical boundary fluxes.
     """
     xy = np.asarray(parent_xy, dtype=np.float64)
     wet = np.asarray(parent_wet, dtype=bool)
     targets = np.asarray(child_boundary_xy, dtype=np.float64)
     if (xy.ndim != 3 or xy.shape[2] != 2 or xy.shape[:2] != wet.shape
-            or targets.ndim != 2 or targets.shape[1] != 2
-            or not np.isfinite(xy).all() or not np.isfinite(targets).all()
-            or nearest_quads < 1):
+            or min(wet.shape) < 2 or targets.ndim != 2 or targets.shape[1] != 2
+            or not np.isfinite(xy).all() or not np.isfinite(targets).all()):
         raise ValueError("invalid parent wet quad stencil geometry")
     eligible = (wet[:-1, :-1] & wet[:-1, 1:]
                 & wet[1:, :-1] & wet[1:, 1:])
@@ -84,23 +84,29 @@ def _full_wet_quad_coverage(parent_xy: np.ndarray, parent_wet: np.ndarray,
     covered = np.zeros(len(targets), dtype=bool)
     if not len(quads) or not len(targets):
         return covered
-    centers = (xy[:-1, :-1] + xy[:-1, 1:]
-               + xy[1:, 1:] + xy[1:, :-1]) / 4.0
-    nearest_count = min(nearest_quads, len(quads))
-    _, candidate_ids = cKDTree(centers[eligible]).query(
-        targets, k=nearest_count)
-    candidate_ids = np.asarray(candidate_ids).reshape(len(targets), -1)
+
+    # One spatial index query contains every polygon that could include a
+    # receiver point: each entire quad lies inside the ball around its
+    # vertex centroid with radius = max distance to any of its vertices.
+    # Taking the maximum radius over eligible quads guarantees inclusion
+    # even for strongly nonuniform but still valid parent geometry.
+    j, i = quads[:, 0], quads[:, 1]
+    corners = np.stack((xy[j, i], xy[j, i + 1],
+                        xy[j + 1, i + 1], xy[j + 1, i]), axis=1)
+    centers = corners.mean(axis=1)
+    radius = float(np.max(np.linalg.norm(
+        corners - centers[:, None, :], axis=2)))
+    candidate_ids = cKDTree(centers).query_ball_point(
+        targets, r=np.nextafter(radius, np.inf))
     for n, (position, ids) in enumerate(zip(targets, candidate_ids)):
         point = Point(float(position[0]), float(position[1]))
         for quad_id in ids:
-            j, i = quads[int(quad_id)]
-            corners = (xy[j, i], xy[j, i + 1],
-                       xy[j + 1, i + 1], xy[j + 1, i])
-            polygon = Polygon(corners)
+            polygon = Polygon(corners[int(quad_id)])
             if polygon.is_valid and polygon.area > 0 and polygon.covers(point):
                 covered[n] = True
                 break
     return covered
+
 
 
 def check_pair(parent_grid: Path, child_grid: Path, *,
@@ -179,8 +185,8 @@ def check_pair(parent_grid: Path, child_grid: Path, *,
     }
     sample_limit = 256
     stencil_diagnostic = {
-        "method": "PROJECTED_ALL_FOUR_WET_PARENT_RHO_QUAD_CONTAINS_CHILD_POINT",
-        "candidate_nearest_quads": 16,
+        "method": "EXHAUSTIVE_RADIUS_BOUNDED_ALL_WET_RHO_QUAD_CONTAINS_CHILD_POINT",
+        "search_completeness": "NO_FIXED_NEAREST_K_CENTROID_TRUNCATION",
         "child_wet_boundary_rho_points": int(len(full_quad)),
         "with_full_wet_parent_rho_quad": int(full_quad.sum()),
         "without_full_wet_parent_rho_quad": int((~full_quad).sum()),
