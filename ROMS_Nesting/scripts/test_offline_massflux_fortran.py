@@ -74,6 +74,7 @@ program massflux_test
   use mod_param
   use mod_grid
   use mod_ocean
+  use mod_stepping
   use set_massflux_mod
   implicit none
   integer :: tile
@@ -100,6 +101,21 @@ program massflux_test
   end do
   if (any(abs(GRID(1)%Huon(1:4,1:2,:)-40.0_r8)>1.e-12_r8)) stop 20
   if (any(abs(GRID(1)%Hvom(1:4,1:2,:)-90.0_r8)>1.e-12_r8)) stop 21
+! Verify three-snapshot continuation does not reuse the previous
+! midpoint as a previous endpoint.
+  do tile=1,2
+    call set_massflux_endpoint(1,tile,1)
+  end do
+  if (any(abs(GRID(1)%Huon(1:4,1:2,:)-60.0_r8)>1.e-12_r8)) stop 22
+  if (any(abs(GRID(1)%Hvom(1:4,1:2,:)-120.0_r8)>1.e-12_r8)) stop 23
+  OCEAN(1)%u(:,:,:,1)=5.0_r8
+  OCEAN(1)%v(:,:,:,1)=6.0_r8
+  nnew(1)=1
+  do tile=1,2
+    call set_massflux_avg(1,tile,1)
+  end do
+  if (any(abs(GRID(1)%Huon(1:4,1:2,:)-80.0_r8)>1.e-12_r8)) stop 24
+  if (any(abs(GRID(1)%Hvom(1:4,1:2,:)-150.0_r8)>1.e-12_r8)) stop 25
 #endif
   print *, 'NATIVE_SET_MASSFLUX_GFORTRAN_PASS'
 end program

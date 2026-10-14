@@ -57,6 +57,17 @@ jobs:
           set -euo pipefail
           command -v gfortran
           python ROMS_Nesting/scripts/test_offline_massflux_fortran.py
+      - name: I8 native offline driver fail-closed and CMake/Make routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v gfortran
+          python ROMS_Nesting/scripts/test_offline_main3d_entry.py
+      - name: I8 native offline frame stage ordering (3 stages, 2 tiles)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/scripts/test_offline_stage_fortran.py
       - name: I8 Thyng pinned upstream / local ROMS 4.3 compatibility audit
         shell: bash
         run: |

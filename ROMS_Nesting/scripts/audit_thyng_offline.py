@@ -120,6 +120,12 @@ def audit(verify_upstream: bool) -> dict:
         gaps.append("MISSING_SET_AVG_ZETA")
     if not symbol_hits["OFFLINE_TPASSIVE"]:
         gaps.append("NO_OFFLINE_TPASSIVE_IN_SCANNED_PATHS")
+    driver_path = SOURCE / "Nonlinear/main3d_offline.F"
+    if driver_path.is_file() and "ROMS_NESTING_I8_BLOCKED_PORT_REQUIRED" in driver_path.read_text():
+        gaps.append("OFFLINE_MAIN3D_FAIL_CLOSED_SCAFFOLD")
+    stage_path = SOURCE / "Nonlinear/offline_tracer_stage.F"
+    if not stage_path.is_file():
+        gaps.append("MISSING_OFFLINE_FRAME_STAGE")
     if not symbol_hits["AKSCLIMATOLOGY"]:
         gaps.append("NO_AKSCLIMATOLOGY_IN_SCANNED_PATHS")
     if not base["Drivers/nl_roms.h"]["present"]:
@@ -176,10 +182,10 @@ def main() -> int:
     for gap in out["blocking_gaps"]:
         print("  " + gap)
     if args.expect_gap:
-        required = {"MISSING_NONLINEAR_MAIN3D_OFFLINE"}
+        required = set()
         resolved = {"MISSING_SET_AVG_ZETA", "MISSING_SET_MASSFLUX_AVG"}
-        if not required.issubset(out["blocking_gaps"]) or resolved.intersection(out["blocking_gaps"]):
-            print("I8 expected remaining offline driver gap and both native zeta/flux adapters", file=sys.stderr)
+        if required.intersection(out["blocking_gaps"]) or resolved.intersection(out["blocking_gaps"]) or "MISSING_NONLINEAR_MAIN3D_OFFLINE" in out["blocking_gaps"] or "OFFLINE_MAIN3D_FAIL_CLOSED_SCAFFOLD" not in out["blocking_gaps"] or "MISSING_OFFLINE_FRAME_STAGE" in out["blocking_gaps"]:
+            print("I8 offline driver scaffold or native zeta/flux adapters missing", file=sys.stderr)
             return 2
     return 0
 

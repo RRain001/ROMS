@@ -20,6 +20,7 @@
       PUBLIC  :: set_massflux
 # if defined OFFLINE && defined OFFLINE_TPASSIVE
       PUBLIC  :: set_massflux_avg
+      PUBLIC  :: set_massflux_endpoint
 # endif
 # ifdef ADJOINT
       PUBLIC  :: reset_massflux
@@ -230,6 +231,43 @@
 !
       RETURN
       END SUBROUTINE set_massflux_avg
+!
+!***********************************************************************
+      SUBROUTINE set_massflux_endpoint (ng, tile, model)
+!***********************************************************************
+!
+!  Restore NEXT instantaneous endpoint face transports after a
+!  midpoint tracer update, before starting the next time window.
+!  This avoids a full 3D temporary face buffer and prevents the
+!  previous-window midpoint from contaminating the next midpoint.
+!
+      USE mod_param
+      USE mod_grid
+      USE mod_ocean
+      USE mod_stepping
+!
+      integer, intent(in) :: ng, tile, model
+!
+# include "tile.h"
+!
+      CALL set_massflux_tile (ng, tile, model,                          &
+     &                        LBi, UBi, LBj, UBj,                       &
+     &                        IminS, ImaxS, JminS, JmaxS,               &
+     &                        nnew(ng),                                 &
+     &                        OCEAN(ng) % u,                            &
+     &                        OCEAN(ng) % v,                            &
+#  ifdef WEC
+     &                        OCEAN(ng) % u_stokes,                     &
+     &                        OCEAN(ng) % v_stokes,                     &
+#  endif
+     &                        GRID(ng) % Hz,                            &
+     &                        GRID(ng) % om_v,                          &
+     &                        GRID(ng) % on_u,                          &
+     &                        GRID(ng) % Huon,                          &
+     &                        GRID(ng) % Hvom)
+!
+      RETURN
+      END SUBROUTINE set_massflux_endpoint
 !
 !***********************************************************************
       SUBROUTINE set_massflux_avg_tile (ng, tile, model,                &

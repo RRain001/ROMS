@@ -303,7 +303,12 @@
 !
 !$OMP PARALLEL
 #ifdef SOLVE3D
+# if defined OFFLINE && defined OFFLINE_TPASSIVE
+!  Fail-closed I8 offline entry; do not accidentally evolve hydrodynamics.
+      CALL main3d_offline (MyRunInterval)
+# else
       CALL main3d (MyRunInterval)
+# endif
 #else
       CALL main2d (MyRunInterval)
 #endif
