@@ -149,7 +149,8 @@ class AnchoredL3Tests(unittest.TestCase):
             # angular spacing and with a south boundary sufficient for L3.
             study_parent={**self.parent_spec,
                           "lon_min":129.15,"lon_max":130.3,
-                          "lat_min":35.35,"lat_max":36.15}
+                          "lat_min":35.35,"lat_max":36.15,
+                          "angular_boundary_policy":"SNAP_TO_EXACT_ANGULAR_STEP"}
             build_grid(study_parent,src,parent,
                        allow_gebco_only_mask=True,synthetic_fixture=True)
             pair=check_pair(parent,child,margin_parent_rho_cells=2)

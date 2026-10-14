@@ -34,10 +34,10 @@ def produce(destination: Path) -> dict:
     es=json.loads((CONF/"es3k_user_corners.json").read_text())
     ud=json.loads((CONF/"ud1k_candidate.json").read_text())
     l3=json.loads((CONF/"l3_coastal_square_candidate.json").read_text())
-    if ud["geometry_approval"]!="USER_EXACT_BOUNDS_2026_10_14":
+    if ud["geometry_approval"]!="USER_UPDATED_NORTH_EAST_ROUNDED_DMS_2026_10_14":
         raise ValueError("UD1K exact user DMS bounds not approved")
-    if ud["angular_boundary_policy"]!="PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR":
-        raise ValueError("UD1K generator would silently shift user DMS boundaries")
+    if ud["angular_boundary_policy"]!="ANCHOR_WEST_SOUTH_EXACT_1_OVER_108_ROUNDED_DMS":
+        raise ValueError("UD1K grid must anchor W/S with exact 1/108 increments")
     if l3["side_start_A"]!=[35.545437,129.407703] or l3["side_end_B"]!=[35.974688,129.522766]:
         raise ValueError("user-given L3 fixed AB changed")
 
@@ -47,19 +47,21 @@ def produce(destination: Path) -> dict:
     if family_es["corners_deg"] != points:
         raise ValueError("ES3K user corner config drift")
     outer=[[points[k][1],points[k][0]] for k in ("W","N","E","S")]
-    # New user DMS bounds are authoritative, and must NOT be snapped.
-    # Intervals use the nearest integer count to nominal 1/108 degree.
+    # W/S are exact; E/N are user-specified to 0.1 arcsecond.
+    # Nearest integer intervals yield the exact 1/108-degree mesh,
+    # where E/N differ from the rounded DMS by only 0.033333".
     step=1/108
     south=ud["lat_min"]
-    nx=round((ud["lon_max"]-ud["lon_min"])/step)
+    west=ud["lon_min"]
+    nx=round((ud["lon_max"]-west)/step)
     ny=round((ud["lat_max"]-south)/step)
-    effective_lon_step=(ud["lon_max"]-ud["lon_min"])/nx
-    effective_lat_step=(ud["lat_max"]-south)/ny
-    if max(abs(effective_lon_step/step-1),
-           abs(effective_lat_step/step-1))>0.005:
-        raise AssertionError("UD1K angular spacing exceeds nominal tolerance")
-    middle=[[ud["lon_min"],south],[ud["lon_max"],south],
-            [ud["lon_max"],ud["lat_max"]],[ud["lon_min"],ud["lat_max"]]]
+    east=west+nx*step
+    north=south+ny*step
+    if max(abs((east-ud["lon_max"])*3600),
+           abs((north-ud["lat_max"])*3600))>0.05+1e-8:
+        raise AssertionError("UD1K grid differs from user's 0.1 arcsec DMS bounds")
+    effective_lon_step=effective_lat_step=step
+    middle=[[west,south],[east,south],[east,north],[west,north]]
     inner=[[corners[k][1],corners[k][0]] for k in ("A","B","C","D")]
     if not Polygon(middle).contains(Polygon(inner)):
         raise AssertionError("L3 not inside approved UD1K geographic extent")
@@ -82,7 +84,11 @@ def produce(destination: Path) -> dict:
                 "lon_min":ud["lon_min"],"lon_max":ud["lon_max"],
                 "lat_north":ud["lat_max"],"lat_south_requested":ud["lat_min"],
                 "lat_south_grid":south,
-                "bounds_exact_user_dms":ud["requested_bounds_dms"],
+                "realized_east_grid":east,
+                "realized_north_grid":north,
+                "requested_user_dms":ud["requested_bounds_dms"],
+                "east_dms_rounding_offset_arcsec":(east-ud["lon_max"])*3600,
+                "north_dms_rounding_offset_arcsec":(north-ud["lat_max"])*3600,
                 "grid_spacing_policy":ud["angular_boundary_policy"],
                 "rho_shape":[ny+1,nx+1],
                 "actual_lon_step_deg":effective_lon_step,
@@ -103,7 +109,7 @@ def produce(destination: Path) -> dict:
     fig.suptitle("Japan Sea ROMS: ES3K / UD1K / user-anchored L3 (schematic only)",
                  weight="bold",fontsize=17)
     domains=(("1  ES3K | 1/36 deg | USER CORNERS",(120,152),(30,53),42),
-             ("2  UD1K | 1/108 deg | new DMS bounds",(127.9,132.9),(34.7,37.95),36.5),
+             ("2  UD1K | exact 1/108 deg | DMS rounded",(127.9,132.9),(34.7,37.95),36.5),
              ("3  L3 | 1/324 deg | A-B offshore",(129.12,130.28),(35.25,36.18),36))
     colors={"ES3K":"#3d526e","UD1K":"#09819f","L3":"#db673e"}
     for i,(title,xlim,ylim,latitude) in enumerate(domains):

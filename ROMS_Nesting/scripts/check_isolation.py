@@ -77,13 +77,27 @@ def main() -> None:
             "L3 offshore/1-324-degree candidate deviates from user specification")
     ud_cfg=json.loads((ROOT/"configs/ud1k_candidate.json").read_text())
     ud_family=grid["grids"][1]
-    require(ud_cfg["geometry_approval"]=="USER_EXACT_BOUNDS_2026_10_14",
-            "UD1K latest four DMS bounds are not authoritative")
+    require(ud_cfg["geometry_approval"]==
+            "USER_UPDATED_NORTH_EAST_ROUNDED_DMS_2026_10_14",
+            "UD1K revised E/N DMS bounds are not authoritative")
     require(ud_family["user_defined_bounds_deg"]==[
         ud_cfg["lon_min"],ud_cfg["lon_max"],ud_cfg["lat_min"],ud_cfg["lat_max"]],
         "UD1K family and geometry config disagree about four user bounds")
-    require(ud_cfg["angular_boundary_policy"]=="PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR",
-            "UD1K DMS bounds must not be silently snapped to an exact 1/108 lattice")
+    require(ud_cfg["angular_boundary_policy"]==
+            "ANCHOR_WEST_SOUTH_EXACT_1_OVER_108_ROUNDED_DMS",
+            "UD1K grid must fix W/S and match E/N at 0.1 arcsec precision")
+    require(ud_cfg["expected_rho_shape_eta_xi"]==[290,438] and
+            ud_cfg["expected_xi_intervals"]==437 and
+            ud_cfg["expected_eta_intervals"]==289 and
+            ud_cfg["actual_lon_step_deg"]==1/108 and
+            ud_cfg["actual_lat_step_deg"]==1/108,
+            "UD1K must have exact 1/108 degree uniform angular increments")
+    require(ud_cfg["requested_bounds_dms"]["east"]=="132°24'42.6\"E" and
+            ud_cfg["requested_bounds_dms"]["north"]=="37°38'29.0\"N",
+            "UD1K new E/N DMS boundaries changed unexpectedly")
+    require(max(abs(ud_cfg["east_offset_from_dms_arcsec"]),
+                abs(ud_cfg["north_offset_from_dms_arcsec"]))<0.05,
+            "UD1K actual E/N exceed user DMS rounding precision")
     require(ud_family["proposed_modification"]["status"]==
             "SUPERSEDED_BY_NEW_USER_DMS_FOUR_BOUNDARIES",
             "Old 35.35 degree UD1K south limit still treated as authoritative")

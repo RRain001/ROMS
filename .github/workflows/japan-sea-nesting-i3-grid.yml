@@ -145,8 +145,12 @@ jobs:
           p=Path(os.environ["RUNNER_TEMP"])/"I6_SCHEMATIC"
           x=json.loads((p/"three_grid_geometry_preflight.json").read_text())
           assert 50 < x["L3"]["south_boundary_gap_km"] < 60
-          assert x["UD1K"]["rho_shape"] == [290,437]
-          assert x["UD1K"]["grid_spacing_policy"] == "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR"
+          assert x["UD1K"]["rho_shape"] == [290,438]
+          assert x["UD1K"]["grid_spacing_policy"] == "ANCHOR_WEST_SOUTH_EXACT_1_OVER_108_ROUNDED_DMS"
+          assert x["UD1K"]["actual_lon_step_deg"] == 1/108
+          assert x["UD1K"]["actual_lat_step_deg"] == 1/108
+          assert abs(x["UD1K"]["east_dms_rounding_offset_arcsec"]) < 0.05
+          assert abs(x["UD1K"]["north_dms_rounding_offset_arcsec"]) < 0.05
           assert abs(x["UD1K"]["lat_south_grid"]-34.96547222222222)<1e-10
           assert abs(x["UD1K"]["lon_min"]-128.36552777777777)<1e-10
           assert x["UD1K"]["geometry_approval"]=="USER_APPROVED"

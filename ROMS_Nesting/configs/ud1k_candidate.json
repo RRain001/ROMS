@@ -3,14 +3,14 @@
   "geometry_status": "CANDIDATE_APPROXIMATE",
   "geometry_type": "axis_aligned_lonlat_angular",
   "lon_min": 128.36552777777777,
-  "lon_max": 132.40672222222221,
+  "lon_max": 132.41183333333333,
   "lat_min": 34.965472222222225,
-  "lat_max": 37.6385,
+  "lat_max": 37.64138888888889,
   "max_rho_points": 500000,
-  "provenance": "User-defined UD1K four exact DMS bounds override earlier Kim reference and 35.35N south extension. Exact corners take priority over exact 1/108-degree increments; nearest integer grid counts retain nominal 1/108 degree within 0.11% rather than snapping/replacing user's bounds. GEBCO/GSHHG and physical nesting NOT RUN.",
+  "provenance": "UD1K user updated north to 37°38'29.0N and east to 132°24'42.6E, with west 128°21'55.9E and south 34°57'55.7N unchanged. Exact 1/108° axis with 437 xi and 289 eta intervals anchored W/S, East/N are +/−0.03333 arcsec from rounded user DMS, within ±0.05 arcsec rounding precision. Exact four numerical DMS endpoints and exact 1/108° cannot both be true; retain both requested and realized coordinates, reject larger differences. No real GEBCO/GSHHG or ROMS integration run.",
   "nominal_resolution_deg": 0.009259259259259259,
   "nominal_resolution_fraction": "1/108 deg",
-  "resolution_generator_status": "GEOGRAPHIC_FIXED_FOUR_USER_BOUNDS_NOMINAL_1_OVER_108_PENDING_REAL_WETMASK",
+  "resolution_generator_status": "EXACT_1_OVER_108_STEP_WITH_ROUNDED_DMS_COMPATIBLE_E_N",
   "parent_expansion": "SUPERSEDED_BY_USER_DMS_ALL_FOUR_LIMITS",
   "official_reference_envelope_deg": [
     127.5,
@@ -19,27 +19,36 @@
     39
   ],
   "legacy_resolution_m_for_synthetic_only": 1000,
-  "geometry_approval": "USER_EXACT_BOUNDS_2026_10_14",
+  "geometry_approval": "USER_UPDATED_NORTH_EAST_ROUNDED_DMS_2026_10_14",
   "physical_validation": "NOT_RUN",
-  "angular_boundary_policy": "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR",
+  "angular_boundary_policy": "ANCHOR_WEST_SOUTH_EXACT_1_OVER_108_ROUNDED_DMS",
   "max_nominal_spacing_deviation_fraction": 0.005,
   "requested_bounds_dms": {
-    "south": "34°57'55.7\"N",
     "west": "128°21'55.9\"E",
-    "north": "37°38'18.6\"N",
-    "east": "132°24'24.2\"E"
+    "south": "34°57'55.7\"N",
+    "north": "37°38'29.0\"N",
+    "east": "132°24'42.6\"E"
   },
-  "requested_bounds_source": "USER_SUPPLIED_2026_10_14",
-  "active_boundary_approval": "USER_EXACT_DMS_FOUR_LIMITS",
+  "requested_bounds_source": "USER_SUPPLIED_2026_10_14_UPDATED_NORTH_EAST",
+  "active_boundary_approval": "WEST_SOUTH_EXACT_EAST_NORTH_MATCH_ROUNDED_DMS",
   "previous_south_extension_status": "SUPERSEDED_35_35_N_WAS_REPLACED_BY_NEW_FOUR_BOUNDARIES",
   "expected_rho_shape_eta_xi": [
     290,
-    437
+    438
   ],
-  "expected_xi_intervals": 436,
+  "expected_xi_intervals": 437,
   "expected_eta_intervals": 289,
-  "actual_lon_step_deg": 0.00926879459734964,
-  "actual_lat_step_deg": 0.009249231064975003,
-  "actual_vs_nominal_lon_fraction": 0.001029816513761217,
-  "actual_vs_nominal_lat_fraction": -0.0010830449826996214
+  "actual_lon_step_deg": 0.009259259259259259,
+  "actual_lat_step_deg": 0.009259259259259259,
+  "actual_vs_nominal_lon_fraction": 0,
+  "actual_vs_nominal_lat_fraction": 0,
+  "rounded_dms_half_precision_arcsec": 0.05,
+  "realized_bounds_deg": {
+    "west": 128.36552777777777,
+    "south": 34.965472222222225,
+    "east": 132.41182407407408,
+    "north": 37.64139814814815
+  },
+  "east_offset_from_dms_arcsec": -0.03333333332875554,
+  "north_offset_from_dms_arcsec": 0.03333333332875554
 }

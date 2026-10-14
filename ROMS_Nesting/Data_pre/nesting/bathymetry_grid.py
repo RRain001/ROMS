@@ -114,6 +114,29 @@ def make_geometry(spec: dict) -> tuple[dict[str, np.ndarray], float, float]:
                 raise ValueError(
                     f"UD1K fixed bounds require {worst:.3%} nominal spacing deviation "
                     f"> allowed {tolerance:.3%}; choose new bounds/counts deliberately")
+        elif policy=="ANCHOR_WEST_SOUTH_EXACT_1_OVER_108_ROUNDED_DMS":
+            # User's W/S corners are fixed. New N/E are given to a
+            # tenth of an arcsecond and are therefore rounded labels:
+            # (E-W)*108=437.001, (N-S)*108=288.999. At 1/108° exact
+            # spacing the generated E differs by -0.033333 arcsec and N
+            # by +0.033333 arcsec, both within the stated 0.1" precision.
+            # Never silently accept a larger boundary displacement.
+            tol_arcsec=_float_finite(
+                spec.get("rounded_dms_half_precision_arcsec",0.05),
+                "rounded_dms_half_precision_arcsec")
+            if not (0<tol_arcsec<=0.05):
+                raise ValueError("DMS half-precision must be in (0,0.05] arcsec")
+            lon_axis=west+np.arange(nx_intervals+1,dtype=float)*step
+            lat_axis=south_target+np.arange(ny_intervals+1,dtype=float)*step
+            delta_east_arcsec=(float(lon_axis[-1])-east)*3600
+            delta_north_arcsec=(float(lat_axis[-1])-north)*3600
+            if max(abs(delta_east_arcsec),abs(delta_north_arcsec))>tol_arcsec+1e-8:
+                raise ValueError(
+                    "UD1K exact-1/108 degree grid cannot match E/N "
+                    f"to user DMS rounding ±{tol_arcsec} arcsec: "
+                    f"east {delta_east_arcsec:+.6f} arcsec, "
+                    f"north {delta_north_arcsec:+.6f} arcsec")
+            true_dlon=true_dlat=step
         elif policy=="SNAP_TO_EXACT_ANGULAR_STEP":
             # Legacy scientific reference geometry mode. The requested
             # east/south limits may shift up to half a cell; never
@@ -396,12 +419,23 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
                 (values["lat_rho"][-1,0]-values["lat_rho"][0,0])/
                 (values["lat_rho"].shape[0]-1))
             ds.ud1k_nominal_step_deg=float(spec["nominal_resolution_deg"])
+            ds.ud1k_requested_east_deg=float(spec["lon_max"])
+            ds.ud1k_requested_north_deg=float(spec["lat_max"])
+            ds.ud1k_realized_east_deg=float(values["lon_rho"][0,-1])
+            ds.ud1k_realized_north_deg=float(values["lat_rho"][-1,0])
+            ds.ud1k_east_dms_rounding_offset_arcsec=float(
+                (values["lon_rho"][0,-1]-spec["lon_max"])*3600)
+            ds.ud1k_north_dms_rounding_offset_arcsec=float(
+                (values["lat_rho"][-1,0]-spec["lat_max"])*3600)
+
 
         if "nominal_resolution_deg" in spec:
             ds.nominal_resolution_deg=float(spec["nominal_resolution_deg"])
             ds.angular_spacing_claim=(
                 "LOCAL_METRIC_EQUIVALENT_NOT_EXACT_ANGULAR" if grid_id=="L3_300m"
-                else ("GEOGRAPHIC_EXACT_USER_LIMITS_NOMINAL_1_OVER_108_DEG"
+                else ("GEOGRAPHIC_EXACT_1_OVER_108_WEST_SOUTH_FIXED_DMS_ROUNDED"
+                      if spec.get("angular_boundary_policy")=="ANCHOR_WEST_SOUTH_EXACT_1_OVER_108_ROUNDED_DMS"
+                      else "GEOGRAPHIC_EXACT_USER_LIMITS_NOMINAL_1_OVER_108_DEG"
                       if spec.get("angular_boundary_policy")=="PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR"
                       else "GEOGRAPHIC_EXACT_1_OVER_108_DEG")
                 if spec.get("geometry_type")=="axis_aligned_lonlat_angular"

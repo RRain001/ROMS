@@ -1,4 +1,4 @@
-"""UD1K four user DMS limits are immutable; nominal 1/108° is approximate.
+"""UD1K four user DMS limits are immutable; nominal 1/108° is exact at grid-node precision; DMS east/north are rounded.
 
 Real GEBCO/GSHHG and ROMS physics acceptance gates remain NOT RUN.
 """
@@ -39,8 +39,8 @@ class NewUD1KBounds(unittest.TestCase):
         expected={
             "south":dms(34,57,55.7),
             "west":dms(128,21,55.9),
-            "north":dms(37,38,18.6),
-            "east":dms(132,24,24.2),
+            "north":dms(37,38,29.0),
+            "east":dms(132,24,42.6),
         }
         actual={n:self.ud[k] for n,k in (
             ("south","lat_min"),("north","lat_max"),
@@ -49,22 +49,24 @@ class NewUD1KBounds(unittest.TestCase):
             self.assertAlmostEqual(actual[key],value,places=12)
         self.assertEqual(set(self.ud["requested_bounds_dms"]),set(expected))
         self.assertEqual(self.ud["angular_boundary_policy"],
-                         "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR")
-        self.assertEqual(self.ud["geometry_approval"],"USER_EXACT_BOUNDS_2026_10_14")
+                         "ANCHOR_WEST_SOUTH_EXACT_1_OVER_108_ROUNDED_DMS")
+        self.assertEqual(self.ud["geometry_approval"],"USER_UPDATED_NORTH_EAST_ROUNDED_DMS_2026_10_14")
 
     def test_generated_exact_extent_and_nominal_resolution(self):
         out,dx,dy=make_geometry(self.ud)
         lo,la=out["lon_rho"],out["lat_rho"]
-        self.assertEqual(lo.shape,(290,437))
+        self.assertEqual(lo.shape,(290,438))
         self.assertTrue(np.all(out["angle"]==0))
-        for actual,expected in (
-            (lo[0,0],self.ud["lon_min"]),
-            (lo[0,-1],self.ud["lon_max"]),
-            (la[0,0],self.ud["lat_min"]),
-            (la[-1,0],self.ud["lat_max"])):
-            self.assertAlmostEqual(float(actual),expected,places=12)
-        actual_lon=(self.ud["lon_max"]-self.ud["lon_min"])/436
-        actual_lat=(self.ud["lat_max"]-self.ud["lat_min"])/289
+        self.assertAlmostEqual(float(lo[0,0]),self.ud["lon_min"],places=12)
+        self.assertAlmostEqual(float(la[0,0]),self.ud["lat_min"],places=12)
+        # E/N are only given with 0.1" DMS precision and must be
+        # rounded versions of the exact-1/108° grid endpoint.
+        self.assertLess(abs((float(lo[0,-1])-self.ud["lon_max"])*3600),0.05)
+        self.assertLess(abs((float(la[-1,0])-self.ud["lat_max"])*3600),0.05)
+        self.assertAlmostEqual(float(lo[0,-1]),self.ud["realized_bounds_deg"]["east"],places=12)
+        self.assertAlmostEqual(float(la[-1,0]),self.ud["realized_bounds_deg"]["north"],places=12)
+        actual_lon=1/108
+        actual_lat=1/108
         np.testing.assert_allclose(np.diff(lo[0]),actual_lon,atol=1e-12,rtol=0)
         np.testing.assert_allclose(np.diff(la[:,0]),actual_lat,atol=1e-12,rtol=0)
         self.assertAlmostEqual(actual_lon,self.ud["actual_lon_step_deg"],places=13)
@@ -72,14 +74,20 @@ class NewUD1KBounds(unittest.TestCase):
         self.assertLess(max(abs(actual_lon/(1/108)-1),abs(actual_lat/(1/108)-1)),.002)
         self.assertTrue(np.isfinite(out["pm"]).all())
         self.assertTrue(np.isfinite(out["pn"]).all())
-        self.assertEqual(out["lon_u"].shape,(290,436))
-        self.assertEqual(out["lon_v"].shape,(289,437))
-        self.assertEqual(out["lon_psi"].shape,(289,436))
+        self.assertEqual(out["lon_u"].shape,(290,437))
+        self.assertEqual(out["lon_v"].shape,(289,438))
+        self.assertEqual(out["lon_psi"].shape,(289,437))
 
     def test_reject_spatial_changes_outside_tolerance(self):
-        too_strict={**self.ud,"max_nominal_spacing_deviation_fraction":.0001}
-        with self.assertRaisesRegex(ValueError,"nominal spacing deviation"):
-            make_geometry(too_strict)
+        # Move the rounded E or N boundary outside half a tenth of
+        # an arcsecond: the exact-spacing policy MUST reject it.
+        for changed_key in ("lon_max","lat_max"):
+            invalid={**self.ud,changed_key:self.ud[changed_key]+0.1/3600}
+            with self.assertRaisesRegex(ValueError,"cannot match E/N"):
+                make_geometry(invalid)
+        invalid={**self.ud,"rounded_dms_half_precision_arcsec":0.051}
+        with self.assertRaisesRegex(ValueError,"half-precision"):
+            make_geometry(invalid)
         bad={**self.ud,"angular_boundary_policy":"SILENT_CORNER_SNAPPING"}
         with self.assertRaisesRegex(ValueError,"unknown UD1K"):
             make_geometry(bad)
@@ -120,15 +128,19 @@ class NewUD1KBounds(unittest.TestCase):
             build_grid(self.ud,src,parent,allow_gebco_only_mask=True,synthetic_fixture=True)
             build_grid(self.l3,src,child,allow_gebco_only_mask=True,synthetic_fixture=True)
             with Dataset(parent) as ds:
-                self.assertEqual(ds["lon_rho"].shape,(290,437))
+                self.assertEqual(ds["lon_rho"].shape,(290,438))
                 self.assertEqual(ds.angular_spacing_claim,
-                   "GEOGRAPHIC_EXACT_USER_LIMITS_NOMINAL_1_OVER_108_DEG")
+                   "GEOGRAPHIC_EXACT_1_OVER_108_WEST_SOUTH_FIXED_DMS_ROUNDED")
                 self.assertEqual(ds.ud1k_boundary_policy,
-                   "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR")
+                   "ANCHOR_WEST_SOUTH_EXACT_1_OVER_108_ROUNDED_DMS")
                 self.assertAlmostEqual(ds.ud1k_actual_lon_step_deg,
                                        self.ud["actual_lon_step_deg"],places=12)
                 self.assertAlmostEqual(ds.ud1k_actual_lat_step_deg,
                                        self.ud["actual_lat_step_deg"],places=12)
+                self.assertLess(abs(ds.ud1k_east_dms_rounding_offset_arcsec),0.05)
+                self.assertLess(abs(ds.ud1k_north_dms_rounding_offset_arcsec),0.05)
+                self.assertAlmostEqual(ds.ud1k_actual_lon_step_deg,1/108,places=12)
+                self.assertAlmostEqual(ds.ud1k_actual_lat_step_deg,1/108,places=12)
                 self.assertEqual(ds.synthetic_test_only,"TRUE")
             result=check_pair(parent,child,margin_parent_rho_cells=2)
             self.assertEqual(result["status"],"PASS_PRELIMINARY_ONLY")

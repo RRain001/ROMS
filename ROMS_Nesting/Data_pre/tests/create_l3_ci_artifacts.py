@@ -51,7 +51,8 @@ def main():
     # smaller region for fast CI. It MUST NOT replace the real UD1K DMS
     # domain in configs/ud1k_candidate.json.
     study_parent={**parent,"lon_min":129.15,"lon_max":130.3,
-                  "lat_min":35.35,"lat_max":36.15}
+                  "lat_min":35.35,"lat_max":36.15,
+                          "angular_boundary_policy":"SNAP_TO_EXACT_ANGULAR_STEP"}
     parent_path=output/"UD1K_SOUTH_EXTENDED_SYNTHETIC_ONLY.nc"
     build_grid(study_parent,fake,parent_path,allow_gebco_only_mask=True,synthetic_fixture=True)
     pair=check_pair(parent_path,child,margin_parent_rho_cells=2)
