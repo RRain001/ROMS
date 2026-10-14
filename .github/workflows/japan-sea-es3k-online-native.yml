@@ -1,0 +1,97 @@
+name: ES3K I3 Public GEBCO2026 Native15s GSHHG
+
+on:
+  pull_request:
+    branches:
+      - feature/japan-sea-nesting
+    paths:
+      - 'ROMS_Nesting/Data_pre/scripts/nesting/fetch_es3k_online_data.py'
+      - '.github/workflows/japan-sea-es3k-online-native.yml'
+      - 'ROMS_Nesting/Data_pre/nesting/es3k_wet_domain_audit.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  es3k-online-native:
+    name: Native 15-second GEBCO2026 + GSHHG real mask
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    env:
+      GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
+      GDAL_HTTP_MAX_RETRY: "4"
+      GDAL_HTTP_RETRY_DELAY: "5"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install public raster and grid science dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            numpy scipy netCDF4 pyproj pillow pyshp shapely rasterio requests
+      - name: Fetch bounded real GEBCO 2026 and GSHHG 2.3.7
+        run: |
+          python ROMS_Nesting/Data_pre/scripts/nesting/fetch_es3k_online_data.py \
+            --output-dir "$RUNNER_TEMP/ES3K_REAL_SOURCE" \
+            --resolution-arcsec 15 --coast-resolution h
+      - name: Build full geometry ES3K with real topography and shoreline
+        run: |
+          python ROMS_Nesting/Data_pre/scripts/nesting/create_bathymetry_grid.py \
+            --geometry-json ROMS_Nesting/configs/es3k_conformal_candidate.json \
+            --bathymetry "$RUNNER_TEMP/ES3K_REAL_SOURCE/GEBCO_2026_ES3K_15sec.nc" \
+            --gshhg-base "$RUNNER_TEMP/ES3K_REAL_SOURCE/GSHHS_shp" \
+            --gshhg-resolution h \
+            --output "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_GEBCO2026_GSHHG237_CANDIDATE.nc" \
+            --report-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/real_i3_grid_report.json"
+      - name: Audit actual wet cells, Yellow Sea proxy, four straits and boundaries
+        run: |
+          python ROMS_Nesting/Data_pre/scripts/nesting/audit_es3k_wet_domain.py \
+            --grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_GEBCO2026_GSHHG237_CANDIDATE.nc" \
+            --report-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/real_es3k_wet_domain_audit.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          manifest=json.loads((root/"online_source_manifest.json").read_text())
+          d=json.loads((root/"real_es3k_wet_domain_audit.json").read_text())
+          assert manifest["GEBCO"]["data_class"]=="REAL_PUBLIC_GEBCO_2026_ELEVATION"
+          assert manifest["GSHHG"]["GSHHG_version"]=="2.3.7"
+          assert d["rho_shape_eta_xi"]==[732,464]
+          assert d["I3_physics_acceptance"]=="NOT_RUN"
+          assert d["input_provenance"]["synthetic_test_only"]=="FALSE"
+          assert d["input_provenance"]["shoreline_status"]=="GSHHG_L1_INTERSECTED_WITH_GEBCO"
+          report={
+            "status":"REAL_ONLINE_GEBCO2026_GSHHG237_WET_GRID_DIAGNOSTIC_ONLY",
+            "grid_shape":d["rho_shape_eta_xi"],
+            "total_wet_rho_points":d["wet_rho_points"],
+            "wet_area_km2":d["wet_area_km2_metrics_approx"],
+            "west_korea_proxy_wet_points":d["region_diagnostics"]["west_of_korea_yellow_sea_proxy"]["wet_rho_points"],
+            "west_korea_proxy_wet_area_km2":d["region_diagnostics"]["west_of_korea_yellow_sea_proxy"]["wet_area_km2_metrics_approx"],
+            "strait_connected_to_japan_basin":d["strait_window_connected_to_core"],
+            "open_boundaries":d["outer_boundary"],
+            "review_flags":d["review_flags"],
+            "GEBCO_2026_sampling":"NATIVE 15 arc-second GEBCO 2026 COG pixels",
+            "bathymetry_smoothing":"NOT_RUN",
+            "ROMS_physics":"NOT_RUN",
+            "scientific_I3_pass":False,
+            "unsmoothed_rx0_max":json.loads((root/"real_i3_grid_report.json").read_text())["quality"]["rx0_unsmoothed_wet_max"],
+            "wet_connected_components":json.loads((root/"real_i3_grid_report.json").read_text())["quality"]["wet_connected_components"],
+            "dominant_component_wet_rho_points":d["dominant_component_wet_rho_points"]
+          }
+          (root/"real_wet_summary.json").write_text(json.dumps(report,indent=2)+"\n")
+          print(json.dumps(report,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: es3k-real-public-gebco2026-native15s-gshhg237
+          path: |
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/online_source_manifest.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/real_i3_grid_report.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/real_es3k_wet_domain_audit.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/real_wet_summary.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_GEBCO2026_GSHHG237_CANDIDATE.nc
+          if-no-files-found: warn
+          retention-days: 14
