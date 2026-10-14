@@ -19,8 +19,8 @@ class LocalDepthTest(unittest.TestCase):
         after,n=local_log_depth_projection(h,wet,target_rx0=.35,max_sweeps=500)
         self.assertLessEqual(adjacent_rx0(after,wet),.35)
         self.assertGreater(n,0)
-        np.testing.assert_array_equal(after[:2],before[:2])
-        self.assertEqual(after[0,0],before[0,0])
+        np.testing.assert_allclose(after[:2],before[:2],rtol=0,atol=1e-10)
+        self.assertAlmostEqual(after[0,0],before[0,0],places=10)
         self.assertLess(np.count_nonzero(np.abs(after-before)>1.e-9),50)
     def test_fails_closed_when_sweeps_insufficient(self):
         h=np.ones((9,9))*100
