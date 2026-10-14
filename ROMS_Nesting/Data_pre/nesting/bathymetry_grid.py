@@ -152,7 +152,7 @@ def _read_bathy_window(path: Path, target_lon: np.ndarray,
             raise ValueError(f"bathymetry missing any of {names}")
         lon_key=var("lon","longitude","x")
         lat_key=var("lat","latitude","y")
-        z_key=var("elevation","z","bathymetry","depth","Band1")
+        z_key=var("height_above_mean_sea_level","elevation","z","bathymetry","depth","Band1")
         cvlon=nc[lon_key]
         cvlat=nc[lat_key]
         cvz=nc[z_key]

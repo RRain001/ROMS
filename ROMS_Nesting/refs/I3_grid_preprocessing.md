@@ -31,6 +31,25 @@ For ES3K, **first** fill an independently reviewed `es3k_geometry.json` with cen
 
 For **synthetic CI only**, `--allow-gebco-only-mask --synthetic-test-only` allows a fixture without a real GSHHG shapefile; its metadata explicitly says the shoreline has not been validated. Formal runs should supply the full GSHHG base path and then perform separate mask cleanup and review.
 
+## Official GEBCO_2026 NetCDF schema and safe staging
+
+The official [CEDA GEBCO_2026 NetCDF catalogue](https://data.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/netcdf) lists the scientific variables `longitude`, `latitude`, **`height_above_mean_sea_level`**, and `crs`. Earlier copied staging code recognized only `z/elevation/Band1`; that would fail on the official file. The independent candidate reader and `stage_and_subset_bathymetry.py` now handle the CEDA source alias, validate dimensions and perform **bounded spatial-window extraction**. The staging script no longer calls unrestricted `ZipExtFile.read()` on the 7 GB NetCDF member; it uses an 8 MiB streaming copy and an atomic `.part` extraction target. Adequate on-disk space is still required for both compressed and extracted inputs.
+
+When using the local official GEBCO ZIP or already extracted NetCDF:
+
+```sh
+python ROMS_Nesting/Data_pre/scripts/bathymetry/stage_and_subset_bathymetry.py \
+  --case-name JAPAN_SEA \
+  --global-file /workspace/GEBCO/GEBCO_2026.nc \
+  --zip-file /workspace/GEBCO/GEBCO_2026.zip \
+  --west 121.5 --east 150.8 --south 30.4 --north 52.4 --margin 0.25 \
+  --max-source-cells 50000000 \
+  --work-dir /workspace/JAPAN_SEA/GEBCO \
+  --output gebco_2026_japan_sea_CANDIDATE.nc
+```
+
+**Those geographic bounds are an explicitly approximate initial download/staging envelope, not the final ES3K grid corners.** Before using the subset for the actual rotated ES3K, generate the candidate geometry and compare its full RHO-node extrema against the staged file; the grid builder rejects missing coverage. The streaming fix is not a statement that GitHub-hosted runners currently possess the 4 GB GEBCO ZIP or actual GSHHG shapes. `test_real_gebco_contract.py` uses a **generated synthetic** NetCDF with the genuine CEDA variable names and checks both the direct path and the staged path.
+
 ## GEBCO 2026 large-file contract and reproducibility
 
 The official [GEBCO_2026 grid](https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2026-grid) stores roughly 3.73 **billion** 15-arcsecond elevations as an approximately 7 GB uncompressed NetCDF grid (2-byte signed integer elevation). A naive `elevation[:]` causes uncontrolled memory consumption. The nesting candidate generator now reads only 1-D longitude/latitude axes from the full file, computes an interpolation-halo window from **actual rotated grid corners and all RHO points**, and reads just that 2-D `elevation[latitude_slice,longitude_slice]` section. This supports globally stored or official [user-selected GEBCO subsets](https://download.gebco.net/), reversed coordinate axes, and either `(lat,lon)` or `(lon,lat)` source variable order. The output includes `bathymetry_source_window` (file indices, source grid, extracted shape, sign/order) and preserves the file's provenance.
