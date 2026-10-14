@@ -6,14 +6,18 @@ ES3K 的经纬度最大包络不是必须计算的经纬度矩形。保留已确
 
 朝鲜半岛西侧的真实海水若落在网格内部，**不得直接将其标记为陆地**。这会引入未经验证的人工固壁。应先检查 ES3K 曲线外边界形状及其和开放边界的对应，再决定是否要提出新的几何候选；如现有四角无法同时满足缩减目标，明确报告这一冲突。
 
-## 真实数据执行方法（需要主机已有 GEBCO/GSHHG）
+## 真实数据执行方法（现在支持公开在线获取，不需要本地全球数据）
 
-先使用嵌套版独立生成器：
+先执行在线数据子集提取：
+
+    python ROMS_Nesting/Data_pre/scripts/nesting/fetch_es3k_online_data.py --output-dir /tmp/ES3K_ONLINE --resolution-arcsec 30 --coast-resolution h
+
+再使用嵌套版独立生成器：
 
     python ROMS_Nesting/Data_pre/scripts/nesting/create_bathymetry_grid.py \
       --geometry-json ROMS_Nesting/configs/es3k_conformal_candidate.json \
-      --bathymetry /workspace/GEBCO/GEBCO_2026.nc \
-      --gshhg-base /workspace/GSHHG/gshhg-shp-2/GSHHS_shp \
+      --bathymetry /tmp/ES3K_ONLINE/GEBCO_2026_ES3K_30sec.nc \
+      --gshhg-base /tmp/ES3K_ONLINE/GSHHS_shp \
       --gshhg-resolution h \
       --output /tmp/ES3K_real_candidate.nc
 
@@ -36,7 +40,7 @@ ES3K 的经纬度最大包络不是必须计算的经纬度矩形。保留已确
 
 ## 结果限制
 
-GitHub Ubuntu 工作流仅对合成 NetCDF 进行代码级测试，没有 GEBCO 2026/GSHHG 实际文件。代码不根据文件名自称真实数据已验收，数据来源和 SHA 仍需单独验证。
+GitHub Ubuntu 工作流现在同时执行合成单测与真实公开 GEBCO2026/GSHHG237 在线子集和候选网格审计，数据源、文件及 SHA 在 manifest 中保存。真实数据成功不代表地形平滑、海峡/开放边界或 ROMS 物理验收成功。
 
 后续 I3 必须继续：全尺寸真实 GEBCO/GSHHG 格点审计、人工海岸线与地形坡度 rx0/rx1 核验、父子湿边界验证、ROMS 1h/6h/24h/长期动力验收。完成前状态为 I3_NOT_ACCEPTED。
 
@@ -50,3 +54,17 @@ GitHub 托管 Ubuntu [Actions #38572109520](https://github.com/RRain001/ROMS/act
 - 合成 NetCDF 的 7/7 个单元测试 PASS，真实 I3、海峡水动力、最优边界选择均 NOT RUN。
 
 因此不应仅凭 3.56% 判定改动边界一定有收益；需要先获得真实湿格、海盆及海峡边界图和网格面积预算。
+
+
+## 2026-10-14 首次真实 GEBCO 2026 + GSHHG 2.3.7 审计
+
+[Actions #38574047637](https://github.com/RRain001/ROMS/actions/runs/38574047637) 全部通过；GEBCO 原始 15″ COG 按 30″ 平均下采样至本地网格驱动区，海岸线来自 GMT 官方 GSHHG 2.3.7 h/L1。该次数据为真实来源，但仍属于预验收。
+
+- ES3K 732×464 RHO，总格点 339,648；湿格 213,634；湿区 metric 近似面积 1,548,004.46 km²。
+- 朝鲜半岛以西仅供筛查的 123.5–126.5°E、34–39°N 窗口：几何点 12,097，实际湿点 9,564；湿区面积 79,308.58 km²。整个黄海及其他无关海区尚未完整估算，不能把此值视作全部冗余成本。
+- 对马、津轻、宗谷、鞑靼四个近似海峡窗口与主海盆在 4 邻接湿格分量中均为连通；尚未检查真实海峡通道宽度、边界输运与动力过程。
+- wet connected components 共 111 个，需检查小岛周边的离散水体或地形与岸线分辨率伪影。
+- 未平滑湿格相邻水深坡度最大 rx0=0.930418875981242；正式计算前必须进行 bathymetry smoothing 和 rx0/rx1 检验，而不能把此网格直接视作 I3 PASS。
+- 西/东/南/北四条逻辑网格边缘分别 91/462/405/350 湿点，共 1/3/14/5 个湿段；尤其南侧需要审查支离的开放边界位置。
+- Actions artifact 提供实际 ES3K 候选 NetCDF、manifest、湿格和开边界 JSON。文件哈希可以从日志及 manifest 追溯；不提交大文件至 Git。
+- 已另行新增原始 15″ GEBCO 2026 的全尺寸复核 CI，用于对比 30″ 下采样对海岸线和湿格的影响。直到真实分辨率复核、地形平滑和 ROMS 1h/6h/24h/长期水动力试算完成，都应维持 I3_NOT_ACCEPTED。
