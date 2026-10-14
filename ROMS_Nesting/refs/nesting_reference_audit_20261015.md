@@ -22,7 +22,7 @@
 
 Real native 15″ GEBCO 2026 / GSHHG 2.3.7, [Actions #38649454871](https://github.com/RRain001/ROMS/actions/runs/38649454871): **1,017** wet child RHO perimeter points audited; **990** geometrically inside a complete four-wet-vertex parent RHO quadrilateral, **27** not (97.345% complete-quad coverage). Some unresolved points are on the southern UD1K boundary near 34.96547°N and 128.45–128.62°E.
 
-**This is a diagnostic, not the ROMS boundary interpolation algorithm.** Our current fast lookup searches the nearest 16 *eligible all-wet* parent quadrilaterals; before assigning a point as genuinely unsupported, corroborate using an exact exhaustive nearby-cell or spatial-index polygon query to eliminate nearest-centroid false negatives. Likewise, a wet quadrilateral is not by itself proof against GSHHG coastline crossing.
+**This is a diagnostic, not the ROMS boundary interpolation algorithm.** The earlier search used 16 nearest eligible all-wet parent quadrilateral centroids. Commit `52c1588` replaced it with a complete spatial-index search: every eligible polygon is enclosed by a centroid ball of the maximum vertex radius, and all potential polygons are checked. The full real-data [Actions #38654151016](https://github.com/RRain001/ROMS/actions/runs/38654151016) completed **SUCCESS**, confirming **990 full-wet-quad points and 27 unresolved of 1,017** even after eliminating fixed-K false negatives. Uncovered by child logical side: **south 21, north 2, east 4, west 0** (no double-counted corner in this case). This is stronger geometric evidence but not proof against GSHHG coastline intersections: even a four-wet-vertex quadrilateral could bridge a narrow land barrier.
 
 Each receiver **RHO/U/V boundary and halo** point should be classified separately:
 1. `ALL_WET_QUAD_CANDIDATE`: physical-space polygon contains the receiver point; all donor vertices wet. Check inverse-bilinear weight positivity/sum, independent constant/affine field, cyclic corner order and donor SHA.
@@ -35,7 +35,7 @@ Independent downstream remap must handle wet RHO scalar, staggered U/V velocity 
 ## Next implementation checkpoints
 
 - Save point-by-point receiver index, geographic coordinate, logical edge, candidate donor cell(s), nearest coastline proximity, GSHHG wet-path evidence and unmapped reason in JSON; keep inputs read-only, capture SHA256 and reference version.
-- Replace nearest-16-only classification with exact spatial candidates; test thin channels, islands, land barriers, grid rotation, degenerate quads and missing masks on synthetic golden cases.
+- **Completed:** replace nearest-16-only candidates with a radius-bounded complete geometric search and add a warped-quad false-negative unit test. **Still required:** synthetic thin-channel/land-crossing goldens and an independent GSHHG coastline-intersection check for every accepted donor stencil.
 - Map `zeta/temp/salt` as scalars and `u/v/ubar/vbar` as *true-East/North → receiver angle* using donor and receiver C-grid positions; perform sigma depth and boundary flux tests before any production `bry.nc`.
 - The conservation expectations here apply to **one-way hydrodynamic boundary transfer**. Bidirectional *tritium* inter-grid Bq flux conservation remains a distinct later milestone, per `嵌套实施计划.md`.
 
