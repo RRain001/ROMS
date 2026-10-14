@@ -89,13 +89,13 @@ class BathyGridTests(unittest.TestCase):
             np.testing.assert_allclose(ds["angle"][:],0,atol=1e-14)
             a=np.asarray(ds["lon_rho"][:])
             b=np.asarray(ds["lat_rho"][:])
-            np.testing.assert_allclose(a,a[0:1,:],atol=1e-13)
-            np.testing.assert_allclose(b,b[:,0:1],atol=1e-13)
+            np.testing.assert_allclose(a,np.broadcast_to(a[0:1,:],a.shape),atol=1e-13)
+            np.testing.assert_allclose(b,np.broadcast_to(b[:,0:1],b.shape),atol=1e-13)
             self.assertAlmostEqual(float(a.min()),UD["lon_min"],places=10)
             self.assertAlmostEqual(float(a.max()),UD["lon_max"],places=10)
 
     def test_gshhg_masks_intersect_bathymetry_water(self):
-        candidate,_=make_geometry(ES)
+        candidate,_,_=make_geometry(ES)
         forced=np.zeros(candidate["lon_rho"].shape,dtype=bool)
         forced[0,0]=True
         with patch("bathymetry_grid._read_gshhg_land",return_value=(forced,"synthetic-gshhg.shp")):
