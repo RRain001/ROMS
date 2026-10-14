@@ -1,0 +1,72 @@
+name: Japan Sea Nesting I8 Full ROMS Compilation
+
+on:
+  push:
+    branches:
+      - feature/japan-sea-nesting
+    paths:
+      - 'ROMS_Nesting/roms_src/roms/**'
+      - 'ROMS_Nesting/scripts/test_offline*'
+      - '.github/workflows/japan-sea-nesting-i8-compile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ROMS 4.3 CMake ${{ matrix.variant }} native compile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [standard, offline_scaffold]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiled ROMS prerequisites
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            gfortran cmake make pkg-config libnetcdf-dev libnetcdff-dev
+          nf-config --all | head -40
+      - name: Build complete independent ROMS 4.3 source with CMake
+        shell: bash
+        env:
+          NF_CONFIG: /usr/bin/nf-config
+        run: |
+          set -euo pipefail
+          src="$GITHUB_WORKSPACE/ROMS_Nesting/roms_src/roms"
+          out="$RUNNER_TEMP/roms-i8-${{ matrix.variant }}"
+          flags=()
+          if [[ "${{ matrix.variant }}" == "offline_scaffold" ]]; then
+            flags+=("-DMY_CPP_FLAGS=OFFLINE;OFFLINE_TPASSIVE;T_PASSIVE")
+          fi
+          cmake -S "$src" -B "$out" \
+            -DCMAKE_Fortran_COMPILER=gfortran \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DROMS_APP=UPWELLING \
+            -DMY_HEADER_DIR="$src/ROMS/Include" \
+            -DMPI=OFF \
+            -DROMS_EXECUTABLE=ON \
+            -DLIBTYPE=STATIC \
+            "${flags[@]}"
+          cmake --build "$out" --parallel 2
+          test -s "$out/romsS"
+          echo "I8_FULL_ROMS_LINK_${{ matrix.variant }}_PASS"
+      - name: Record compilation evidence
+        if: always()
+        run: |
+          {
+            echo "variant=${{ matrix.variant }}"
+            echo "branch=$GITHUB_REF_NAME"
+            echo "commit=$GITHUB_SHA"
+            echo "gate=Full source compilation only; offline numerical physics NOT_RUN"
+          } > "$RUNNER_TEMP/i8_compile_status.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: roms-i8-compile-${{ matrix.variant }}
+          path: ${{ runner.temp }}/i8_compile_status.txt
+          retention-days: 30
