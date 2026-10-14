@@ -99,7 +99,10 @@ class DynamicSigmaTests(unittest.TestCase):
                     ssh=np.full((len(la),len(lo)),level)
                     state=boundary.interpolate_edge_state(lo,la,depth,ssh,temp,salt,u,v,shape)
                     z,_,hz=sigma_depths(shape["h"],self.v,np.full(shape["h"].shape,level))
-                    expected=10.0+0.02*z
+                    # GLORYS source only spans depth<=0: above-mean-sea-level
+                    # ROMS top-cell centers inherit the shallowest
+                    # GLORYS field (do not extrapolate 10+0.02*z>10).
+                    expected=10.0+0.02*np.clip(z,-300.0,0.0)
                     np.testing.assert_allclose(state["temp_rho"],expected,rtol=0,atol=1.0e-9)
                     np.testing.assert_allclose(state["zeta_rho"],level,rtol=0,atol=1e-10)
                     self.assertTrue(np.all(np.isfinite(state["u"])))
@@ -142,7 +145,7 @@ class DynamicSigmaTests(unittest.TestCase):
             self.assertEqual(ini["temp"].shape,(1,8,13,14+1))
             np.testing.assert_allclose(ini["zeta"][0],4.5,atol=1e-11)
             z,_,h=sigma_depths(self.grid.h,self.v,np.full(self.grid.h.shape,4.5))
-            np.testing.assert_allclose(ini["temp"][0],10+0.02*z,rtol=0,atol=1e-9)
+            np.testing.assert_allclose(ini["temp"][0],10+0.02*np.clip(z,-300.0,0.0),rtol=0,atol=1e-9)
             np.testing.assert_allclose(ini["ubar"][0],
                                        (0.32*np.cos(self.grid.angle)+
                                         0.12*np.sin(self.grid.angle))[:,:-1]*0.5+
