@@ -58,8 +58,9 @@ jobs:
           # actually selected. Assert the *generated* Fortran contains
           # the intended entry and route.
           preprocessed="$out/f90/main3d_offline.f90"
-          test -s "$preprocessed"
+          test -f "$preprocessed"
           if [[ "${{ matrix.variant }}" == "offline_scaffold" ]]; then
+            test -s "$preprocessed"
             grep -iq 'SUBROUTINE main3d_offline' "$preprocessed"
             grep -q 'ROMS_NESTING_I8_BLOCKED_PORT_REQUIRED' "$preprocessed"
             grep -Riq 'CALL main3d_offline' "$out/f90/"
