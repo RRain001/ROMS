@@ -84,8 +84,8 @@ jobs:
                   np.testing.assert_array_equal(x[key][...],y[key][...])
               assert y["h"].shape==x["h"].shape
               print(json.dumps(dict(status="SYNTHETIC_SLOPE_QC_PASS_ONLY",
-                                    rx0=y.final_rx0,rx1=y.final_rx1,
-                                    iterations=y.smoothing_iterations)))
+                                    rx0=float(y.final_rx0),rx1=float(y.final_rx1),
+                                    iterations=int(y.smoothing_iterations))))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
