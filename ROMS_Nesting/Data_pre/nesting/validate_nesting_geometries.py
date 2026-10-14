@@ -166,7 +166,18 @@ def check_pair(parent_grid: Path, child_grid: Path, *,
     parent_xy = _xy(tr, p["lon_rho"].ravel(), p["lat_rho"].ravel()).reshape(
         (*wet_parent.shape, 2))
     full_quad = _full_wet_quad_coverage(parent_xy, wet_parent, cwet)
-    first_missing = np.flatnonzero(~full_quad)[:12]
+    # The row-major RHO mask and geographic boundary positions share
+    # the same flattened ordering. Keep zero-based (eta, xi) for reproducible
+    # coastline review, and count logical sides separately (corners overlap).
+    uncovered_ij = np.argwhere(wet_boundary)[~full_quad]
+    ny, nx = wet_boundary.shape
+    uncovered_by_side = {
+        "south": int(np.count_nonzero(uncovered_ij[:, 0] == 0)),
+        "north": int(np.count_nonzero(uncovered_ij[:, 0] == ny - 1)),
+        "west": int(np.count_nonzero(uncovered_ij[:, 1] == 0)),
+        "east": int(np.count_nonzero(uncovered_ij[:, 1] == nx - 1)),
+    }
+    sample_limit = 256
     stencil_diagnostic = {
         "method": "PROJECTED_ALL_FOUR_WET_PARENT_RHO_QUAD_CONTAINS_CHILD_POINT",
         "candidate_nearest_quads": 16,
@@ -174,9 +185,13 @@ def check_pair(parent_grid: Path, child_grid: Path, *,
         "with_full_wet_parent_rho_quad": int(full_quad.sum()),
         "without_full_wet_parent_rho_quad": int((~full_quad).sum()),
         "fraction_with_full_wet_quad": float(full_quad.mean()),
-        "first_uncovered_lon_lat": [
-            [float(c["lon_rho"][wet_boundary][i]),
-             float(c["lat_rho"][wet_boundary][i])] for i in first_missing
+        "uncovered_by_logical_side_corner_counts_overlap": uncovered_by_side,
+        "uncovered_sample_limit": sample_limit,
+        "uncovered_sample_ij_lonlat": [
+            {"eta_rho_zero_based": int(j), "xi_rho_zero_based": int(i),
+             "lon": float(c["lon_rho"][j, i]),
+             "lat": float(c["lat_rho"][j, i])}
+            for j, i in uncovered_ij[:sample_limit]
         ],
         "disposition": ("FULL_WET_RHO_QUAD_DIAGNOSTIC_ONLY"
                         if full_quad.all() else
