@@ -58,6 +58,35 @@ jobs:
                   assert "h" in ds.variables and "angle" in ds.variables
           print("I3 SYNTHETIC ARTIFACT CONTRACT PASS, real scientific I3 NOT RUN")
           PY
+      - name: Smooth actual candidate h without changing geometry or wet mask
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/I3_SYNTHETIC"
+          python ROMS_Nesting/Data_pre/scripts/bathymetry/smooth_bathymetry.py \
+            --case-name JAPAN_SEA --case-root "$RUNNER_TEMP/JAPAN_SEA_I3" \
+            --grid "$root/ES3K_SYNTHETIC_CANDIDATE.nc" \
+            --output "$root/ES3K_SYNTHETIC_CANDIDATE_smoothed.nc" \
+            --rx0-target 0.35 --rx1-target 8.0
+          python - <<'PY'
+          from pathlib import Path
+          from netCDF4 import Dataset
+          import numpy as np,os,json
+          root=Path(os.environ["RUNNER_TEMP"])/"I3_SYNTHETIC"
+          a=root/"ES3K_SYNTHETIC_CANDIDATE.nc"
+          b=root/"ES3K_SYNTHETIC_CANDIDATE_smoothed.nc"
+          with Dataset(a) as x, Dataset(b) as y:
+              assert y.geometry_status=="CANDIDATE_NOT_VALIDATED_FOR_ROMS"
+              assert y.bathymetry_smoothing_status=="CANDIDATE_RX0_RX1_PASSED_NOT_PHYSICS_VERIFIED"
+              assert y.final_rx0 <= 0.35 and y.final_rx1 <= 8.0
+              for key in ("pm","pn","angle","lon_rho","lat_rho","mask_rho",
+                          "mask_u","mask_v","mask_psi"):
+                  np.testing.assert_array_equal(x[key][...],y[key][...])
+              assert y["h"].shape==x["h"].shape
+              print(json.dumps(dict(status="SYNTHETIC_SLOPE_QC_PASS_ONLY",
+                                    rx0=y.final_rx0,rx1=y.final_rx1,
+                                    iterations=y.smoothing_iterations)))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:

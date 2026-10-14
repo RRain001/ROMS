@@ -73,6 +73,15 @@ def main() -> None:
     else:
         iteration = args.max_iter
 
+    # Fail closed: incomplete slope treatment must not become a false
+    # candidate grid ready for ROMS initial/boundary forcing.
+    smoothed_ok = history[-1][1] <= args.rx0_target and history[-1][2] <= args.rx1_target
+    if not smoothed_ok:
+        raise SystemExit(
+            f"bathymetry smoothing targets NOT_MET after {history[-1][0]} iterations: "
+            f"rx0={history[-1][1]:.6f} rx1={history[-1][2]:.6f}; "
+            "no candidate output written"
+        )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with Dataset(grid_path) as src, Dataset(out_path, "w", format="NETCDF4") as dst:
         for name, dimension in src.dimensions.items():
@@ -86,13 +95,17 @@ def main() -> None:
         dst.smoothing_iterations = history[-1][0]
         dst.final_rx0 = history[-1][1]
         dst.final_rx1 = history[-1][2]
+        dst.bathymetry_smoothing_status = "CANDIDATE_RX0_RX1_PASSED_NOT_PHYSICS_VERIFIED"
         for name, variable in src.variables.items():
-            dst_var = dst.createVariable(name, variable.datatype, variable.dimensions, zlib=True, complevel=1)
+            dst_var = dst.createVariable(name, variable.datatype, variable.dimensions,
+                                         zlib=bool(variable.dimensions), complevel=1)
             dst_var.setncatts({attr: variable.getncattr(attr) for attr in variable.ncattrs()})
             if name == "h":
                 dst_var[:] = h.astype(variable.dtype)
-            else:
+            elif variable.dimensions:
                 dst_var[:] = variable[:]
+            else:
+                dst_var.assignValue(variable.getValue())
     print(f"source_grid={grid_path}")
     print(f"wrote {out_path}")
     for iteration, rx0, rx1 in history[-5:]:
