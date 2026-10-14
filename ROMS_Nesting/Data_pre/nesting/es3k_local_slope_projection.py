@@ -16,7 +16,7 @@ from es3k_core_bathymetry_smoothing import _vertical, _sha256, adjacent_rx0
 from es3k_core_bathymetry_smoothing import compute_rx0_rx1
 
 
-DEFAULT_TARGETS = (0.35, 0.30, 0.27, 0.25, 0.23, 0.21, 0.20, 0.18)
+DEFAULT_TARGETS = (0.35, 0.30, 0.27, 0.25, 0.23, 0.21, 0.20, 0.18, 0.16, 0.14, 0.13, 0.12, 0.11)
 
 
 def local_log_depth_projection(h: np.ndarray, wet: np.ndarray, *,
@@ -65,7 +65,7 @@ def local_slope_candidate(source: Path, output: Path, report_json: Path, *,
                           vertical: dict, targets: tuple[float,...]=DEFAULT_TARGETS,
                           rx1_limit: float = 8.0,
                           max_volume_change_fraction: float = .02,
-                          max_p99_abs_depth_change_m: float = 350.0) -> dict:
+                          max_p99_abs_depth_change_m: float = 500.0) -> dict:
     source,output,report_json = map(Path,(source,output,report_json))
     if source.resolve()==output.resolve() or source.resolve()==report_json.resolve():
         raise ValueError("refuse to overwrite source")
