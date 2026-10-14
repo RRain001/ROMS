@@ -60,6 +60,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python -m pip install --disable-pip-version-check numpy netCDF4
           python ROMS_Nesting/scripts/test_offline_hydro_reader_fortran.py
       - name: Record compilation evidence
         if: always()
