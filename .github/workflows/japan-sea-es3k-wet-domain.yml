@@ -1,0 +1,46 @@
+name: Japan Sea ES3K Wet-Domain I3 Audit
+
+on:
+  pull_request:
+    branches:
+      - feature/japan-sea-nesting
+    paths:
+      - 'ROMS_Nesting/Data_pre/nesting/es3k_wet_domain_audit.py'
+      - 'ROMS_Nesting/Data_pre/scripts/nesting/audit_es3k_wet_domain.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
+      - '.github/workflows/japan-sea-es3k-wet-domain.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wet-domain-audit:
+    name: ES3K proxy sea / four-strait topology / mask integrity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install self-contained synthetic test dependencies
+        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4
+      - name: Verify original single-grid source trees are unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:Data_pre)" = "95c1143f079e6a70143a0840e94ebe063ef6d29f"
+          test "$(git rev-parse HEAD:ROMS_Build)" = "f14572866c49373c792598a56fefbe27afd07c11"
+          test "$(git rev-parse HEAD:ROMS_Run)" = "29b27190340080a9bf4937264b86e9221b06f377"
+          test "$(git rev-parse HEAD:roms_src/roms)" = "278b82148d31f9ffe01193560e959e0e95aebd62"
+      - name: Python syntax and synthetic NetCDF topology integration
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            ROMS_Nesting/Data_pre/nesting/es3k_wet_domain_audit.py \
+            ROMS_Nesting/Data_pre/scripts/nesting/audit_es3k_wet_domain.py \
+            ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests \
+            -p 'test_es3k_wet_domain_audit.py' -v
+          echo "SYNTHETIC_TOPOLOGY_PASS_ONLY: real GEBCO/GSHHG and ROMS not run"
