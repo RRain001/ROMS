@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import unittest
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tracer_coupling"))
 from budget import BudgetWindow, InterfaceWindow, ReleaseEvent, decay_exact, evaluate_budget
 
