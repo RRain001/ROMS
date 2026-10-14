@@ -8,6 +8,8 @@ on:
       - 'ROMS_Nesting/Data_pre/nesting/es3k_wet_domain_audit.py'
       - 'ROMS_Nesting/Data_pre/scripts/nesting/audit_es3k_wet_domain.py'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_es3k_core_component_filter.py'
+      - 'ROMS_Nesting/Data_pre/nesting/es3k_core_component_filter.py'
       - '.github/workflows/japan-sea-es3k-wet-domain.yml'
   workflow_dispatch:
 
@@ -73,9 +75,13 @@ jobs:
           python -m py_compile \
             ROMS_Nesting/Data_pre/nesting/es3k_wet_domain_audit.py \
             ROMS_Nesting/Data_pre/scripts/nesting/audit_es3k_wet_domain.py \
-            ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py
+            ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py \
+            ROMS_Nesting/Data_pre/nesting/es3k_core_component_filter.py \
+            ROMS_Nesting/Data_pre/tests/test_es3k_core_component_filter.py
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests \
             -p 'test_es3k_wet_domain_audit.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests \
+            -p 'test_es3k_core_component_filter.py' -v
           echo "SYNTHETIC_TOPOLOGY_PASS_ONLY: real GEBCO/GSHHG and ROMS not run"
       - uses: actions/upload-artifact@v4
         if: always()
