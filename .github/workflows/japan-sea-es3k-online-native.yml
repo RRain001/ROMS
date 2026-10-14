@@ -15,6 +15,8 @@ on:
       - 'ROMS_Nesting/configs/es3k_i3_vertical_candidate.json'
       - 'ROMS_Nesting/Data_pre/nesting/es3k_local_slope_projection.py'
       - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_local_candidate.py'
+      - 'ROMS_Nesting/Data_pre/nesting/validate_nesting_geometries.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
   workflow_dispatch:
 
 permissions:
@@ -212,6 +214,11 @@ jobs:
           assert x["status"]=="PASS_PRELIMINARY_ONLY"
           assert x["parent_synthetic"]=="FALSE" and x["child_synthetic"]=="FALSE"
           assert x["conservative_boundary_fluxes"]=="NOT_RUN"
+          s=x["full_wet_parent_quad_stencil"]
+          assert s["child_wet_boundary_rho_points"]==x["wet_boundary_points_checked"]
+          assert s["with_full_wet_parent_rho_quad"]+s["without_full_wet_parent_rho_quad"]==s["child_wet_boundary_rho_points"]
+          assert s["physical_velocity_rotation_vertical_remap_and_flux"]=="NOT_RUN"
+          print("Parent all-wet quad stencil diagnostic:",json.dumps(s,indent=2))
           print("REAL WET-BOUNDARY STATIC PREFLIGHT PASS, WATER DYNAMICS NOT RUN")
           PY
       - uses: actions/upload-artifact@v4
