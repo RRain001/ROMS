@@ -6,7 +6,8 @@ import json
 from pathlib import Path
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[0]))
-from test_bathymetry_grid import ES,UD,make_fixture
+from test_bathymetry_grid import ES,make_fixture
+from test_nesting_pair_preflight import CHILD as UD, check_pair
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"nesting"))
@@ -28,7 +29,13 @@ def main() -> None:
         assert report["status"]=="CANDIDATE_NOT_VALIDATED_FOR_ROMS"
         assert report["quality"]["orthogonality_error_max_deg"]<0.1
         reports.append(report)
+    pair=check_pair(root/"ES3K_SYNTHETIC_CANDIDATE.nc",
+                    root/"UD1K_SYNTHETIC_CANDIDATE.nc",
+                    margin_parent_rho_cells=2)
+    if pair["status"]!="PASS_PRELIMINARY_ONLY":
+        raise RuntimeError("synthetic nested pair containment gate failed: "+repr(pair))
     (root/"I3_Synthetic_Report.json").write_text(json.dumps({
+        "synthetic_pair_preflight":pair,
         "scientific_gate":"NOT_RUN",
         "real_geography":"NOT_USED",
         "real_GSHHG":"NOT_USED",

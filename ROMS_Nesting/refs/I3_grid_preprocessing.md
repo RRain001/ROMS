@@ -52,6 +52,22 @@ python ROMS_Nesting/Data_pre/scripts/nesting/create_bathymetry_grid.py \
 
 The official GEBCO source requires attribution: GEBCO Bathymetric Compilation Group 2026, GEBCO_2026 Grid, DOI [10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa](https://doi.org/10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa). Note that 15-arcsecond bathymetry resolution is **source sampling**, distinct from ROMS ES3K/UD1K grid spacing.
 
+## ES3K → UD1K nesting geometry preflight (I3/I5 prerequisite)
+
+When both candidate ROMS grids are present, verify that the **entire UD1K curvilinear perimeter** is strictly enclosed by the ES3K wet-domain geometric footprint with a configurable number of parent RHO grid cells of buffer. The implementation projects both rings into the same WGS84 azimuthal-equidistant local map and evaluates **actual grid-edge polygons** using Shapely; bounding boxes are not sufficient because ES3K is rotated.
+
+```sh
+python ROMS_Nesting/Data_pre/scripts/nesting/validate_nesting_geometries.py \
+  --parent-grid /data/JAPAN_SEA/ES3K_grid_CANDIDATE.nc \
+  --child-grid /data/JAPAN_SEA/UD1K_grid_CANDIDATE.nc \
+  --parent-margin-cells 2 --wet-search-cells 2.0 \
+  --output-json /data/JAPAN_SEA/ES3K_UD1K_preflight.json
+```
+
+The checker records the geometric interior-ring gap in metres, parent/child nominal cell ratio, and whether each **wet child boundary RHO point** is near any parent wet RHO cell. It rejects children outside the buffered parent polygon and cases where a fine-grid wet boundary has no nearby parent wet cell. This does **not** prove hydrodynamic nesting: coast-aligned wet masks, real interpolation stencil availability, open boundaries, vertical remapping, conservative barotropic fluxes, tracer return/reentry and actual water continuity remain independent gates.
+
+Synthetic CI artifacts now use an actually *contained* small UD1K rectangle within the rotated ES3K synthetic parent. The larger stand-alone UD1K candidate envelope `configs/ud1k_candidate.json` is unchanged and **must** be checked again against real ES3K geography.
+
 ## Reproducible GitHub-hosted Ubuntu gate (2026-10-14)
 
 - [Run #38523156039 — SUCCESS](https://github.com/RRain001/ROMS/actions/runs/38523156039): WGS84 metric, rotated coordinates, real NetCDF encoding of **synthetic** GEBCO-like elevations; end-to-end candidate ES3K/UD1K outputs. Separate tests exercise the **real GSHHG Shapefile parser with a generated synthetic polygon** and GEBCO-like signed int16 bathymetry. Neither test uses a real Japanese coastline.

@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install numerical grid dependencies
-        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4 pyproj pillow pyshp
+        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4 pyproj pillow pyshp shapely
       - name: Guarantee old single-grid code is unchanged
         shell: bash
         run: |
@@ -43,6 +43,7 @@ jobs:
           set -euo pipefail
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_bathymetry_grid.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_gebco_bounded_read.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_nesting_pair_preflight.py' -v
       - name: Persist explicit synthetic ES3K and UD1K NetCDF candidates
         run: |
           set -euo pipefail
@@ -57,7 +58,11 @@ jobs:
                   assert ds.geometry_status=="CANDIDATE_NOT_VALIDATED_FOR_ROMS"
                   assert ds.synthetic_test_only=="TRUE"
                   assert "h" in ds.variables and "angle" in ds.variables
-          print("I3 SYNTHETIC ARTIFACT CONTRACT PASS, real scientific I3 NOT RUN")
+          import json
+          pair=json.loads((root/"I3_Synthetic_Report.json").read_text())["synthetic_pair_preflight"]
+          assert pair["status"]=="PASS_PRELIMINARY_ONLY"
+          assert pair["conservative_boundary_fluxes"]=="NOT_RUN"
+          print("I3 SYNTHETIC NESTED GEOMETRY PASS; physical I3/I5 NOT RUN")
           PY
       - name: Smooth actual candidate h without changing geometry or wet mask
         shell: bash
