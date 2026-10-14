@@ -176,10 +176,9 @@ def main() -> int:
     for gap in out["blocking_gaps"]:
         print("  " + gap)
     if args.expect_gap:
-        required = {"MISSING_NONLINEAR_MAIN3D_OFFLINE", "MISSING_SET_MASSFLUX_AVG",
-                    "MISSING_SET_AVG_ZETA", "NO_OFFLINE_TPASSIVE_IN_SCANNED_PATHS"}
-        if not required.issubset(out["blocking_gaps"]):
-            print("Unexpected baseline source status; update I8 manifest and review actual changes", file=sys.stderr)
+        required = {"MISSING_NONLINEAR_MAIN3D_OFFLINE", "MISSING_SET_MASSFLUX_AVG"}
+        if not required.issubset(out["blocking_gaps"]) or "MISSING_SET_AVG_ZETA" in out["blocking_gaps"]:
+            print("I8 expected remaining driver/flux gaps and native zeta adapter: baseline changed", file=sys.stderr)
             return 2
     return 0
 

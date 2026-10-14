@@ -1,6 +1,9 @@
 # I8 — Thyng (2021) → ROMS 4.3 offline Eulerian HTO source port audit
 
 **State (2026-10-14): BLOCKED_PORT_REQUIRED, source-level inspection only.**
+
+**First modern Fortran port slice (NOT a full offline driver):** `ROMS_Nesting/roms_src/roms/ROMS/Nonlinear/set_zeta.F` now contains `set_avg_zeta`, gated behind both `OFFLINE` and `OFFLINE_TPASSIVE`. It selects `zeta(:,:,1)` during first initialization and `zeta(:,:,2)` during later snapshots and copies the result tile-by-tile into `COUPLING%Zt_avg1`. Unlike Thyng's old implementation, `FirstCall` is `intent(in)` and is not mutated inside a tile: the future **outer** offline driver must change that flag only after all tiles complete. A GitHub-hosted Ubuntu CI step compiles **the actual modified ROMS Fortran file** using minimal test-only stub modules in **both normal and offline modes**, exercising two separate tiles and testing default behavior unchanged. The adapter has **no live offline time-step caller yet**, so this step alone does not make I8 PASS.
+
 The branch `feature/japan-sea-nesting` keeps all implementation code inside `ROMS_Nesting/`. This report is **not** evidence of successful offline compilation or transport physics. No `main` or original single-grid code is modified.
 
 ## Pinned upstream evidence
@@ -16,12 +19,12 @@ The branch `feature/japan-sea-nesting` keeps all implementation code inside `ROM
 | --- | --- | --- | --- |
 | Nonlinear offline integration | `ROMS/Nonlinear/main3d_offline.F` includes `OFFLINE_TPASSIVE`, `set_avg_zeta`, `set_massflux_avg`, calls `step3d_t` | **Absent**; current `main3d.F` exists | Need new version-aware offline driver plus correct build and `nl_roms.h` dispatch |
 | Tracer mass transport | `set_massflux.F` contains `set_massflux_avg` and time-averages `Huon/Hvom` | Current `set_massflux.F` does not contain `set_massflux_avg` | Must adapt mass/face flux calculations, test volume and activity budgets |
-| Moving free surface | `set_zeta.F` defines `set_avg_zeta` for offline surface/depth | Current `set_zeta.F` has no `set_avg_zeta` | Time-dependent `Hz`/free surface must match transport scheme |
+| Moving free surface | `set_zeta.F` defines `set_avg_zeta` for offline surface/depth | **Now added behind `OFFLINE && OFFLINE_TPASSIVE` to the independent Fortran source**, but no offline caller exists yet | Time-dependent `Hz`/free surface must match transport scheme; a native mock-module source compile is necessary but not a full ROMS run |
 | Vertical mixing | Upstream `AKSCLIMATOLOGY` and `Aks` pathway | Current ROMS 4.3 `varinfo.yaml` contains `AKs` but does not imply offline forcing works | Trace `get_data`/time records and connection to tracer mixing |
 | Input metadata | Upstream `ROMS/External/varinfo-offline.dat` | Current ROMS has YAML `ROMS/External/varinfo.yaml` | Requires modern variable schema, **do not overwrite** it with upstream `varinfo.dat` |
 | Driver & build | Upstream `nl_ocean.h` and older module layout | Current `nl_roms.h` and `Nonlinear/CMakeLists.txt` | Need explicit dispatch/compilation changes; blind copying will not compile |
 
-**Architecture consequence:** neither `OFFLINE_TPASSIVE` in a paper header nor individual old Fortran routines can safely be dropped into a modern ROMS without source adaptation. **No Fortran migration has yet been applied.** Do not label I8 PASS.
+**Architecture consequence:** neither `OFFLINE_TPASSIVE` in a paper header nor individual old Fortran routines can safely be dropped into a modern ROMS without source adaptation. **Only the isolated free-surface adapter has been applied.** Do not label I8 PASS.
 
 ## CI audit — exact reproduction
 

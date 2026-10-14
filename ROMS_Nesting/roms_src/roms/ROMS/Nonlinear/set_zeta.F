@@ -18,6 +18,10 @@
 !
       PRIVATE
       PUBLIC  :: set_zeta
+# if defined OFFLINE && defined OFFLINE_TPASSIVE
+!  Offline snapshot-based free surface; no change to default build.
+      PUBLIC  :: set_avg_zeta
+# endif
 !
       CONTAINS
 !
@@ -125,5 +129,96 @@
 !
       RETURN
       END SUBROUTINE set_zeta_tile
+
+# if defined OFFLINE && defined OFFLINE_TPASSIVE
+!
+!***********************************************************************
+      SUBROUTINE set_avg_zeta (ng, tile, FirstCall)
+!***********************************************************************
+!
+!  One stage of the offline HTO free-surface coupling.
+!  FirstCall is READ ONLY here: in a multi-tile run the caller must
+!  transition to the second-snapshot state AFTER all tiles finish.
+!  This differs deliberately from the mutable Thyng-2021 FIRSTCALL.
+!
+      USE mod_param
+      USE mod_coupling
+      USE mod_ocean
+!
+      integer, intent(in) :: ng, tile
+      logical, intent(in) :: FirstCall
+!
+# include "tile.h"
+!
+      CALL set_avg_zeta_tile (ng, tile,                                 &
+     &                        LBi, UBi, LBj, UBj,                       &
+     &                        IminS, ImaxS, JminS, JmaxS,               &
+     &                        FirstCall,                                &
+     &                        COUPLING(ng) % Zt_avg1,                   &
+     &                        OCEAN(ng) % zeta)
+!
+      RETURN
+      END SUBROUTINE set_avg_zeta
+!
+!***********************************************************************
+      SUBROUTINE set_avg_zeta_tile (ng, tile,                            &
+     &                             LBi, UBi, LBj, UBj,                  &
+     &                             IminS, ImaxS, JminS, JmaxS,          &
+     &                             FirstCall, Zt_avg1, zeta)
+!***********************************************************************
+!
+      USE mod_param
+      USE mod_scalars
+!
+      USE exchange_2d_mod, ONLY : exchange_r2d_tile
+#  ifdef DISTRIBUTE
+      USE mp_exchange_mod, ONLY : mp_exchange2d
+#  endif
+!
+      integer, intent(in) :: ng, tile
+      integer, intent(in) :: LBi, UBi, LBj, UBj
+      integer, intent(in) :: IminS, ImaxS, JminS, JmaxS
+      logical, intent(in) :: FirstCall
+!
+#  ifdef ASSUMED_SHAPE
+      real(r8), intent(inout) :: Zt_avg1(LBi:,LBj:)
+      real(r8), intent(in) :: zeta(LBi:,LBj:,:)
+#  else
+      real(r8), intent(inout) :: Zt_avg1(LBi:UBi,LBj:UBj)
+      real(r8), intent(in) :: zeta(LBi:UBi,LBj:UBj,3)
+#  endif
+!
+      integer :: i, j, k
+!
+# include "set_bounds.h"
+!
+!  Thyng snapshots: first record at first setup call (k=1);
+!  following record at next hydrodynamic time level (k=2).
+!  This step does NOT time-average the physical field itself.
+!
+      k=2
+      IF (FirstCall) k=1
+      DO j=JstrR,JendR
+        DO i=IstrR,IendR
+          Zt_avg1(i,j)=zeta(i,j,k)
+        END DO
+      END DO
+!
+      IF (EWperiodic(ng).or.NSperiodic(ng)) THEN
+        CALL exchange_r2d_tile (ng, tile,                               &
+     &                          LBi, UBi, LBj, UBj,                     &
+     &                          Zt_avg1)
+      END IF
+#  ifdef DISTRIBUTE
+      CALL mp_exchange2d (ng, tile, iNLM, 1,                            &
+     &                    LBi, UBi, LBj, UBj,                           &
+     &                    NghostPoints,                                 &
+     &                    EWperiodic(ng), NSperiodic(ng),               &
+     &                    Zt_avg1)
+#  endif
+!
+      RETURN
+      END SUBROUTINE set_avg_zeta_tile
+# endif
 #endif
       END MODULE set_zeta_mod
