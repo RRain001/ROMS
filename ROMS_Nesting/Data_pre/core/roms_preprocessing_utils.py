@@ -441,20 +441,29 @@ def read_dimensional_variable(
     time_index: int | None = None,
 ) -> np.ndarray:
     var = ds.variables[variable_name]
-    raw = var[:]
-    if np.ma.isMaskedArray(raw):
-        data = np.ma.filled(raw, np.nan).astype(float, copy=False)
-    else:
-        data = np.asarray(raw, dtype=float)
     dims = list(var.dimensions)
-    axes = {infer_dimension_role(dim): index for index, dim in enumerate(dims) if infer_dimension_role(dim)}
-
+    axes = {infer_dimension_role(dim): index for index, dim in enumerate(dims)
+            if infer_dimension_role(dim)}
+    selectors = [slice(None)] * len(dims)
+    # Select the requested record ON DISK. Previously var[:] loaded
+    # the complete time series (potentially years of 3-D GLORYS),
+    # before np.take selected one record in RAM.
     if "time" in axes:
         if time_index is None:
             raise SystemExit(f"{variable_name} contains a time dimension but no time index was provided")
-        data = np.take(data, time_index, axis=axes["time"])
-        dims.pop(axes["time"])
-        axes = {infer_dimension_role(dim): index for index, dim in enumerate(dims) if infer_dimension_role(dim)}
+        position = axes["time"]
+        ntime = var.shape[position]
+        if not (0 <= int(time_index) < ntime):
+            raise IndexError(f"{variable_name}: time_index={time_index} outside 0..{ntime-1}")
+        selectors[position] = int(time_index)
+        dims.pop(position)
+    raw = var[tuple(selectors)]
+    if np.ma.isMaskedArray(raw):
+        data = np.ma.asarray(raw).astype(np.float64).filled(np.nan)
+    else:
+        data = np.asarray(raw, dtype=np.float64)
+    axes = {infer_dimension_role(dim): index for index, dim in enumerate(dims)
+            if infer_dimension_role(dim)}
 
     if depth_name is None:
         expected = ["lat", "lon"]

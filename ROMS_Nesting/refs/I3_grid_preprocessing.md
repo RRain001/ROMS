@@ -104,6 +104,10 @@ For the open boundaries, sigma geometry is recomputed **for each GLORYS source t
 
 The new `test_glorys_dynamic_sigma.py` uses an explicitly **synthetic**, time-changing and nonzero free surface, an analytic depth-dependent temperature field, and a rotated ES3K candidate grid; it tests the real copied preprocessing routines for all four boundary edges as well as a complete synthetic initial-condition NetCDF output. Scientific I4 remains **NOT RUN** until actual CMEMS source, approved coastline/geometry, initial+boundary time continuity and a ROMS integrator smoke.
 
+## I4 further input-I/O efficiency fix
+
+The independent GLORYS source accessor `roms_preprocessing_utils.read_dimensional_variable()` previously loaded `var[:]` **for every time record** before applying `np.take(...,time_index)`. The copied nesting implementation now applies the time integer index directly to the NetCDF variable **before** loading data. This keeps initial-condition/boundary records bounded to **one source timestamp** in memory, regardless of whether the source time dimension is first or last; it does not yet subset the entire *horizontal* CMEMS source extent. The new test `test_glorys_bounded_time.py` uses recording-variable stubs that deliberately reject any full-time `var[:]` read; it verifies 3D and 2D fields, swapped axis order, missing values, and invalid time indexing. This is a performance/interface gate only, not proof of real GLORYS compatibility or a physical ROMS run.
+
 ## Remaining I3 acceptance barriers
 
 1. Real ES3K rotated corners/rotation/actual wet domain versus Kim (2020), with any approximation clearly disclosed.
