@@ -54,6 +54,23 @@ jobs:
             "${flags[@]}"
           cmake --build "$out" --parallel 2
           test -s "$out/romsS"
+          # A linked binary does not imply the OFFLINE CPP path was
+          # actually selected. Assert the *generated* Fortran contains
+          # the intended entry and route.
+          preprocessed="$out/f90/main3d_offline.f90"
+          test -s "$preprocessed"
+          if [[ "${{ matrix.variant }}" == "offline_scaffold" ]]; then
+            grep -iq 'SUBROUTINE main3d_offline' "$preprocessed"
+            grep -q 'ROMS_NESTING_I8_BLOCKED_PORT_REQUIRED' "$preprocessed"
+            grep -Riq 'CALL main3d_offline' "$out/f90/"
+            echo "I8_OFFLINE_CPP_ACTIVE_AND_FAIL_CLOSED_PASS"
+          else
+            if grep -iq 'SUBROUTINE main3d_offline' "$preprocessed"; then
+              echo "ERROR: offline routine leaked into standard ROMS build"
+              exit 1
+            fi
+            echo "I8_DEFAULT_CPP_NO_OFFLINE_PASS"
+          fi
           echo "I8_FULL_ROMS_LINK_${{ matrix.variant }}_PASS"
       - name: Native Fortran NetCDF offline snapshots (small-grid contract)
         if: matrix.variant == 'offline_scaffold'
