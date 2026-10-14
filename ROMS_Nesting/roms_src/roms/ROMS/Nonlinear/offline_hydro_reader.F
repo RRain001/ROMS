@@ -70,7 +70,7 @@
         TYPE(offline_hydro_frame), INTENT(out) :: frame
         INTEGER, INTENT(out) :: ierr
         CHARACTER(len=*), INTENT(out) :: reason
-        INTEGER :: ncid,st, nx,ny,nu,nv,nz,nw, nt
+        INTEGER :: ncid,st, nx,ny,nu,nv,nu_eta,nv_xi,nz,nw, nt
         INTEGER :: idxr,idyr,idxu,idyu,idxv,idyv,idsr,idsw,idt
         INTEGER :: vid,dids(NF90_MAX_VAR_DIMS), ndim
         REAL(r8), ALLOCATABLE :: times(:)
@@ -114,7 +114,11 @@
         IF (st.ne.nf90_noerr) GOTO 900
         st=nf90_inquire_dimension(ncid,idxu,len=nu)
         IF (st.ne.nf90_noerr) GOTO 900
-        st=nf90_inquire_dimension(ncid,idxv,len=nv)
+        st=nf90_inquire_dimension(ncid,idyv,len=nv)
+        IF (st.ne.nf90_noerr) GOTO 900
+        st=nf90_inquire_dimension(ncid,idxv,len=nv_xi)
+        IF (st.ne.nf90_noerr) GOTO 900
+        st=nf90_inquire_dimension(ncid,idyu,len=nu_eta)
         IF (st.ne.nf90_noerr) GOTO 900
         st=nf90_inquire_dimension(ncid,idsr,len=nz)
         IF (st.ne.nf90_noerr) GOTO 900
@@ -124,7 +128,8 @@
           reason='prototype refuses large grids until tiled I/O'
           GOTO 900
         END IF
-        IF (nu.ne.nx-1.or.nv.ne.ny-1.or.nw.ne.nz+1) GOTO 900
+        IF (nu.ne.nx-1.or.nv.ne.ny-1.or.nw.ne.nz+1.or.    &
+     &      nu_eta.ne.ny.or.nv_xi.ne.nx) GOTO 900
         names=(/'zeta            ','ubar            ',              &
      &          'vbar            ','u               ',              &
      &          'v               ','AKs             ',              &
@@ -179,7 +184,7 @@
         reason='ok'
         st=nf90_close(ncid)
         RETURN
- 910    reason='field C-grid dimensions wrong: '//TRIM(names(i))
+ 910    reason='field C-grid dimensions wrong'
         GOTO 900
  920    reason='unable to read history field from record'
  900    st=nf90_close(ncid)
