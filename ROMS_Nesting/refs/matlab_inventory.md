@@ -21,3 +21,14 @@ Status: **I1 preliminary inventory**. Relevant MATLAB function headers were read
 **Licenses:** sampled `rotate_spherical.m`, `rotate_grid.m`, `grid_metrics.m` and `coarse2fine.m` headers identify ROMS/TOMS Group MIT/X-style licensing. Confirm the other files' headers and repository license **before directly copying**. The current LCC code was independently developed and does not reproduce the original program line-by-line.
 
 **I2 risk:** for Japan Sea-scale ES3K, a conformal projection does not guarantee physical 3 km spacing everywhere. Before real grid generation, recover Kim 2020's exact rotated corners/projection and independently quantify WGS84 scale/angle errors; synthetic ROT tests cannot replace this or an actual compiled ROMS integration.
+
+## 2026-10-15 focused methodological audit
+
+See [nesting_reference_audit_20261015.md](nesting_reference_audit_20261015.md) for the frozen-source comparison of `coarse2fine.m`, `rotate_grid.m`, `contact.m`, `grid_connections.m`, `write_contact.m`, `check_refine.m`, `refined_gridvar.m`, `parentchild_mask.m`, `create_roms_child_init.m`, `create_roms_child_clm.m`, and `rotate_uv.m`.
+
+For independent, differently oriented ES3K → UD1K:
+- Retain separate grids and one-way offline ROMS water-dynamics runs; the upstream odd-integer PSI-index refinement/Fortran contact is a **reference**, not the selected execution path.
+- Implement read-only, physically located donor/receiver and C-grid wet-contact diagnostics. Do not mirror the reference script's on-disk child-mask rewriting or mean-angle velocity rotation.
+- Treat the 27 initial missing all-wet-parent quadrilateral stencils as **diagnostic**, not physical failure or permission to fill across land. A fixed 16 nearest-centroid search can produce false negatives for warped quads; use geometrically complete search before final classification.
+- Preserve the later distinct work of full vector rotation, sigma z-remap, tide/time alignment, normal boundary transport and two-way *tritium* Bq flux accounting.
+- This is a targeted methodological review, not a claim of line-by-line MATLAB golden output equivalence or resolved GPL/individual-file license questions.
