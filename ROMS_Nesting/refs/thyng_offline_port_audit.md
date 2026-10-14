@@ -41,6 +41,18 @@ The branch `feature/japan-sea-nesting` keeps all implementation code inside `ROM
 
 **Blocking I8 requirements remain**: actual ROMS climatology/history snapshot reader (including `AKs`), offline clock/time-level control, physical layer thickness/face flux chronology, `step3d_t` without recalculating water dynamics, restart/output, and native short-case comparison with online `T_PASSIVE`. **I8 physics: NOT RUN; I9: NOT RUN; I10 real cross-grid activity exchange: NOT RUN.**
 
+## I8 native NetCDF history reader gate (2026-10-14)
+
+A separate Fortran module, `ROMS_Nesting/roms_src/roms/ROMS/Nonlinear/offline_hydro_reader.F`, has been added to the independent CMake source list. It uses the **real NetCDF-Fortran API**, not mock data loaders or Python hydrodynamic interpolation. It reads specified records of `zeta` (rho), `u` (u), `v` (v), `ubar/vbar`, and `AKs` (s_w interfaces), validating exact C-grid dimensions, strictly ascending `ocean_time`, Fortran NetCDF dimension order, positive/nonnegative mixing, and finite values. The reader converts "days since" timestamps to seconds; "seconds since" remain seconds. No production `OCEAN/MIXING` state transfer yet exists.
+
+- [Actions #38520736114 — SUCCESS](https://github.com/RRain001/ROMS/actions/runs/38520736114): full ordinary/offline ROMS compile/link plus native Fortran NetCDF integration tests; resolved `xi_v` versus `eta_v` dimension mix-up before PASS.
+- [Actions #38521179471 — SUCCESS](https://github.com/RRain001/ROMS/actions/runs/38521179471): CPP evidence gates confirm the **actual generated** offline Fortran contains the fail-closed entry, whereas standard compilation excludes that routine. Merely linking a binary is not enough.
+- [Actions #38521342606 — SUCCESS](https://github.com/RRain001/ROMS/actions/runs/38521342606): the native Fortran test now reads synthetic **nonuniform values across time, depth, latitude and longitude** and compares exact expected indices for `u/v/zeta/vbar/AKs`, including the third time record. Absent `AKs`, reversed timestamps, invalid U-grid dimensions and NaN velocities are rejected. Both full ROMS builds and the original Python suite remain separate gates.
+
+**Important limitations:** this reader intentionally rejects grids with more than **100,000 rho cells** until tile/window streaming and MPI decomposition are implemented. It loads one whole small-domain record, not a production ES3K/UD1K/L3 history dataset. It does not automatically feed `OCEAN%u/v/zeta` or `MIXING%Akt`; `step3d_t`, surface/vertical-coordinate consistency, halo exchanges and actual offline numerical integration remain **NOT RUN**. For inert tracers, `step3d_t` selects `ltrc=MIN(NAT,itrc)`, so the HTO `AKs` mapping must explicitly target the correct salinity-group `MIXING%Akt` slot. No cross-grid Bq conservation follows from this single-grid file-read evidence.
+
+**Next native integration gate:** write bounded tile-aware snapshot reads and a tested C-grid-to-ROMS state adapter that populates valid time slots and `MIXING%Akt`; verify 3+ consecutive windows, correct `Hz` and `Huon/Hvom` chronology, then replace the fail-closed main3d scaffold with an actual tracer-only single-grid run. Keep the main branch and legacy single-grid workflows untouched.
+
 ## CI audit — exact reproduction
 
 The branch workflow `.github/workflows/japan-sea-nesting-i0.yml` runs:
