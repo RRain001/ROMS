@@ -49,6 +49,26 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_nesting_pair_preflight.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_l3_square.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_es3k_user_corners.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_es3k_transfinite.py' -v
+      - name: Generate user-corner-constrained ES3K geometric diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/scripts/nesting/render_es3k_corner_grid.py --sample-scale 20 --output "$RUNNER_TEMP/I2_ES3K_DIAGNOSTIC"
+          python - <<'PY'
+          from pathlib import Path
+          import json,os
+          root=Path(os.environ["RUNNER_TEMP"])/"I2_ES3K_DIAGNOSTIC"
+          report=json.loads((root/"ES3K_four_corner_quality.json").read_text())
+          assert report["corner_max_wgs84_error_m"] < 1e-5
+          assert report["corner_input_lat_lon"]["W"] == [37.821077,121.9]
+          assert report["ROMS_integration"]=="NOT_RUN"
+          assert report["sampling_interpretation"]=="LOCAL_METRIC_EQUIVALENT_NOT_EXACT_ANGULAR"
+          assert 0 <= report["orthogonality_error_max_deg"] < 90
+          for ext in ("svg","png"):
+              assert (root/("ES3K_four_corner_CANDIDATE."+ext)).stat().st_size>1000
+          print("ES3K FOUR CORNERS FIXED; curvilinear I2 SCIENTIFIC PASS NOT ASSUMED")
+          PY
       - name: Persist explicit synthetic ES3K and UD1K NetCDF candidates
         run: |
           set -euo pipefail
@@ -131,6 +151,13 @@ jobs:
               assert (p/f"Japan_Sea_Three_Grids_CANDIDATE.{ext}").stat().st_size > 1000
           print("THREE GRID SCHEMATIC / APPROVED GEOMETRY PASS, real GSHHG and ROMS NOT RUN")
           PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: i2-es3k-user-corners-transfinite-diagnostic
+          path: ${{ runner.temp }}/I2_ES3K_DIAGNOSTIC/
+          if-no-files-found: warn
+          retention-days: 21
       - uses: actions/upload-artifact@v4
         if: always()
         with:

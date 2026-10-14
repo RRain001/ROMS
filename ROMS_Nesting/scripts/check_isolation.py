@@ -62,8 +62,8 @@ def main() -> None:
             "user-supplied ES3K corners changed, missing, or in wrong order")
     require(es["source_of_corners"]=="USER_SUPPLIED_2026_10_14",
             "ES3K corners attributed to prior paper pixel estimates")
-    require(es["angular_grid_generator_status"]=="NOT_IMPLEMENTED",
-            "unsupported ES3K 1/36-degree generator prematurely marked ready")
+    require(es["angular_grid_generator_status"]=="DIAGNOSTIC_TRANSFINITE_METRIC_EQUIVALENT_NOT_EXACT_1_OVER_36",
+            "ES3K diagnostic grid incorrectly claimed exact angular-resolution pass")
     local=grid["grids"][2]["domain"]
     l3_cfg=json.loads((ROOT / "configs" / "l3_coastal_square_candidate.json").read_text())
     require(local is not None and

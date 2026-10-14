@@ -46,6 +46,10 @@ def _float_finite(value: object, name: str) -> float:
 def make_geometry(spec: dict) -> tuple[dict[str, np.ndarray], float, float]:
     """One explicit candidate specification; no implicit real ES3K corners."""
     typ = spec.get("geometry_type")
+    if typ == "four_corner_transfinite_aeqd_candidate":
+        from es3k_corners import corner_grid
+        values, dx, dy, _diagnostics=corner_grid(spec)
+        return values, dx, dy
     if typ == "rotated_lcc":
         if spec.get("grid_id") != "ES3K":
             raise ValueError("rotated_lcc candidate currently reserved for ES3K")
@@ -153,7 +157,7 @@ def make_geometry(spec: dict) -> tuple[dict[str, np.ndarray], float, float]:
         result["angle"] = np.zeros(lon.shape)
         result["f"] = 2 * 7.2921159e-5 * np.sin(np.deg2rad(lat))
         return result, spacing, spacing
-    raise ValueError("geometry_type must be rotated_lcc or axis_aligned_lonlat")
+    raise ValueError("unknown geometry_type: expected four_corner_transfinite_aeqd_candidate, rotated_lcc, geodesic_square_from_side, or axis_aligned_lonlat[_angular]")
 
 
 def _source_axis_window(axis: np.ndarray, lower: float, upper: float,
@@ -325,7 +329,10 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
     quality["wet_connected_components"]=int(wet_components)
     quality["wet_rho_cells"]=int(water.sum())
     if quality["orthogonality_error_max_deg"] > 1.0:
-        raise ValueError("grid orthogonality >1 degree; reject geometry")
+        raise ValueError(
+            f"grid orthogonality {quality['orthogonality_error_max_deg']:.3f} deg >1 degree; "
+            "reject production candidate. Diagnostic-only ES3K geometry can "
+            "be examined using es3k_corners.corner_grid().")
     output=Path(output)
     output.parent.mkdir(parents=True,exist_ok=True)
     ny, nx=lon_grid.shape
@@ -339,6 +346,8 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
         ds.geometry_status=NESTING_ONLY
         ds.geometry_reference_status=("USER_ANCHORED_CANDIDATE_NOT_SHORELINE_VERIFIED"
                                       if grid_id=="L3_300m"
+                                      else "USER_FOUR_CORNER_BATHY_NOT_VALIDATED"
+                                      if spec.get("geometry_type")=="four_corner_transfinite_aeqd_candidate"
                                       else "KIM_2020_CORNERS_NOT_VERIFIED")
         ds.geometry_input_json=json.dumps(spec,sort_keys=True)
         if "nominal_resolution_deg" in spec:
@@ -347,6 +356,8 @@ def build_grid(spec: dict, bathymetry: Path, output: Path, *,
                 "LOCAL_METRIC_EQUIVALENT_NOT_EXACT_ANGULAR" if grid_id=="L3_300m"
                 else "GEOGRAPHIC_EXACT_1_OVER_108_DEG"
                 if spec.get("geometry_type")=="axis_aligned_lonlat_angular"
+                else "LOCAL_WGS84_METRIC_EQUIVALENT_NOT_EXACT_ANGULAR"
+                if spec.get("geometry_type")=="four_corner_transfinite_aeqd_candidate"
                 else "NOT_IMPLEMENTED")
         if grid_id=="L3_300m":
             from l3_square import square_corners

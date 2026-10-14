@@ -43,7 +43,7 @@ class UserES3KCorners(unittest.TestCase):
         self.assertEqual(es["corners_deg"],self.points)
         self.assertEqual(es["source_of_corners"],"USER_SUPPLIED_2026_10_14")
         self.assertEqual(es["nominal_resolution_fraction"],"1/36 deg")
-        self.assertEqual(es["angular_grid_generator_status"],"NOT_IMPLEMENTED")
+        self.assertEqual(es["angular_grid_generator_status"],"DIAGNOSTIC_TRANSFINITE_METRIC_EQUIVALENT_NOT_EXACT_1_OVER_36")
         self.assertEqual(es["user_defined_envelope_deg"],[121.9,150.4,30.8,52.0])
         self.assertEqual(es["user_defined_envelope_deg"],es["reference_envelope_deg"])
         self.assertIsNone(es["figure1_rotation_candidate_deg_ccw_from_east"])

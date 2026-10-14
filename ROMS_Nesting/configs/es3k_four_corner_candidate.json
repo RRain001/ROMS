@@ -1,0 +1,30 @@
+{
+  "grid_id": "ES3K",
+  "geometry_status": "CANDIDATE_APPROXIMATE",
+  "geometry_type": "four_corner_transfinite_aeqd_candidate",
+  "user_corners_lat_lon": {
+    "W": [
+      37.821077,
+      121.9
+    ],
+    "N": [
+      52,
+      141.327943
+    ],
+    "E": [
+      45.616255,
+      150.4
+    ],
+    "S": [
+      30.8,
+      131.471973
+    ]
+  },
+  "nominal_resolution_deg": 0.027777777777777776,
+  "nominal_resolution_fraction": "1/36 deg",
+  "max_rho_points": 900000,
+  "status": "DIAGNOSTIC_TRANSFINITE_PATCH_ONLY_NO_ACCEPTED_GRID",
+  "exact_angular_resolution": "NOT_IMPLEMENTED_METRIC_EQUIVALENT_ONLY",
+  "physical_acceptance": "PENDING_ORTHOGONALITY_GEBCO_GSHHG",
+  "origin": "user 2026-10-14 correction west 121.9 deg E; other corners fixed"
+}
