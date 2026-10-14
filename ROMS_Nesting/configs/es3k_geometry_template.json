@@ -6,8 +6,15 @@
   "center_lat": null,
   "width_points": null,
   "height_points": null,
-  "dx_m": 3000,
-  "dy_m": 3000,
   "angle_deg": null,
-  "provenance": "TEMPLATE ONLY; Kim 2020 exact ES3K corners, orientation, projection and grid counts NOT YET KNOWN. Fill only with documented source/explicit APPROXIMATE assumption."
+  "provenance": "Kim et al. 2020 Table 1 angular 1/36 deg and Figure 1(a) pixel-inferred outer diamond ~50 deg CCW from east. EXACT CORNERS/PROJECTION/GRID COUNTS UNKNOWN; this is a NON-RUNNABLE angular template, not an accepted reproduction.",
+  "nominal_resolution_deg": 0.027777777777777776,
+  "nominal_resolution_fraction": "1/36 deg",
+  "angular_spacing_implementation": "NOT_IMPLEMENTED",
+  "provisional_figure1_orientation_deg_ccw_from_east": 50,
+  "provisional_angle_uncertainty_deg": 10,
+  "legacy_metric_dx_dy_m_for_synthetic_only": [
+    3000,
+    3000
+  ]
 }

@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "status": "I0_SCAFFOLD_NOT_VERIFIED",
+  "schema_version": 2,
+  "status": "ANGULAR_RESOLUTION_DESIGN_APPROVED_REAL_GRID_NOT_RUN",
   "mode": "offline_one_way",
   "ocean_source_default": "glorys12v1",
   "reference": {
@@ -14,7 +14,6 @@
     {
       "id": "ES3K",
       "parent": null,
-      "resolution_m": 3000,
       "orientation": "rotated",
       "reference_envelope_deg": [
         121.9,
@@ -23,27 +22,42 @@
         52
       ],
       "corners_deg": null,
-      "geometry_status": "UNVERIFIED_CORNERS"
+      "geometry_status": "UNVERIFIED_CORNERS",
+      "nominal_resolution_deg": 0.027777777777777776,
+      "nominal_resolution_fraction": "1/36 deg",
+      "old_metric_resolution_m_for_synthetic_only": 3000,
+      "angular_grid_generator_status": "NOT_IMPLEMENTED",
+      "figure1_rotation_candidate_deg_ccw_from_east": 50,
+      "figure1_rotation_uncertainty_deg_preliminary": 10,
+      "figure1_candidate_not_author_supplied": true
     },
     {
       "id": "UD1K",
       "parent": "ES3K",
-      "resolution_m": 1000,
       "orientation": "axis_aligned",
       "reference_envelope_deg": [
         127.5,
         134,
         35.5,
         39
-      ]
+      ],
+      "nominal_resolution_deg": 0.009259259259259259,
+      "nominal_resolution_fraction": "1/108 deg",
+      "old_metric_resolution_m_for_synthetic_only": 1000,
+      "angular_grid_generator_status": "NOT_IMPLEMENTED"
     },
     {
       "id": "L3_300m",
       "parent": "UD1K",
-      "resolution_m": 300,
       "orientation": "optional_rotation",
       "domain": null,
-      "geometry_status": "USER_TO_DEFINE"
+      "geometry_status": "USER_TO_DEFINE",
+      "nominal_resolution_deg": 0.0030864197530864196,
+      "nominal_resolution_fraction": "1/324 deg",
+      "old_metric_resolution_m_for_synthetic_only": 300,
+      "angular_grid_generator_status": "NOT_IMPLEMENTED"
     }
-  ]
+  ],
+  "nominal_angular_resolution_policy": "KIM_2020_1_OVER_36_108_324",
+  "geometry_authority": "PAPER_TABLE_1_ENVELOPES_AND_FIGURE_1_DIGITIZATION_PRELIMINARY"
 }

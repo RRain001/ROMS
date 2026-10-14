@@ -2,6 +2,16 @@
 
 **Status: synthetic integration prototype, NOT an accepted Japan Sea ROMS grid or complete preprocessing.** Only `feature/japan-sea-nesting/ROMS_Nesting/` is changed; `main/Data_pre` and its existing single-grid production pipeline remain unchanged.
 
+## 2026-10-14: Angular resolution adopted and Fig. 1(a) rotation digitization
+
+**Decision:** The final scientific ES3K / UD1K / L3 grids shall use **1/36°, 1/108°, 1/324° nominal angular resolution**, respectively, following [Kim et al. (2020)](https://doi.org/10.9765/KSCOE.2020.32.6.587), rather than identical `dx=dy=3000/1000/300 m` everywhere. The 41 vertical layers, user-selected one-way hydrodynamics, offline ROMS HTO tracer, GEBCO/GSHHG/GLORYS12V1/ERA5/TPXO sources remain unchanged.
+
+The accessible [original Figure 1](https://www.jkscoe.or.kr/upload/thumbnails/jkscoe-32-6-587f1.jpg) shows a rotated diamond ES3K domain; Table 1 provides **extreme** longitude/latitude values, not the four corners. By manually reading the image's longitude/latitude axes, preliminary corner neighborhoods are W `~121.9 E, 38–39 N`; N `~139–140 E, 52 N`; E `~150.4 E, 45 N`; S `~132 E, 30.8 N`. The local great-circle direction of its two long edges suggests **~50° counterclockwise from due east**, but the original projection, exact cells, corner rounding and author rotation remain **UNVERIFIED**; use `~50° ± 10°` as search/fit initialization only. Do **not** silently replace `angle_deg: null` in the official template with 50° as though verified.
+
+**Critical software distinction:** `ROMS_Nesting/Data_pre/nesting/bathymetry_grid.py` currently builds a **METRIC** `rotated_lcc` grid and a **METRIC-SPACING** `axis_aligned_lonlat` candidate; passing its tests does **not** fulfill the angular-resolution decision. In particular, a longitude increment of 1/36° spans a latitude-dependent physical distance and cannot be represented by constant 3000 m `dx/dy` over this 20-degree latitude range. The new target requires implementing and testing a separate genuinely angular grid construction mode (and an explicit rotated-coordinate convention for ES3K) before producing accepted scientific grids. Existing synthetic CI, output artifacts and optional 1000 m UD1K candidate are **legacy synthetic evidence only**.
+
+User input is **not required** for a reproducible approximate geometry candidate. Exact paper reproduction would require original `grid.nc`, author-provided grid-generation parameters or original grid scripts/metadata; if this is unavailable, Figure 1 digitization must carry explicit uncertainty. The third-domain placement remains user-defined unless they later elect the paper's reference envelope.
+
 ## Geometry and grids
 
 - `ES3K` is a **rotated WGS84 Lambert-conformal candidate**. Kim et al. (2020) report an approximate geographical envelope, **not sufficient to recover the four corners/rotation**; `ROMS_Nesting/configs/es3k_geometry_template.json` therefore has intentionally **null** coordinates/angle/counts and **cannot run** until a provenance-backed or transparently approximate geometry is explicitly provided.
