@@ -6,7 +6,7 @@
 
 **Decision:** The final scientific ES3K / UD1K / L3 grids shall use **1/36°, 1/108°, 1/324° nominal angular resolution**, respectively, following [Kim et al. (2020)](https://doi.org/10.9765/KSCOE.2020.32.6.587), rather than identical `dx=dy=3000/1000/300 m` everywhere. The 41 vertical layers, user-selected one-way hydrodynamics, offline ROMS HTO tracer, GEBCO/GSHHG/GLORYS12V1/ERA5/TPXO sources remain unchanged.
 
-The accessible [original Figure 1](https://www.jkscoe.or.kr/upload/thumbnails/jkscoe-32-6-587f1.jpg) shows a rotated diamond ES3K domain; Table 1 provides **extreme** longitude/latitude values, not the four corners. By manually reading the image's longitude/latitude axes, preliminary corner neighborhoods are W `~121.9 E, 38–39 N`; N `~139–140 E, 52 N`; E `~150.4 E, 45 N`; S `~132 E, 30.8 N`. The local great-circle direction of its two long edges suggests **~50° counterclockwise from due east**, but the original projection, exact cells, corner rounding and author rotation remain **UNVERIFIED**; use `~50° ± 10°` as search/fit initialization only. Do **not** silently replace `angle_deg: null` in the official template with 50° as though verified.
+**2026-10-14 override:** The user provided the authoritative four ES3K vertices (latitude north, longitude east): W=(37.821077,121.000000), S=(30.800000,131.471973), N=(52.000000,141.327943), E=(45.616255,150.400000); perimeter W→N→E→S→W. These inputs supersede all earlier paper-image corner estimates. The new W=121.0°E differs from Kim (2020) Table 1's approximate W=121.9°E. The W-to-N geodesic edge orientation at W is ~51.36° CCW from due east, NOT a uniform `angle` for the entire domain. Four corners are confirmed as project input but the full curvilinear ROMS orthogonal grid, map projection, strict 1/36° mapping, wet mask and dynamical quality remain **NOT RUN**.
 
 **Critical software distinction:** `ROMS_Nesting/Data_pre/nesting/bathymetry_grid.py` currently builds a **METRIC** `rotated_lcc` grid and a **METRIC-SPACING** `axis_aligned_lonlat` candidate; passing its tests does **not** fulfill the angular-resolution decision. In particular, a longitude increment of 1/36° spans a latitude-dependent physical distance and cannot be represented by constant 3000 m `dx/dy` over this 20-degree latitude range. The new target requires implementing and testing a separate genuinely angular grid construction mode (and an explicit rotated-coordinate convention for ES3K) before producing accepted scientific grids. Existing synthetic CI, output artifacts and optional 1000 m UD1K candidate are **legacy synthetic evidence only**.
 
@@ -24,7 +24,7 @@ Source of truth: `ROMS_Nesting/configs/l3_coastal_square_candidate.json` and `Da
 
 ## Geometry and grids
 
-- `ES3K` is a **rotated WGS84 Lambert-conformal candidate**. Kim et al. (2020) report an approximate geographical envelope, **not sufficient to recover the four corners/rotation**; `ROMS_Nesting/configs/es3k_geometry_template.json` therefore has intentionally **null** coordinates/angle/counts and **cannot run** until a provenance-backed or transparently approximate geometry is explicitly provided.
+- `ES3K` now has precise **user-supplied corner constraints**, stored in `configs/es3k_user_corners.json`. The previous Fig.1 corner estimates are retired. `es3k_geometry_template.json` still has no verified full-map grid/point count or angle, and the 1/36° curvilinear generator is NOT IMPLEMENTED.
 - `UD1K` is truly **unrotated geographic-axis-aligned** (constant longitude per xi column, constant latitude per eta row, `angle=0`). The existing [candidate config](../configs/ud1k_candidate.json) uses Kim et al.'s approximate envelope only; it is **not a paper-exact final grid**.
 - `L3_300m` now has two exact user-given AB vertices and offshore WGS84-derived C/D. Geographic square candidate only; **real wet grid and parent validation pending**.
 - `Data_pre/nesting/bathymetry_grid.py` creates `lon/lat/x/y` at RHO/U/V/PSI, WGS84 `pm/pn/dndx/dmde`, geodesic `angle`, real interpolated `h`, GEBCO+optional GSHHG `mask_rho/u/v/psi`, and metadata **`geometry_status=CANDIDATE_NOT_VALIDATED_FOR_ROMS`**.
@@ -47,7 +47,7 @@ python ROMS_Nesting/Data_pre/scripts/nesting/create_bathymetry_grid.py \
   --report-json /workspace/japan_sea/UD1K_grid_CANDIDATE_report.json
 ```
 
-For ES3K, **first** fill an independently reviewed `es3k_geometry.json` with center, `width_points`, `height_points`, `dx_m`, `dy_m`, and signed `angle_deg`, then use the same command with its path. The output remains `CANDIDATE` until comparing the coastline, corners, grid metrics and hydrodynamic ROMS tests. Even a geodesic-quality PASS does not equal scientific equivalence to Kim (2020).
+For ES3K, respect the immutable four-corner inputs and develop the corner-constrained orthogonal 1/36° grid generator. Do NOT use the old metric `rotated_lcc` prototype as an author-equivalent result. The target bathymetry grid remains CANDIDATE pending GEBCO/GSHHG and ROMS integration.
 
 For **synthetic CI only**, `--allow-gebco-only-mask --synthetic-test-only` allows a fixture without a real GSHHG shapefile; its metadata explicitly says the shoreline has not been validated. Formal runs should supply the full GSHHG base path and then perform separate mask cleanup and review.
 
@@ -142,7 +142,7 @@ The independent GLORYS source accessor `roms_preprocessing_utils.read_dimensiona
 
 ## Remaining I3 acceptance barriers
 
-1. Real ES3K rotated corners/rotation/actual wet domain versus Kim (2020), with any approximation clearly disclosed.
+1. ES3K four user-given corners are now accepted; complete corner-constrained curve-fitting, true geographic rotation/angle field, 1/36° mapping, wet bathymetry and model-run acceptance.
 2. Actual staged GEBCO 2026 and GSHHG 2.3.7, full wet-mask topology/manual corrections. `GEBCO elevation < 0` alone is not adequate coast geometry.
 3. Bathymetry slope (`rx0`, later `rx1`) and smoothing **using reviewed wet mask**; the unsmoothed rx0 here is diagnostic, not a PASS.
 4. ROMS rotated grid reading, valid sigma layer thickness, 1h/6h/24h actual integrator, OBCs, restarts.

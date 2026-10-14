@@ -1,20 +1,42 @@
 {
   "grid_id": "ES3K",
   "geometry_status": "CANDIDATE_APPROXIMATE",
-  "geometry_type": "rotated_lcc",
+  "geometry_type": "user_four_corner_curvilinear_NOT_YET_IMPLEMENTED",
   "center_lon": null,
   "center_lat": null,
   "width_points": null,
   "height_points": null,
   "angle_deg": null,
-  "provenance": "Kim et al. 2020 Table 1 angular 1/36 deg and Figure 1(a) pixel-inferred outer diamond ~50 deg CCW from east. EXACT CORNERS/PROJECTION/GRID COUNTS UNKNOWN; this is a NON-RUNNABLE angular template, not an accepted reproduction.",
+  "provenance": "Four precise user-provided ES3K corners, replacing rough Fig.1 digitization. Source data, but not yet a validated orthogonal grid or 1/36-degree discretization.",
   "nominal_resolution_deg": 0.027777777777777776,
   "nominal_resolution_fraction": "1/36 deg",
   "angular_spacing_implementation": "NOT_IMPLEMENTED",
-  "provisional_figure1_orientation_deg_ccw_from_east": 50,
-  "provisional_angle_uncertainty_deg": 10,
+  "provisional_figure1_orientation_deg_ccw_from_east": null,
+  "provisional_angle_uncertainty_deg": null,
   "legacy_metric_dx_dy_m_for_synthetic_only": [
     3000,
     3000
-  ]
+  ],
+  "user_corners_lat_lon": {
+    "W": [
+      37.821077,
+      121
+    ],
+    "S": [
+      30.8,
+      131.471973
+    ],
+    "N": [
+      52,
+      141.327943
+    ],
+    "E": [
+      45.616255,
+      150.4
+    ]
+  },
+  "corner_order": "W_N_E_S_W",
+  "reference_source": "USER_SUPPLIED_ON_2026_10_14",
+  "first_long_edge_W_to_N_geodesic_orientation_deg_ccw_from_east_approx": 51.36,
+  "geometry_generator_status": "NOT_IMPLEMENTED"
 }

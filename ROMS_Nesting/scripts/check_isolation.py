@@ -53,8 +53,14 @@ def main() -> None:
         require(obj is not None and within(Path(obj.__file__), ROOT), "legacy Python import: " + module)
     grid = json.loads((ROOT / "configs" / "grid_family.json").read_text())
     require([q["id"] for q in grid["grids"]] == ["ES3K", "UD1K", "L3_300m"], "wrong grid family")
-    require(grid["grids"][0]["corners_deg"] is None,
-            "unverified ES3K paper corner was silently invented")
+    supplied=json.loads((ROOT/"configs/es3k_user_corners.json").read_text())
+    es=grid["grids"][0]
+    require(es["corners_deg"] == supplied["user_corners_lat_lon"],
+            "user-supplied ES3K corners changed, missing, or in wrong order")
+    require(es["source_of_corners"]=="USER_SUPPLIED_2026_10_14",
+            "ES3K corners attributed to prior paper pixel estimates")
+    require(es["angular_grid_generator_status"]=="NOT_IMPLEMENTED",
+            "unsupported ES3K 1/36-degree generator prematurely marked ready")
     local=grid["grids"][2]["domain"]
     l3_cfg=json.loads((ROOT / "configs" / "l3_coastal_square_candidate.json").read_text())
     require(local is not None and

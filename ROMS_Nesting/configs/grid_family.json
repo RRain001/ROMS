@@ -21,15 +21,42 @@
         30.8,
         52
       ],
-      "corners_deg": null,
-      "geometry_status": "UNVERIFIED_CORNERS",
+      "corners_deg": {
+        "W": [
+          37.821077,
+          121
+        ],
+        "S": [
+          30.8,
+          131.471973
+        ],
+        "N": [
+          52,
+          141.327943
+        ],
+        "E": [
+          45.616255,
+          150.4
+        ]
+      },
+      "geometry_status": "USER_SUPPLIED_CORNERS_ACCEPTED_GRID_NOT_GENERATED",
       "nominal_resolution_deg": 0.027777777777777776,
       "nominal_resolution_fraction": "1/36 deg",
       "old_metric_resolution_m_for_synthetic_only": 3000,
       "angular_grid_generator_status": "NOT_IMPLEMENTED",
-      "figure1_rotation_candidate_deg_ccw_from_east": 50,
-      "figure1_rotation_uncertainty_deg_preliminary": 10,
-      "figure1_candidate_not_author_supplied": true
+      "figure1_rotation_candidate_deg_ccw_from_east": null,
+      "figure1_rotation_uncertainty_deg_preliminary": null,
+      "figure1_candidate_not_author_supplied": true,
+      "corners_coordinate_order": "LAT_N_LON_E",
+      "corner_perimeter_order": "W_N_E_S_W",
+      "source_of_corners": "USER_SUPPLIED_2026_10_14",
+      "user_defined_envelope_deg": [
+        121,
+        150.4,
+        30.8,
+        52
+      ],
+      "angle_deg_status": "CURVILINEAR_ANGLE_FIELD_NOT_YET_CALCULATED"
     },
     {
       "id": "UD1K",
@@ -110,5 +137,5 @@
     }
   ],
   "nominal_angular_resolution_policy": "KIM_2020_1_OVER_36_108_324",
-  "geometry_authority": "PAPER_TABLE_1_ENVELOPES_AND_FIGURE_1_DIGITIZATION_PRELIMINARY"
+  "geometry_authority": "ES3K_USER_CORNERS_2026_10_14_UD1K_USER_APPROVED_SOUTH_L3_USER_AB"
 }

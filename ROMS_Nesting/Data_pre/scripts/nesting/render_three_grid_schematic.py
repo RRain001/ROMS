@@ -31,7 +31,7 @@ def produce(destination: Path) -> dict:
     from l3_square import square_corners
 
     family=json.loads((CONF/"grid_family.json").read_text())
-    es=json.loads((CONF/"es3k_figure1_outline_schematic.json").read_text())
+    es=json.loads((CONF/"es3k_user_corners.json").read_text())
     ud=json.loads((CONF/"ud1k_candidate.json").read_text())
     l3=json.loads((CONF/"l3_coastal_square_candidate.json").read_text())
     if ud["parent_expansion"]!="APPROVED_BY_USER_2026_10_14_GEOMETRY_ONLY":
@@ -40,8 +40,11 @@ def produce(destination: Path) -> dict:
         raise ValueError("user-given L3 fixed AB changed")
 
     corners=square_corners(l3)["corners_lat_lon"]
-    points=es["points_lon_lat"]
-    outer=[points[k] for k in ("W","N","E","S")]
+    points=es["user_corners_lat_lon"]
+    family_es=next(q for q in family["grids"] if q["id"]=="ES3K")
+    if family_es["corners_deg"] != points:
+        raise ValueError("ES3K user corner config drift")
+    outer=[[points[k][1],points[k][0]] for k in ("W","N","E","S")]
     # North-anchored exact integer 1/108 degree geographic lattice.
     step=1/108
     south=ud["lat_max"]-round((ud["lat_max"]-ud["lat_min"])/step)*step
@@ -50,8 +53,8 @@ def produce(destination: Path) -> dict:
     inner=[[corners[k][1],corners[k][0]] for k in ("A","B","C","D")]
     if not Polygon(middle).contains(Polygon(inner)):
         raise AssertionError("L3 not inside approved UD1K geographic extent")
-    if not Polygon(outer).contains(Polygon(middle)):
-        raise AssertionError("approx Fig1 ES3K outline fails schematic containment")
+    if not Polygon(outer).is_valid or not Polygon(outer).contains(Polygon(middle)):
+        raise AssertionError("user ES3K four-corner perimeter invalid or fails to contain UD1K")
     if Polygon([[ud["lon_min"],35.5],[ud["lon_max"],35.5],
                 [ud["lon_max"],39.0],[ud["lon_min"],39.0]]).contains(Polygon(inner)):
         raise AssertionError("paper original UD1K south incorrectly contains L3")
@@ -62,8 +65,9 @@ def produce(destination: Path) -> dict:
     report={
         "purpose":"SCHEMATIC_ONLY_NOT_A_SCIENTIFIC_ROMS_GRID",
         "ES3K":{"nominal_deg":1/36,"status":es["status"],
+                "boundary_authority":"USER_SUPPLIED_2026_10_14",
                 "outline_lon_lat":outer,
-                "exact_corner_and_rotation_validation":"NOT_RUN"},
+                "exact_corner_and_rotation_validation":"CORNERS_FIXED_GRID_NOT_GENERATED"},
         "UD1K":{"nominal_deg":1/108,"geometry_approval":"USER_APPROVED",
                 "lon_min":ud["lon_min"],"lon_max":ud["lon_max"],
                 "lat_north":ud["lat_max"],"lat_south_requested":ud["lat_min"],
@@ -83,7 +87,7 @@ def produce(destination: Path) -> dict:
     fig,ax=plt.subplots(1,3,figsize=(17,8),layout="constrained")
     fig.suptitle("Japan Sea ROMS: ES3K / UD1K / user-anchored L3 (schematic only)",
                  weight="bold",fontsize=17)
-    domains=(("1  ES3K | 1/36 deg | Fig.1 APPROX",(120,152),(30,53),42),
+    domains=(("1  ES3K | 1/36 deg | USER CORNERS",(120,152),(30,53),42),
              ("2  UD1K | 1/108 deg | south extended",(126.8,134.8),(35.0,39.4),37),
              ("3  L3 | 1/324 deg | A-B offshore",(129.12,130.28),(35.25,36.18),36))
     colors={"ES3K":"#3d526e","UD1K":"#09819f","L3":"#db673e"}
@@ -116,7 +120,7 @@ def produce(destination: Path) -> dict:
             a.axhline(35.5,c="#727c86",ls="--",lw=1)
     fig.text(.5,.025,
              f"UD1K south {south:.6f} N; L3 south 35.450754 N (buffer {margin/1000:.1f} km). "
-             "Coast/bathymetry NOT assessed. ES3K diagram polygon approximate.",
+             "Coast/bathymetry NOT assessed. ES3K corners user-supplied; grid not yet built.",
              ha="center",fontsize=9,color="#85504a")
     destination.mkdir(parents=True,exist_ok=True)
     fig.savefig(destination/"Japan_Sea_Three_Grids_CANDIDATE.png",dpi=160)

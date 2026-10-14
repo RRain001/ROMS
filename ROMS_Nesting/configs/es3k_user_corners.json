@@ -1,0 +1,30 @@
+{
+  "grid_id": "ES3K",
+  "status": "USER_SUPPLIED_FOUR_CORNERS_GRID_NOT_GENERATED",
+  "source": "USER_SUPPLIED_2026_10_14",
+  "coordinate_order": "LATITUDE_DEG_N_LONGITUDE_DEG_E",
+  "perimeter_order": "W_N_E_S_W",
+  "user_corners_lat_lon": {
+    "W": [
+      37.821077,
+      121
+    ],
+    "S": [
+      30.8,
+      131.471973
+    ],
+    "N": [
+      52,
+      141.327943
+    ],
+    "E": [
+      45.616255,
+      150.4
+    ]
+  },
+  "nominal_angular_resolution_fraction": "1/36 deg",
+  "original_paper_comparison": "USER_WEST_121_0_DIFFERS_FROM_KIM_TABLE_WEST_121_9",
+  "projection_status": "NOT_SELECTED",
+  "roms_grid_status": "NOT_GENERATED",
+  "metric_rotation_status": "SPATIALLY_VARYING_AND_UNDETERMINED"
+}
