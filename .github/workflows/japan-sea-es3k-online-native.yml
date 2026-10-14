@@ -13,6 +13,8 @@ on:
       - 'ROMS_Nesting/Data_pre/nesting/es3k_core_bathymetry_smoothing.py'
       - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_core_candidate.py'
       - 'ROMS_Nesting/configs/es3k_i3_vertical_candidate.json'
+      - 'ROMS_Nesting/Data_pre/nesting/es3k_local_slope_projection.py'
+      - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_local_candidate.py'
   workflow_dispatch:
 
 permissions:
@@ -134,6 +136,54 @@ jobs:
               np.testing.assert_array_equal(x[field][:],y[field][:])
           print("REAL ES3K core slope STATIC GATE PASS, ROMS physics NOT RUN")
           PY
+      - name: Compare minimal-change local slope treatment against blanket smoothing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_local_candidate.py \
+            --grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_MASK_ONLY_CANDIDATE.nc" \
+            --output "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_LOCAL_SLOPE_I3_CANDIDATE.nc" \
+            --report-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/real_es3k_local_slope_report.json" \
+            --vertical-config ROMS_Nesting/configs/es3k_i3_vertical_candidate.json
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from netCDF4 import Dataset
+          import numpy as np
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          a=json.loads((root/"real_es3k_core_slope_report.json").read_text())
+          b=json.loads((root/"real_es3k_local_slope_report.json").read_text())
+          assert b["status"]=="LOCAL_ES3K_CORE_SLOPE_STATIC_PASS_PHYSICS_NOT_RUN"
+          x=b["selected"]
+          assert x["rx0"]<=.35 and x["rx1"]<=8 and x["meets_p99_depth"]
+          source=root/"ES3K_JAPAN_SEA_CORE_MASK_ONLY_CANDIDATE.nc"
+          local=root/"ES3K_JAPAN_SEA_CORE_LOCAL_SLOPE_I3_CANDIDATE.nc"
+          blanket=root/"ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc"
+          with Dataset(source) as src,Dataset(local) as loc,Dataset(blanket) as full:
+            wet=np.asarray(src["mask_rho"][:],dtype=bool)
+            base=np.asarray(src["h"][:])
+            h_loc=np.asarray(loc["h"][:])
+            h_full=np.asarray(full["h"][:])
+            p99_full=float(np.quantile(np.abs(h_full[wet]-base[wet]),.99))
+            max_full=float(np.max(np.abs(h_full[wet]-base[wet])))
+            assert x["max_abs_depth_change_m"] < max_full, "local smoothing must reduce peak depth distortion"
+            assert x["p99_abs_depth_change_m"] < p99_full, "local smoothing must reduce P99 distortion"
+            for field in ("lon_rho","lat_rho","pm","pn","angle","mask_rho",
+                          "mask_u","mask_v","mask_psi","excluded_ocean_component_rho"):
+              np.testing.assert_array_equal(src[field][:],loc[field][:])
+          record={
+            "status":"LOCAL_SLOPE_STATIC_COMPARISON_PASS_ONLY",
+            "local_selected":x,
+            "blanket_rx0":a["rx0_final"],
+            "blanket_rx1":a["rx1_final"],
+            "blanket_max_depth_change_m":max_full,
+            "blanket_p99_depth_change_m":p99_full,
+            "local_alternative_reduces_max_and_p99_distortion":True,
+            "physical_acceptance":"NOT_RUN"
+          }
+          (root/"real_es3k_smoothing_comparison.json").write_text(json.dumps(record,indent=2)+"\n")
+          print(json.dumps(record,indent=2))
+          PY
       - name: Generate real UD1K 1/108-degree candidate on matching sources
         shell: bash
         run: |
@@ -177,6 +227,9 @@ jobs:
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_MASK_ONLY_CANDIDATE.nc
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_GEBCO2026_GSHHG237_CANDIDATE.nc
             ${{ runner.temp }}/ES3K_REAL_SOURCE/real_es3k_core_slope_report.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/real_es3k_local_slope_report.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/real_es3k_smoothing_comparison.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_LOCAL_SLOPE_I3_CANDIDATE.nc
             ${{ runner.temp }}/ES3K_REAL_SOURCE/real_ud1k_grid_report.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/real_es3k_ud1k_preflight.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc
