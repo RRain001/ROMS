@@ -44,6 +44,21 @@ jobs:
           python -m unittest discover -s Data_pre/tests -p 'test_grid_metrics.py' -v
           python -m unittest discover -s Data_pre/tests -p 'test_nesting_rotation.py' -v
           python Data_pre/scripts/nesting/create_synthetic_rotated_grid.py --output "$RUNNER_TEMP/rotated_i2_synthetic.nc" --angle-deg 20
+      - name: I8 Thyng pinned upstream / local ROMS 4.3 compatibility audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ROMS_Nesting
+          python scripts/audit_thyng_offline.py \
+            --verify-upstream --expect-gap --output "$RUNNER_TEMP/thyng-i8-report"
+          python -c 'import json,os; r=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"thyng-i8-report","compatibility.json"))); assert r["status"]=="BLOCKED_PORT_REQUIRED" and r["physics_validation"]=="NOT_RUN"'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: i8-thyng-offline-source-audit
+          path: ${{ runner.temp }}/thyng-i8-report/
+          if-no-files-found: warn
+          retention-days: 30
       - name: Python syntax compilation
         shell: bash
         run: |

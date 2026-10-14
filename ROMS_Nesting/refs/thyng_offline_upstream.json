@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "note": "Frozen upstream Git blob object identifiers. Verified against GitHub git/tree for the pinned revision; raw verification in CI required.",
+  "upstream_repo": "kthyng/COAWST-ROMS-OIL",
+  "upstream_commit": "5488c3fd3865c567fa1833c8ed670c7dce0fc676",
+  "paper": "https://doi.org/10.5194/gmd-14-391-2021",
+  "model_archive": "https://doi.org/10.5281/zenodo.4455738",
+  "files": {
+    "ROMS/Nonlinear/main3d_offline.F": "1fe9173e8d89dbff174ca51a896a56cad5d7d853",
+    "ROMS/Nonlinear/set_massflux.F": "2d3ebd6fa8fece75c04d1947fad329ca5b8b204c",
+    "ROMS/Nonlinear/set_zeta.F": "29743b0bb7d4e8b5f3c8bf4a01272b2cfb9089a4",
+    "ROMS/Nonlinear/ini_fields.F": "5e15fc6a1e9321e269950de482a0de6c330bf911",
+    "ROMS/Nonlinear/set_data.F": "98750e0ddce813befc0e7e52114ef6a2e233411e",
+    "ROMS/Nonlinear/set_depth.F": "a92574a83e90014d482f76551d2df74633ed323c",
+    "ROMS/Nonlinear/step3d_t.F": "cdbcc47a38251377e666f72b61bd5c620adac9f8",
+    "ROMS/Utility/get_2dfld.F": "e2ba32ac0f3f9a4ae739e91513576f4328f6f54c",
+    "ROMS/Utility/get_3dfld.F": "cc8bd22c30bac80fba01799a48322dbdeb21c639",
+    "ROMS/External/varinfo-offline.dat": "bb96190261db1a8dead3d6694f07f20d8d12f4b3",
+    "ROMS/Include/globaldefs.h": "e12c72ab089dbe8d2b52e7d114f6e2ff3e894f94",
+    "ROMS/Drivers/nl_ocean.h": "b210cc5d715022b72c24f8c5a76c99cf02e61928"
+  }
+}
