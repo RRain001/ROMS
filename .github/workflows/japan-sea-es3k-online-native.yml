@@ -20,6 +20,8 @@ on:
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py'
       - 'ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_wet_triangle_review.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_wet_connected_triangle_review.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_wet_connected_triangle_review.py'
       - 'ROMS_Nesting/configs/ud1k_kim2020_table1_trial.json'
       - 'ROMS_Nesting/configs/ud1k_user_20261014_frozen.json'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
@@ -49,6 +51,7 @@ jobs:
       - name: Synthetic 3-wet local triangle and coastline rejection regressions
         run: |
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_wet_triangle_review.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_wet_connected_triangle_review.py' -v
           python -m py_compile \
             ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py \
             ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py
@@ -285,6 +288,36 @@ jobs:
           assert r["source_masks_modified"] is False and r["physical_validation"]=="NOT_RUN"
           print("TRIANGLE_BARYCENTRIC_GSHHG_27_REAL_COUNTS",json.dumps(r["status_counts"],sort_keys=True))
           PY
+      - name: Second-tier real 22-point connected 3x3 wet triangle GSHHG audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/nesting/ud1k_wet_connected_triangle_review.py \
+            --parent-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc" \
+            --child-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc" \
+            --strict-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_current_27_coastal_triangle_review.json" \
+            --gshhg-base "$RUNNER_TEMP/ES3K_REAL_SOURCE/GSHHS_shp" \
+            --gshhg-resolution h \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_current_remaining_22_connected_3x3_review.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          strict=json.loads((root/"ud1k_current_27_coastal_triangle_review.json").read_text())
+          second=json.loads((root/"ud1k_current_remaining_22_connected_3x3_review.json").read_text())
+          assert len(second["records"])==22
+          assert sum(second["status_counts"].values())==22
+          assert strict["status_counts"]["COASTLINE_CLEAR_LOCAL_TRIANGLE_STATIC_CANDIDATE"]==5
+          assert second["masks_modified"] is False and second["physical_validation"]=="NOT_RUN"
+          print("UD1K_COMBINED_BOUNDARY_CANDIDATE_COUNTS",json.dumps({
+            "strict_local_two_by_two":5,
+            "connected_three_by_three":second["status_counts"].get(
+              "CONNECTED_3X3_COASTLINE_CLEAR_STATIC_CANDIDATE",0),
+            "remaining_no_safe_connected_three_by_three":sum(
+              v for k,v in second["status_counts"].items()
+              if k!="CONNECTED_3X3_COASTLINE_CLEAR_STATIC_CANDIDATE"),
+          },sort_keys=True))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -307,6 +340,7 @@ jobs:
             ${{ runner.temp }}/ES3K_REAL_SOURCE/real_ud1k_kim2020_grid_report.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_vs_kim2020_table1_real_comparison.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_27_coastal_triangle_review.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_remaining_22_connected_3x3_review.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc
             ${{ runner.temp }}/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc
           if-no-files-found: warn
