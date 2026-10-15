@@ -55,6 +55,8 @@ class ExperimentalSourceToChildNumerics(unittest.TestCase):
         synthetic_parent_grid(self.parent)
         synthetic_parent_history(self.history,n=3)
         child_grid(self.child)
+        with Dataset(self.child,"a") as f:
+            f.createVariable("angle","f8",("eta_rho","xi_rho"))[:]=0.
         with Dataset(self.parent,"a") as f:
             f["angle"][:]=0
         self.rho,self.faces=maps_from_synthetic_grid(self.child)
@@ -110,7 +112,7 @@ class ExperimentalSourceToChildNumerics(unittest.TestCase):
 
     def test_child_angle_rotates_velocity_into_face_axes(self):
         with Dataset(self.child,"a") as f:
-            f.createVariable("angle","f8",("eta_rho","xi_rho"))[:]=np.pi/2
+            f["angle"][:]=np.pi/2
         prepared,_=self.run_preview()
         # Same geographic East=.15 North=-.05, child +90 => u=-.05,v=-.15.
         self.assertAlmostEqual(prepared["south"]["u"][0,1,2],-.05,places=12)
