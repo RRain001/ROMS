@@ -6,7 +6,7 @@ import numpy as np
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"nesting"))
 from ud1k_boundary_cgrid_velocity import (
-    face_support_report,rotate_parent_to_child_rho)
+    face_support_report,rotate_parent_to_child_rho,vector_face_supported_stencils)
 
 
 class CgridRhoVectorAudit(unittest.TestCase):
@@ -65,6 +65,41 @@ class CgridRhoVectorAudit(unittest.TestCase):
         self.assertTrue(r["problem_points"][0]["unsupported_nonzero_donors"][0]["missing_v"])
         with self.assertRaisesRegex(ValueError,"insufficient parent C-grid wet-face support"):
             self.calc()
+
+    def test_vector_only_drop_incomplete_u_face_and_renormalize(self):
+        self.wet[2,1]=False
+        self.rec[0]["donor_eta_xi_zero_based"]=[[2,1],[2,2],[2,3]]
+        self.rec[0]["weights"]=[.6,.25,.15]
+        # (2,1) has a right U wet face to (2,2) but may have V support;
+        # create an isolated RHO cell (2,1) with no native U neighbors.
+        self.wet[2,0]=False
+        self.wet[2,2]=True
+        self.wet[2,1]=True
+        self.wet[1,1]=self.wet[3,1]=True
+        self.wet[2,0]=False
+        # Instead choose isolated (1,0) with no U face.
+        self.wet[1,0]=True
+        self.wet[1,1]=False
+        self.wet[0,0]=self.wet[2,0]=True
+        self.rec[0]["donor_eta_xi_zero_based"]=[[1,0],[2,2],[2,3]]
+        result=vector_face_supported_stencils(self.wet,self.rec)
+        self.assertEqual(result["status"],"RHO_VECTOR_DONOR_FACE_SUPPORT_PREFLIGHT_PASS_ONLY")
+        self.assertEqual(result["removed_unsupported_parent_RHO_sources_on_receivers"],1)
+        fixed=result["vector_only_stencils"][0]
+        self.assertEqual(fixed["donor_eta_xi_zero_based"],[[2,2],[2,3]])
+        np.testing.assert_allclose(fixed["weights"],[.625,.375],atol=1e-12)
+        self.assertEqual(self.rec[0]["weights"],[.6,.25,.15])
+
+    def test_vector_only_fails_closed_when_one_supported_donor_remains(self):
+        self.wet[:]=False
+        self.wet[2,2]=self.wet[2,3]=self.wet[1,2]=True
+        self.wet[3,2]=True
+        self.wet[0,0]=True
+        self.rec[0]["donor_eta_xi_zero_based"]=[[0,0],[2,2]]
+        self.rec[0]["weights"]=[.4,.6]
+        result=vector_face_supported_stencils(self.wet,self.rec)
+        self.assertEqual(result["status"],"HOLD_VECTOR_SOURCE_FACE_SUPPORT")
+        self.assertEqual(result["vector_boundary_rho_stencil_count"],0)
 
     def test_leading_time_and_sigma_dimensions(self):
         u=np.stack([self.u,self.u*2],axis=0)
