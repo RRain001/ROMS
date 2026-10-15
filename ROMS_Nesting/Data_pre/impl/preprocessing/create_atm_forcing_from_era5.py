@@ -180,8 +180,19 @@ def main() -> None:
         rain_units = getattr(src.variables[rain_name], "units", "")
         evap_units = getattr(src.variables[eminusp_name], "units", "")
         rain = accumulated_to_rate(rain_raw, times) if "tp" in rain_name.lower() or "accum" in rain_units.lower() else rain_raw
-        evap_rate = accumulated_to_rate(np.abs(evap_raw), times) if eminusp_name.lower() in {"e", "evaporation"} or "accum" in evap_units.lower() else np.abs(evap_raw)
-        eminusp = fill_time_missing_fields(evap_rate - rain / 1000.0, "EminusP")
+        # The staged ERA5 downloader already converted EminusP / swflux to
+        # signed evaporation-minus-precipitation in m/s. Do not take abs()
+        # or subtract rain a second time: that changes the physics/sign.
+        if eminusp_name in {"EminusP", "swflux"}:
+            if evap_units.strip().lower().replace(" ", "") not in {"ms-1", "m/s", "ms**-1"}:
+                raise ValueError("staged EminusP must be signed m/s, not accumulated raw evaporation")
+            eminusp = fill_time_missing_fields(evap_raw, "EminusP")
+        else:
+            # Backward-compatible *raw* evaporation path. Raw e can be
+            # negative accumulated evaporation; preserve legacy handling,
+            # but do not run it on already-normalized EminusP.
+            evap_rate = accumulated_to_rate(np.abs(evap_raw), times) if eminusp_name.lower() in {"e", "evaporation"} or "accum" in evap_units.lower() else np.abs(evap_raw)
+            eminusp = fill_time_missing_fields(evap_rate - rain / 1000.0, "EminusP")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with Dataset(out_path, "w", format="NETCDF4") as ds:
