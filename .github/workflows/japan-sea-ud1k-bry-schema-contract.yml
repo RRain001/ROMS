@@ -18,6 +18,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_optionb_manifest_contract.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_synthetic_dynamic_section.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_dynamic_section.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_cf_time_bridge.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_cf_time_and_source_face_support.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -47,6 +49,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_optionb_manifest_contract.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_synthetic_dynamic_section.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_dynamic_section.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_cf_time_bridge.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_cf_time_and_source_face_support.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -85,6 +89,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_nonconstant_boundary_flux_preview.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_real_optionb_manifest_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_optionb_synthetic_dynamic_section.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_cf_time_and_source_face_support.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_micro_preflight.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_converter_micro.py' -v
