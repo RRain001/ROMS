@@ -226,6 +226,7 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
         if childh.shape!=childangle.shape or parenth.shape!=parentangle.shape:
             raise ValueError("parent/child h/angle shape mismatch")
         maps=_validated_maps(pw,cg,rho_map["records"],face_maps["reports"])
+        child_masks={k:_finite(cg["mask_"+k][:]).astype(bool) for k in ("rho","u","v")}
         src_params={k:float(hs[k][()]) for k in ("theta_s","theta_b","hc")}
         if int(hs["Vtransform"][()])!=2 or int(hs["Vstretching"][()])!=4:
             raise ValueError("unsupported parent vertical transform")
@@ -237,7 +238,7 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
         for kind in ("rho","u","v"):
             field_names=("zeta","temp","salt") if kind=="rho" else (
                 ("u","ubar") if kind=="u" else ("v","vbar"))
-            wet=_finite(cg["mask_"+kind][:]).astype(bool)
+            wet=child_masks[kind]
             side_data={}
             for side in SIDES:
                 width=wet.shape[1] if side in ("south","north") else wet.shape[0]
@@ -267,7 +268,7 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
                     "salt":_sample_scalar(frame,parenth,src_params,src,target,"salt",extrapolated),
                 }
                 for side in SIDES:
-                    mask=_finite(cg["mask_rho"][:]).astype(bool)
+                    mask=child_masks["rho"]
                     if not (j==0 if side=="south" else j==mask.shape[0]-1 if side=="north"
                             else i==0 if side=="west" else i==mask.shape[1]-1):
                         continue
@@ -275,7 +276,7 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
                     for field,v in value.items():
                         arrays["rho"][field+"_"+side][t_index,...,index]=v
             for kind in ("u","v"):
-                wet=_finite(cg["mask_"+kind][:]).astype(bool)
+                wet=child_masks[kind]
                 for (j,i),src in maps[kind].items():
                     # Interpolate zeta directly at the *same child face*.
                     surface=zeta_child_by_kind[kind][j,i]
@@ -300,7 +301,7 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
                         for name in FIELDS} for side in SIDES}
         for kind,mapped in maps.items():
             for side in SIDES:
-                wet=_finite(cg["mask_"+kind][:]).astype(bool)
+                wet=child_masks[kind]
                 w=wet[0,:] if side=="south" else wet[-1,:] if side=="north" else (
                     wet[:,0] if side=="west" else wet[:,-1])
                 for fld in ("zeta","temp","salt") if kind=="rho" else (
