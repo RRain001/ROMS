@@ -200,9 +200,10 @@ jobs:
     # manifest and 3-time × 41-layer synthetic flux over real metrics.
     # Run manually only: avoids archived 30-day artifact expiration causing
     # routine PR failures. No real ES3K parent history or new bathymetry.
-    # One-time real manifest interop certification via pull_request;
-    # restore workflow_dispatch ONLY after it passes (artifact expires).
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    # Real archived Option B all-maps -> synthetic full parent -> 28-field
+    # NetCDF integration passed Actions #38699786571. Run manually only:
+    # prior source artifact is expiring and routine PR checks stay offline.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     timeout-minutes: 8
     steps:
