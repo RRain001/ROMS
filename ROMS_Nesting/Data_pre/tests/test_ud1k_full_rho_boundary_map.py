@@ -95,8 +95,8 @@ class FullBoundaryMapSynthetic(unittest.TestCase):
                      self.cwet,clone,[])
 
     def test_coastline_crossing_quad_is_flagged_not_silently_approved(self):
-        coast=[(np.array([128.05,35.0,128.05,35.2]),
-                np.array([[128.05,35.0],[128.05,35.2]]))]
+        coast=[(np.array([128.034,35.0,128.034,35.2]),
+                np.array([[128.034,35.0],[128.034,35.2]]))]
         r=assemble(self.pxy,self.pll,self.pwet,self.cxy,self.cll,
                    self.cwet,self.fallback,coast)
         self.assertGreater(r["counts"]["ordinary_quad_crosses_GSHHG_level1"],0)
