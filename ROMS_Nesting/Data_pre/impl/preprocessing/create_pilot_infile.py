@@ -73,6 +73,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--atm-path", default=None)
     parser.add_argument("--rad-path", default=None)
     parser.add_argument("--dt-seconds", type=float, default=None)
+    parser.add_argument("--start-time", default=None, help="Independent test start; never writes case dates")
+    parser.add_argument("--stop-time", default=None, help="Independent test stop; never writes case dates")
     parser.add_argument("--template", default=None, help="Override ROMS .in template path")
     parser.add_argument("--dry-run", "--dry-equivalent", action="store_true", help="Resolve and print planned output without writing files")
     return parser.parse_args()
@@ -122,11 +124,11 @@ def varinfo_path(params: dict) -> str:
     candidates: list[Path] = []
     configured = params.get("paths", {}).get("varinfo_yaml")
     if configured:
-        candidates.append(Path(str(configured)).expanduser())
+        candidates.append(Path(os.path.expandvars(str(configured))).expanduser())
     candidates.append(RUN_DIR / "varinfo.yaml")
     roms_src = params.get("paths", {}).get("roms_src")
     if roms_src:
-        candidates.append(Path(str(roms_src)).expanduser() / "ROMS" / "External" / "varinfo.yaml")
+        candidates.append(Path(os.path.expandvars(str(roms_src))).expanduser() / "ROMS" / "External" / "varinfo.yaml")
 
     for candidate in candidates:
         path = candidate if candidate.is_absolute() else ROOT / candidate
@@ -368,7 +370,8 @@ def forcing_paths(
         "bry": args.bry_path or bry_default,
         "clm": args.clm_path or args.ini_path or relative_to_run(source_paths.roms_ini),
         "nud": "none",
-        "river": args.river_path or river_default,
+        "river": ("none" if (params or {}).get("source", {}).get("release_mode", "").startswith("disabled")
+                  else args.river_path or river_default),
         "tides": args.tides_path or tide_default,
         "frc_files": [
             f"     FRCNAME == {args.atm_path or atm_default} \\",
@@ -587,13 +590,24 @@ def base_text(
         out_prefix = workflow.production_decay_mode if formal.get("decay") else workflow.production_mode
     else:
         forcing_preview = forcing_paths(args, forcing_mode, mode, params)
-        start = external_model_start(params, forcing_mode, forcing_preview["ini"])
-        if forcing_mode == "external" and ocean_source == "glorys12v1":
+        start = (datetime.fromisoformat(args.start_time) if getattr(args, "start_time", None)
+                 else external_model_start(params, forcing_mode, forcing_preview["ini"]))
+        if forcing_mode == "external" and ocean_source == "glorys12v1" and not getattr(args, "start_time", None):
             ini_path = (RUN_DIR / forcing_preview["ini"]).resolve()
             if not ini_path.exists():
                 start = glorys_center_time(load_glorys_config(args.config), start)
         boundary_stop = external_model_stop(params, forcing_mode, forcing_preview["bry"])
-        if mode == "pilot_1day":
+        if mode.startswith("external_"):
+            durations = {"external_startup": dt_seconds * 5, "external_1h": 3600,
+                         "external_6h": 21600, "external_24h": 86400}
+            if mode not in durations or forcing_mode != "external":
+                raise SystemExit("external test modes require external forcing and a supported duration")
+            stop = start + timedelta(seconds=durations[mode])
+            if stop > boundary_stop:
+                raise SystemExit("test stop exceeds configured boundary coverage; refusing to shorten test")
+            title = f"{naming.title} external forcing TEST ONLY {mode}"
+            out_prefix = mode
+        elif mode == "pilot_1day":
             stop = min(start + timedelta(days=1), boundary_stop)
             title = f"{naming.title} 1-day pilot{source_label}"
             out_prefix = "pilot_1day"
@@ -680,7 +694,7 @@ def base_text(
         text = replace_line(
             text,
             "DSTART",
-            f"{dstart_value:.10f}d0" if dstart_value is not None else f"{common_year_offset_days(start):.10f}d0",
+            f"{dstart_value:.10f}d0" if dstart_value is not None else f"{float(to_mjd([start])[0]):.10f}d0",
         )
         text = replace_line(text, "TIME_REF", "18581117.0d0")
     else:
@@ -690,7 +704,7 @@ def base_text(
     text = replace_line(text, "NTIMES_FCT", str(ntimes))
     text = replace_line(text, "NRST", str(nrst))
     text = replace_line(text, "NRREC", "-1" if formal and formal["phase"] == "production" else "0")
-    text = replace_line(text, "NINFO", "1" if mode == "smoke" else str(nhis))
+    text = replace_line(text, "NINFO", "1" if mode == "smoke" or mode.startswith("external_") else str(nhis))
     text = replace_line(text, "NHIS", str(nhis))
     text = replace_line(text, "NXTR", "0" if mode in {"smoke", "pilot_1day"} else str(nhis))
     text = replace_line(text, "NAVG", str(navg))
@@ -754,6 +768,9 @@ def base_text(
     text = replace_line(text, "LuvSrc", "F                            ! no horizontal momentum source in pilot")
     text = replace_line(text, "LwSrc", "T                             ! enable vertical point/source transport")
     text = replace_line(text, "LtracerSrc", f"{source_tracer_flags(params)}                        ! active tracers and inert dyes")
+    if source_cfg.get("release_mode", "").startswith("disabled"):
+        text = replace_line(text, "LwSrc", "F                    ! source release disabled in case configuration")
+        text = replace_line(text, "LtracerSrc", all_tracer_flags(params, "F"))
     text = replace_line(text, "LtracerCLM", f"{all_tracer_flags(params, 'F')}                        ! active tracers and inert dyes")
     text = replace_line(text, "LnudgeTCLM", f"{all_tracer_flags(params, 'F')}                        ! active tracers and inert dyes")
     for key in ("Hout(idVvis)", "Hout(idTdif)", "Hout(idSdif)", "Aout(idVvis)", "Aout(idTdif)", "Aout(idSdif)"):
@@ -811,6 +828,8 @@ def output_path_for_mode(mode: str, ocean_source: str, args: argparse.Namespace)
     params = load_project_params()
     formal = parse_formal_online_mode(mode, params)
     profile = None if formal else active_profile(args, mode, params)
+    if mode.startswith("external_"):
+        return RUN_DIR / run_infile_name(mode)
     if mode.startswith("online_"):
         return RUN_DIR / run_infile_name(mode, None if ocean_source == "hycom" else ocean_source, profile)
     if mode == "smoke":
@@ -846,10 +865,10 @@ def resolve_template_path(args: argparse.Namespace, params: dict) -> Path:
         candidates.append(Path(args.template).expanduser())
     configured = params.get("paths", {}).get("roms_in_template")
     if configured:
-        candidates.append(Path(str(configured)).expanduser())
+        candidates.append(Path(os.path.expandvars(str(configured))).expanduser())
     roms_src = params.get("paths", {}).get("roms_src")
     if roms_src:
-        candidates.append(Path(str(roms_src)).expanduser() / "ROMS" / "External" / "roms_upwelling.in")
+        candidates.append(Path(os.path.expandvars(str(roms_src))).expanduser() / "ROMS" / "External" / "roms_upwelling.in")
     candidates.append(ROOT / "run" / "roms_upwelling.in")
 
     for candidate in candidates:
@@ -864,6 +883,13 @@ def main() -> None:
     args = parse_args()
     ocean_source = normalize_ocean_source(args.ocean_source)
     params = load_project_params()
+    # Local overrides affect this generated test input only, never the authoritative dates.
+    if args.start_time:
+        params["time"]["start"] = datetime.fromisoformat(args.start_time).isoformat()
+    if args.stop_time:
+        params["time"]["stop"] = datetime.fromisoformat(args.stop_time).isoformat()
+    if datetime.fromisoformat(params["time"]["stop"]) <= datetime.fromisoformat(params["time"]["start"]):
+        raise SystemExit("stop time must follow start time")
     template_path = resolve_template_path(args, params)
     grid_note = None
     try:
@@ -903,7 +929,7 @@ def main() -> None:
         modes = [mode]
 
     for mode in modes:
-        local_forcing_mode = "analytical" if mode == "smoke" and args.forcing_mode == "external" else args.forcing_mode
+        local_forcing_mode = args.forcing_mode
         text = base_text(args, params, template_path, grid_name, lm, mm, dt_seconds, mode, local_forcing_mode, open_edges)
         path = output_path_for_mode(mode, ocean_source, args)
         if args.dry_run:

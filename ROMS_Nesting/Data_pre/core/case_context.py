@@ -11,6 +11,7 @@ from pathlib import Path
 
 
 DATA_PRE_ROOT = Path(__file__).resolve().parents[1]
+os.environ["ROMS_NESTING_ROOT"] = str(DATA_PRE_ROOT.parent)
 CASES_ROOT = DATA_PRE_ROOT / "cases"
 PROJECTS_ROOT = DATA_PRE_ROOT.parents[0] / "projects"
 DEFAULT_CASE_FILE = CASES_ROOT / "default_case.txt"

@@ -230,7 +230,6 @@ def ensure_case_layout(context: BuildContext) -> None:
 def build_environment(context: BuildContext) -> dict[str, str]:
     compiler = context.compiler
     env = dict(os.environ)
-    env["HOME"] = str(context.paths.build_root)
     env["TMPDIR"] = str(context.paths.build_root)
     env["TMP"] = str(context.paths.build_root)
     env["TEMP"] = str(context.paths.build_root)
@@ -274,7 +273,7 @@ def shell_prelude(context: BuildContext) -> list[str]:
         lines.append(f'if [ -f {shlex.quote(str(context.oneapi_setvars))} ]; then source {shlex.quote(str(context.oneapi_setvars))} --force >/dev/null; fi')
     if context.my_local_paths is not None:
         lines.append(f'if [ -f {shlex.quote(str(context.my_local_paths))} ]; then source {shlex.quote(str(context.my_local_paths))}; fi')
-    else:
+    elif context.build_config.get("use_legacy_library_paths", True):
         fallback = context.compilers_dir / "my_build_paths.sh"
         lines.append(
             f'if [ -f {shlex.quote(str(fallback))} ]; then source {shlex.quote(str(fallback))} {shlex.quote(str(fallback))}; fi'
@@ -299,9 +298,19 @@ def execute_build(context: BuildContext, *, clean: bool, jobs: int | None = None
     make_cmd = "make"
     if effective_jobs and effective_jobs > 0:
         make_cmd = f"make -j {effective_jobs}"
+    # Case/platform overrides, without patching the frozen ROMS makefiles.
+    variables = {"MAKE_MACROS": str(context.paths.build_root / "make_macros.mk"),
+                 **context.build.get("make_variables", {})}
+    assignments = ""
+    for key, value in variables.items():
+        if not key.replace("_", "").isalnum():
+            raise ValueError(f"invalid make variable: {key}")
+        expanded = os.path.expandvars(os.path.expanduser(str(value)))
+        assignments += " " + shlex.quote(f"{key}={expanded}")
+    make_cmd += assignments
     script_lines = ["set -euo pipefail", *shell_prelude(context), f"cd {shlex.quote(str(context.roms_src))}"]
     if clean:
-        script_lines.append("make clean")
+        script_lines.append("make clean" + assignments)
     script_lines.append(make_cmd)
     script = "\n".join(script_lines)
     if dry_run:
@@ -309,10 +318,12 @@ def execute_build(context: BuildContext, *, clean: bool, jobs: int | None = None
         return 0
     result = subprocess.run(["bash", "-lc", script], env=build_environment(context), text=True)
     if result.returncode == 0:
-        actual_binary = context.paths.bin_dir / "romsM"
+        actual_binary = context.paths.bin_dir / ("romsG" if context.compiler.get("use_debug") else "romsM")
         if actual_binary.exists() and actual_binary != context.expected_binary:
             shutil.copy2(actual_binary, context.expected_binary)
             context.expected_binary.chmod(actual_binary.stat().st_mode)
+        if not context.expected_binary.is_file():
+            raise RuntimeError(f"make succeeded but expected executable is missing: {context.expected_binary}")
     return result.returncode
 
 

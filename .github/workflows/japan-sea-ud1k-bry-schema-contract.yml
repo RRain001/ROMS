@@ -5,6 +5,18 @@ on:
     branches:
       - codex/es3k-i3-wet-domain-audit-20261014
     paths:
+      - 'ROMS_Nesting/Data_pre/core/external_test_case.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_external_test_case.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_pilot_infile.py'
+      - 'ROMS_Nesting/Data_pre/cases/JAPAN_SEA/**'
+      - 'ROMS_Nesting/Data_pre/core/case_context.py'
+      - 'ROMS_Nesting/Data_pre/core/roms_preprocessing_utils.py'
+      - 'ROMS_Nesting/ROMS_Build/core/build_context.py'
+      - 'ROMS_Nesting/ROMS_Build/tests/test_build_context.py'
+      - 'ROMS_Nesting/ROMS_Build/env/**'
+      - 'ROMS_Nesting/ROMS_Build/scripts/build/verify_case_build.py'
+      - 'ROMS_Nesting/ROMS_Build/scripts/env/validate_toolchain.py'
+      - 'ROMS_Nesting/configs/templates/**'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_parent_history_contract.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_bry_schema_contract.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_vertical_flux_primitives.py'
@@ -43,6 +55,18 @@ on:
     branches:
       - feature/japan-sea-nesting
     paths:
+      - 'ROMS_Nesting/Data_pre/core/external_test_case.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_external_test_case.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_pilot_infile.py'
+      - 'ROMS_Nesting/Data_pre/cases/JAPAN_SEA/**'
+      - 'ROMS_Nesting/Data_pre/core/case_context.py'
+      - 'ROMS_Nesting/Data_pre/core/roms_preprocessing_utils.py'
+      - 'ROMS_Nesting/ROMS_Build/core/build_context.py'
+      - 'ROMS_Nesting/ROMS_Build/tests/test_build_context.py'
+      - 'ROMS_Nesting/ROMS_Build/env/**'
+      - 'ROMS_Nesting/ROMS_Build/scripts/build/verify_case_build.py'
+      - 'ROMS_Nesting/ROMS_Build/scripts/env/validate_toolchain.py'
+      - 'ROMS_Nesting/configs/templates/**'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_parent_history_contract.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_bry_schema_contract.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_vertical_flux_primitives.py'
@@ -97,6 +121,8 @@ jobs:
       - name: Strict source ROMS history and schema synthetic regressions
         run: |
           set -euo pipefail
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_external_test_case.py' -v
+          python -m unittest discover -s ROMS_Nesting/ROMS_Build/tests -p 'test_build_context.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_parent_history_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_bry_schema_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_remap_preview.py' -v

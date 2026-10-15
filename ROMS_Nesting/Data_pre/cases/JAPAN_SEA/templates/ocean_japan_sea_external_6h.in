@@ -1,0 +1,627 @@
+! Existing create_pilot_infile.py output; documentation comments omitted.
+! TEST ONLY; missing full-domain forcing intentionally remains a run blocker.
+       TITLE = Japan Sea ROMS nesting (I0 configuration only) external forcing TEST ONLY external_6h
+    MyAppCPP = JAPAN_SEA
+     VARNAME = ../../../roms_src/roms/ROMS/External/varinfo.yaml
+      Ngrids =  1
+  NestLayers =  1
+GridsInLayer =  1
+          Lm == 462
+          Mm == 730
+           N == 41
+        Nbed =  0
+         NAT =  2
+         NPT = 1
+         NCS =  0
+         NNS =  0
+      NtileI == 2
+      NtileJ == 2
+   Hadvection == U3       \
+                 HSIMT    \
+                 HSIMT
+   Vadvection == C4       \
+                 HSIMT    \
+                 HSIMT
+ad_Hadvection == U3       \
+                 U3       \
+                 U3
+ad_Vadvection == C4       \
+                 C4       \
+                 C4
+   LBC(isFsur) ==   Clo     Cha     Cha     Cha
+   LBC(isUbar) ==   Clo     Fla     Fla     Fla
+   LBC(isVbar) ==   Clo     Fla     Fla     Fla
+   LBC(isUvel) ==   Clo     RadNud  RadNud  RadNud
+   LBC(isVvel) ==   Clo     RadNud  RadNud  RadNud
+   LBC(isMtke) ==   Clo     Clo     Clo     Clo
+   LBC(isTvar) ==   Clo     RadNud  RadNud  RadNud  \
+                    Clo     RadNud  RadNud  RadNud  \
+                    Clo     RadNud  RadNud  RadNud
+   LBC(isU2Sd) ==   Per     Clo     Per     Clo
+   LBC(isV2Sd) ==   Per     Clo     Per     Clo
+   LBC(isU3Sd) ==   Per     Clo     Per     Clo
+   LBC(isV3Sd) ==   Per     Clo     Per     Clo
+ad_LBC(isFsur) ==   Clo     Cha     Cha     Cha
+ad_LBC(isUbar) ==   Clo     Fla     Fla     Fla
+ad_LBC(isVbar) ==   Clo     Fla     Fla     Fla
+ad_LBC(isUvel) ==   Clo     RadNud  RadNud  RadNud
+ad_LBC(isVvel) ==   Clo     RadNud  RadNud  RadNud
+ad_LBC(isMtke) ==   Clo     Clo     Clo     Clo
+ad_LBC(isTvar) ==   Clo     RadNud  RadNud  RadNud  \
+                    Clo     RadNud  RadNud  RadNud  \
+                    Clo     RadNud  RadNud  RadNud
+   VolCons(west)  == F
+   VolCons(east)  == F
+   VolCons(south) == F
+   VolCons(north) == F
+ad_VolCons(west)  == F
+ad_VolCons(east)  == F
+ad_VolCons(south) == F
+ad_VolCons(north) == F
+      NTIMES == 2160
+          DT == 10.0d0
+     NDTFAST == 20
+  NTIMES_ANA == 2160
+  NTIMES_FCT == 2160
+       ERstr =  1
+       ERend =  1
+      Nouter =  1
+      Ninner =  1
+     Nsaddle =  1
+  Nintervals =  1
+         NEV =  2
+         NCV =  10
+       NRREC == 0
+   LcycleRST == T
+        NRST == 8640
+        NSTA == 1
+        NFLT == 1
+       NINFO == 1
+     LDEFOUT == T
+        NHIS == 360
+     NDEFHIS == 0
+        NXTR == 360
+     NDEFXTR == 0
+        NQCK == 0
+     NDEFQCK == 0
+      NTSAVG == 1
+        NAVG == 360
+     NDEFAVG == 0
+      NTSDIA == 1
+        NDIA == 360
+     NDEFDIA == 0
+   LcycleTLM == F
+        NTLM == 360
+     NDEFTLM == 0
+   LcycleADJ == F
+        NADJ == 360
+     NDEFADJ == 0
+        NSFF == 360
+        NOBC == 360
+   LmultiGST =  F
+     LrstGST =  F
+  MaxIterGST =  500
+        NGST =  10
+    Ritz_tol =  1.0d-15
+        TNU2 == 10.0d0 10.0d0 10.0d0
+        TNU4 == 0.0d0 0.0d0 0.0d0
+     ad_TNU2 == 10.0d0 10.0d0 10.0d0
+     ad_TNU4 == 0.0d0 0.0d0 0.0d0
+       VISC2 == 10.0d0
+       VISC4 == 0.0d0
+    ad_VISC2 == 0.0d0
+    ad_VISC4 == 0.0d0
+    LuvSponge == F
+LtracerSponge == F F
+     AKT_BAK == 1.0d-06 1.0d-06 1.0d-06
+  ad_AKT_fac == 1.0d0  1.0d0
+     AKV_BAK == 1.0d-05
+  ad_AKV_fac == 1.0d0
+   AKT_LIMIT == 1.0d-3 1.0d-3
+   AKV_LIMIT == 1.0d-3
+     AKK_BAK == 5.0d-6
+     AKP_BAK == 5.0d-6
+      TKENU2 == 0.0d0
+      TKENU4 == 0.0d0
+       GLS_P == 3.0d0
+       GLS_M == 1.5d0
+       GLS_N == -1.0d0
+    GLS_Kmin == 7.6d-6
+    GLS_Pmin == 1.0d-12
+    GLS_CMU0 == 0.5477d0
+      GLS_C1 == 1.44d0
+      GLS_C2 == 1.92d0
+     GLS_C3M == -0.4d0
+     GLS_C3P == 1.0d0
+    GLS_SIGK == 1.0d0
+    GLS_SIGP == 1.30d0
+  CHARNOK_ALPHA == 1400.0d0
+ ZOS_HSIG_ALPHA == 0.5d0
+       SZ_ALPHA == 0.25d0
+      CRGBAN_CW == 100.0d0
+   WEC_ALPHA == 0.0d0
+        RDRG == 3.0d-04
+       RDRG2 == 3.0d-03
+         Zob == 0.02d0
+         Zos == 0.02d0
+      BLK_ZQ == 10.0d0
+      BLK_ZT == 10.0d0
+      BLK_ZW == 10.0d0
+       DCRIT == 0.10d0
+       WTYPE == 1
+     LEVSFRC == 15
+     LEVBFRC == 1
+  Vtransform == 2
+ Vstretching == 4
+     THETA_S == 7.0d0
+     THETA_B == 0.1d0
+      TCLINE == 200.0d0
+        RHO0 =  1025.0d0
+     BVF_BAK =  1.0d-5
+      Lnodal =  T
+      DSTART = 58120.0000000000d0
+  TIDE_START =  0.0d0
+    TIME_REF = 18581117.0d0
+       TNUDG == 1.0d0 1.0d0 1.0d0
+       ZNUDG == 0.5d0
+      M2NUDG == 0.5d0
+      M3NUDG == 1.0d0
+      OBCFAC == 10.0d0
+          R0 == 1027.0d0
+          T0 == 14.0d0
+          S0 == 35.0d0
+       TCOEF == 1.7d-4
+       SCOEF == 0.0d0
+      GAMMA2 == 1.0d0
+      LuvSrc == F
+       LwSrc == F
+  LtracerSrc == F F F
+     LsshCLM == F
+      Lm2CLM == F
+      Lm3CLM == F
+  LtracerCLM == F F F
+ LnudgeM2CLM == F
+ LnudgeM3CLM == F
+  LnudgeTCLM == F F F
+       DstrS == 0.0d0
+       DendS == 0.0d0
+       KstrS == 1
+       KendS == 1
+Lstate(isFsur) == F
+Lstate(isUbar) == F
+Lstate(isVbar) == F
+Lstate(isUvel) == F
+Lstate(isVvel) == F
+Lstate(isWvel) == F
+Lstate(isTvar) == F F
+Fstate(isFsur) == F
+Fstate(isUbar) == F
+Fstate(isVbar) == F
+Fstate(isUvel) == F
+Fstate(isVvel) == F
+Fstate(isTvar) == F F
+Fstate(isUstr) == T
+Fstate(isVstr) == T
+Fstate(isTsur) == F F
+      SO_decay == 2.0d0
+SO_sdev(isFsur) == 1.0d0
+SO_sdev(isUbar) == 1.0d0
+SO_sdev(isVbar) == 1.0d0
+SO_sdev(isUvel) == 1.0d0
+SO_sdev(isVvel) == 1.0d0
+SO_sdev(isTvar) == 1.0d0 1.0d0
+SO_sdev(isUstr) == 1.0d0
+SO_sdev(isVstr) == 1.0d0
+SO_sdev(isTsur) == 1.0d0 1.0d0
+Hout(idUvel) == T
+Hout(idVvel) == T
+Hout(idu3dE) == F
+Hout(idv3dN) == F
+Hout(idWvel) == T
+Hout(idOvel) == T
+Hout(idOvil) == F
+Hout(idUbar) == T
+Hout(idVbar) == T
+Hout(idu2dE) == F
+Hout(idv2dN) == F
+Hout(idFsur) == T
+Hout(idBath) == F
+Hout(idTvar) == T T
+Hout(idUzsl) == F
+Hout(idVzsl) == F
+Hout(idUzsE) == F
+Hout(idVzsN) == F
+Hout(id3dPV) == F
+Hout(id3dRV) == F
+Hout(idPVzs) == F
+Hout(idRVzs) == F
+Hout(idzslT) == F F
+Hout(idpthR) == F
+Hout(idpthU) == F
+Hout(idpthV) == F
+Hout(idpthW) == F
+Hout(idUsms) == F
+Hout(idVsms) == F
+Hout(idUbms) == F
+Hout(idVbms) == F
+Hout(idUbrs) == F
+Hout(idVbrs) == F
+Hout(idUbws) == F
+Hout(idVbws) == F
+Hout(idUbcs) == F
+Hout(idVbcs) == F
+Hout(idUVwc) == F
+Hout(idUbot) == F
+Hout(idVbot) == F
+Hout(idUbur) == F
+Hout(idVbvr) == F
+Hout(idWztw) == F
+Hout(idWqsp) == F
+Hout(idWbeh) == F
+Hout(idU2rs) == F
+Hout(idV2rs) == F
+Hout(idU3rs) == F
+Hout(idV3rs) == F
+Hout(idU2Sd) == F
+Hout(idV2Sd) == F
+Hout(idU3Sd) == F
+Hout(idV3Sd) == F
+Hout(idW3St) == F
+Hout(idW3Sd) == F
+Hout(idWamp) == F
+Hout(idWlen) == F
+Hout(idWlep) == F
+Hout(idWdir) == F
+Hout(idWdip) == F
+Hout(idWptp) == F
+Hout(idWpbt) == F
+Hout(idWorb) == F
+Hout(idWbrk) == F
+Hout(idUwav) == F
+Hout(idVwav) == F
+Hout(idWdif) == F
+Hout(idWdib) == F
+Hout(idWdiw) == F
+Hout(idWdis) == F
+Hout(idWrol) == F
+Hout(idPair) == F
+Hout(idTair) == F
+Hout(idUair) == F
+Hout(idVair) == F
+Hout(idUaiE) == F
+Hout(idVaiN) == F
+Hout(idTsur) == F F
+Hout(idLhea) == F
+Hout(idShea) == F
+Hout(idLrad) == F
+Hout(idSrad) == F
+Hout(idEmPf) == F
+Hout(idevap) == F
+Hout(idrain) == F
+Hout(idDano) == T
+Hout(idVvis) == T
+Hout(idTdif) == T
+Hout(idSdif) == T
+Hout(idHsbl) == F
+Hout(idHbbl) == F
+Hout(idMtke) == F
+Hout(idMtls) == F
+ Hout(inert) == T
+ Hout(Znert) == F
+Qout(idUvel) == F
+Qout(idVvel) == F
+Qout(idu3dE) == F
+Qout(idv3dN) == F
+Qout(idWvel) == F
+Qout(idOvel) == F
+Qout(idUbar) == T
+Qout(idVbar) == T
+Qout(idu2dE) == F
+Qout(idv2dN) == F
+Qout(idFsur) == T
+Qout(idBath) == T
+Qout(idTvar) == F F
+Qout(idUsur) == T
+Qout(idVsur) == T
+Qout(idUsuE) == T
+Qout(idVsuN) == T
+Qout(idsurT) == T T
+Qout(idUzsl) == F
+Qout(idVzsl) == F
+Qout(idUzsE) == F
+Qout(idVzsN) == F
+Qout(idPVzs) == F
+Qout(idRVzs) == F
+Qout(idzslT) == F F
+Qout(idpthR) == F
+Qout(idpthU) == F
+Qout(idpthV) == F
+Qout(idpthW) == F
+Qout(idUsms) == F
+Qout(idVsms) == F
+Qout(idUbms) == F
+Qout(idVbms) == F
+Qout(idUbrs) == F
+Qout(idVbrs) == F
+Qout(idUbws) == F
+Qout(idVbws) == F
+Qout(idUbcs) == F
+Qout(idVbcs) == F
+Qout(idUVwc) == F
+Qout(idUbot) == F
+Qout(idVbot) == F
+Qout(idUbur) == F
+Qout(idVbvr) == F
+Qout(idWztw) == F
+Qout(idWqsp) == F
+Qout(idWbeh) == F
+Qout(idU2rs) == F
+Qout(idV2rs) == F
+Qout(idU3rs) == F
+Qout(idV3rs) == F
+Qout(idU2Sd) == F
+Qout(idV2Sd) == F
+Qout(idU3Sd) == F
+Qout(idV3Sd) == F
+Qout(idW3St) == F
+Qout(idW3Sd) == F
+Qout(idWamp) == F
+Qout(idWlen) == F
+Qout(idWlep) == F
+Qout(idWdir) == F
+Qout(idWdip) == F
+Qout(idWptp) == F
+Qout(idWpbt) == F
+Qout(idWorb) == F
+Qout(idWbrk) == F
+Qout(idUwav) == F
+Qout(idVwav) == F
+Qout(idWdif) == F
+Qout(idWdib) == F
+Qout(idWdiw) == F
+Qout(idWdis) == F
+Qout(idWrol) == F
+Qout(idPair) == F
+Qout(idPBLh) == F
+Qout(idTair) == F
+Qout(idUair) == F
+Qout(idVair) == F
+Qout(idUaiE) == F
+Qout(idVaiN) == F
+Qout(idTsur) == F F
+Qout(idLhea) == F
+Qout(idShea) == F
+Qout(idLrad) == F
+Qout(idSrad) == F
+Qout(idEmPf) == F
+Qout(idevap) == F
+Qout(idrain) == F
+Qout(idDano) == F
+Qout(idVvis) == F
+Qout(idTdif) == F
+Qout(idSdif) == F
+Qout(idHsbl) == F
+Qout(idHbbl) == F
+Qout(idMtke) == F
+Qout(idMtls) == F
+ Qout(inert) == F
+ Qout(Znert) == F
+ Qout(Snert) == F
+Aout(idUvel) == T
+Aout(idVvel) == T
+Aout(idu3dE) == F
+Aout(idv3dN) == F
+Aout(idWvel) == T
+Aout(idOvel) == T
+Aout(idUbar) == T
+Aout(idVbar) == T
+Aout(idu2dE) == F
+Aout(idv2dN) == F
+Aout(idFsur) == T
+Aout(idBath) == F
+Aout(idTvar) == T T
+Aout(idUsms) == F
+Aout(idVsms) == F
+Aout(idUbms) == F
+Aout(idVbms) == F
+Aout(idUbrs) == F
+Aout(idVbrs) == F
+Aout(idUbws) == F
+Aout(idVbws) == F
+Aout(idUbcs) == F
+Aout(idVbcs) == F
+Aout(idUVwc) == F
+Aout(idUbot) == F
+Aout(idVbot) == F
+Aout(idUbur) == F
+Aout(idVbvr) == F
+Aout(idWztw) == F
+Aout(idWqsp) == F
+Aout(idWbeh) == F
+Aout(idU2rs) == F
+Aout(idV2rs) == F
+Aout(idU3rs) == F
+Aout(idV3rs) == F
+Aout(idU2Sd) == F
+Aout(idV2Sd) == F
+Aout(idU3Sd) == F
+Aout(idV3Sd) == F
+Aout(idW3St) == F
+Aout(idW3Sd) == F
+Aout(idWamp) == F
+Aout(idWlen) == F
+Aout(idWlep) == F
+Aout(idWdir) == F
+Aout(idWptp) == F
+Aout(idWpbt) == F
+Aout(idWorb) == F
+Aout(idWbrk) == F
+Aout(idUwav) == F
+Aout(idVwav) == F
+Aout(idWdif) == F
+Aout(idWdib) == F
+Aout(idWdiw) == F
+Aout(idWdis) == F
+Aout(idWrol) == F
+Aout(idPair) == F
+Aout(idTair) == F
+Aout(idUair) == F
+Aout(idVair) == F
+Aout(idUaiE) == F
+Aout(idVaiN) == F
+Aout(idTsur) == F F
+Aout(idLhea) == F
+Aout(idShea) == F
+Aout(idLrad) == F
+Aout(idSrad) == F
+Aout(idevap) == F
+Aout(idrain) == F
+Aout(idDano) == T
+Aout(idVvis) == T
+Aout(idTdif) == T
+Aout(idSdif) == T
+Aout(idHsbl) == F
+Aout(idHbbl) == F
+Aout(id2dRV) == F
+Aout(id3dRV) == F
+Aout(id2dPV) == F
+Aout(id3dPV) == F
+Aout(idu3dD) == F
+Aout(idv3dD) == F
+Aout(idu2dD) == F
+Aout(idv2dD) == F
+Aout(idFsuD) == F
+Aout(idTrcD) == F F
+Aout(idHUav) == T
+Aout(idHVav) == T
+Aout(idUUav) == T
+Aout(idUVav) == T
+Aout(idVVav) == T
+Aout(idU2av) == T
+Aout(idV2av) == T
+Aout(idZZav) == T
+Aout(idTTav) == F F F
+Aout(idUTav) == F F F
+Aout(idVTav) == F F F
+Aout(iHUTav) == F F F
+Aout(iHVTav) == F F F
+ Aout(inert) == T
+Dout(M2rate) == T
+Dout(M2pgrd) == T
+Dout(M2fcor) == T
+Dout(M2hadv) == T
+Dout(M2xadv) == T
+Dout(M2yadv) == T
+Dout(M2hvis) == T
+Dout(M2xvis) == T
+Dout(M2yvis) == T
+Dout(M2sstr) == T
+Dout(M2bstr) == T
+Dout(M3rate) == T
+Dout(M3pgrd) == T
+Dout(M3fcor) == T
+Dout(M3hadv) == T
+Dout(M3xadv) == T
+Dout(M3yadv) == T
+Dout(M3vadv) == T
+Dout(M3hvis) == T
+Dout(M3xvis) == T
+Dout(M3yvis) == T
+Dout(M3vvis) == T
+Dout(M2hjvf) == T
+Dout(M2kvrf) == T
+Dout(M2fsco) == T
+Dout(M2sstm) == T
+Dout(M2bstm) == T
+Dout(M2wrol) == T
+Dout(M2wbrk) == T
+Dout(M2zeta) == T
+Dout(M2zetw) == T
+Dout(M2zqsp) == T
+Dout(M2zbeh) == T
+Dout(M3hjvf) == T
+Dout(M3vjvf) == T
+Dout(M3kvrf) == T
+Dout(M3fsco) == T
+Dout(M3sstm) == T
+Dout(M3bstm) == T
+Dout(M3wrol) == T
+Dout(M3wbrk) == T
+Dout(iTrate) == T T
+Dout(iThadv) == T T
+Dout(iTxadv) == T T
+Dout(iTyadv) == T T
+Dout(iTvadv) == T T
+Dout(iThdif) == T T
+Dout(iTxdif) == T T
+Dout(iTydif) == T T
+Dout(iTsdif) == T T
+Dout(iTvdif) == T T
+      NSLICE =  0
+     Z_SLICE =  0.0d0 -50.0d0 -100.0d0
+       NUSER =  0
+        USER =  0.d0
+     INP_LIB =  1
+     OUT_LIB =  1
+  PIO_METHOD =  2
+ PIO_IOTASKS =  1
+  PIO_STRIDE =  1
+    PIO_BASE =  0
+  PIO_AGGREG =  1
+   PIO_REARR =  1
+PIO_REARRCOM =  1
+PIO_REARRDIR = 0
+  PIO_C2I_HS = T
+PIO_C2I_Send = T
+PIO_C2I_Preq = 64
+  PIO_I2C_HS = T
+PIO_I2C_Send = T
+PIO_I2C_Preq = 65
+  NC_SHUFFLE =  1
+  NC_DEFLATE =  1
+   NC_DLEVEL =  1
+ ExtractFlag == 0
+     GRXNAME == roms_extract_grd.nc
+     GRDNAME == ../input/ES3K_JAPAN_SEA_TEST_ACTIVE.nc
+     ININAME == ../input/roms_ini_japan_sea_es3k_test_glorys12v1_20180102.nc
+     ITLNAME == roms_itl.nc
+     IRPNAME == roms_irp.nc
+     IADNAME == roms_iad.nc
+     FWDNAME == roms_fwd.nc
+     ADSNAME == roms_ads.nc
+    FOInameA == roms_foi_a.nc
+    FOInameB == roms_foi_b.nc
+    FCTnameA == roms_fct_a.nc
+    FCTnameB == roms_fct_b.nc
+     NGCNAME =  roms_ngc.nc
+    NBCFILES == 1
+     BRYNAME == ../input/roms_bdy_japan_sea_es3k_test_glorys12v1_20180102_20180103.nc
+   NCLMFILES == 1
+     CLMNAME == ../input/roms_ini_japan_sea_es3k_test_glorys12v1_20180102.nc
+     NUDNAME == none
+     SSFNAME == none
+    TIDENAME == ../input/roms_tides_japan_sea_es3k_test_20180102.nc
+     NFFILES == 2
+     FRCNAME == ../input/roms_atm_japan_sea_es3k_test_20180102_20180103.nc \
+                ../input/roms_rad_japan_sea_es3k_test_20180102_20180103.nc
+     DAINAME == roms_dai.nc
+     GSTNAME == roms_gst.nc
+     RSTNAME == ../output/rst_japan_sea_external_6h_glorys12v1.nc
+     HISNAME == ../output/his_japan_sea_external_6h_glorys12v1.nc
+     XTRNAME == ../output/xtr_japan_sea_pilot_glorys12v1.nc
+     QCKNAME == ../output/qck_japan_sea_pilot_glorys12v1.nc
+     TLMNAME == roms_tlm.nc
+     TLFNAME == roms_tlf.nc
+     ADJNAME == roms_adj.nc
+     AVGNAME == ../output/avg_japan_sea_external_6h_glorys12v1.nc
+     HARNAME == roms_har.nc
+     DIANAME == ../output/dia_japan_sea_external_6h_glorys12v1.nc
+     STANAME == roms_sta.nc
+     FLTNAME == roms_flt.nc
+     APARNAM =  ROMS/External/s4dvar.in
+     SPOSNAM =  ROMS/External/stations.in
+     FPOSNAM =  ROMS/External/floats.in
+     BPARNAM =  ROMS/External/bio_Fennel.in
+     SPARNAM =  ROMS/External/sediment.in
+     VEGNAME =  ROMS/External/vegetation.in
+     USRNAME =  ROMS/External/MyFile.dat
