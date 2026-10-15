@@ -150,13 +150,24 @@ def _native_face_h_zeta(h:np.ndarray,zeta:np.ndarray,j:int,i:int,kind:str)->tupl
 
 def _face_target(h:np.ndarray,zeta:np.ndarray,angle:np.ndarray,
                  j:int,i:int,kind:str)->tuple[float,float,float]:
+    # ROMS grid angles wrap at +/-pi. Linear averages of +179 and
+    # -179 degrees yield 0 (east), whereas true face orientation is 180
+    # (west). Circular pair mean is mandatory for native velocity faces.
+    def circular_midpoint(a:float,b:float)->float:
+        if not np.isfinite([a,b]).all():
+            raise ValueError("child native face angle is nonfinite")
+        x=np.cos(a)+np.cos(b)
+        y=np.sin(a)+np.sin(b)
+        if np.hypot(x,y)<1e-10:
+            raise ValueError("ambiguous antipodal child face grid angles")
+        return float(np.arctan2(y,x))
     if kind=="u":
         return (float(.5*(h[j,i]+h[j,i+1])),
                 float(.5*(zeta[j,i]+zeta[j,i+1])),
-                float(.5*(angle[j,i]+angle[j,i+1])))
+                circular_midpoint(angle[j,i],angle[j,i+1]))
     return (float(.5*(h[j,i]+h[j+1,i])),
             float(.5*(zeta[j,i]+zeta[j+1,i])),
-            float(.5*(angle[j,i]+angle[j+1,i])))
+            circular_midpoint(angle[j,i],angle[j+1,i]))
 
 
 def _source_profile(v:np.ndarray,z_source:np.ndarray,z_target:np.ndarray,
