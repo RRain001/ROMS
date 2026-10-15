@@ -57,7 +57,7 @@ def validate_prepared(grid:Dataset,prepared:dict,time_s:np.ndarray,*,n:int,
     times=np.asarray(time_s,dtype=float)
     if times.ndim!=1 or len(times)<2 or not np.isfinite(times).all() or not (np.diff(times)>0).all():
         raise ValueError("bry_time must have >=2 finite strictly ascending timestamps")
-    if " since " not in units.lower() or not isinstance(units,str):
+    if not isinstance(units,str) or " since " not in units.lower():
         raise ValueError("invalid CF bry_time epoch units")
     try:
         num2date(times,units=units,calendar="gregorian")
@@ -173,21 +173,22 @@ def main():
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--report",type=Path,required=True)
     p.add_argument("--synthetic-fixture-only",action="store_true",required=True)
+    p.add_argument("--synthetic-n-levels",type=int,default=4,help="fixture-only N; e.g. 41 to inspect full-size geometry")
     a=p.parse_args()
     prepared={}
     with Dataset(a.child_grid) as grid:
         for side in _SIDES:
             prepared[side]={}
             for field in _NAMES:
-                _,wet=boundary_spec(grid,side,field,4,2)
-                shape=(2,4,len(wet)) if field in ("temp","salt","u","v") else (2,len(wet))
+                _,wet=boundary_spec(grid,side,field,a.synthetic_n_levels,2)
+                shape=(2,a.synthetic_n_levels,len(wet)) if field in ("temp","salt","u","v") else (2,len(wet))
                 # Non-zero synthetic profiles: supply an actual array at EVERY
                 # perimeter position, even when all-dry. Dry is not physics.
                 vals={"zeta":.12,"temp":13.5,"salt":33.5,
                       "u":.18,"v":-.08,"ubar":.18,"vbar":-.08}[field]
                 prepared[side][field]=np.full(shape,vals,dtype=np.float64)
     report=write_synthetic_schema_fixture(a.child_grid,a.output,prepared,
-                                          np.array([0.,3600.]),n=4)
+                                          np.array([0.,3600.]),n=a.synthetic_n_levels)
     a.report.parent.mkdir(parents=True,exist_ok=True)
     a.report.write_text(json.dumps(report,indent=2)+"\n")
     print("UD1K_SYNTHETIC_BOUNDARY_FILE_SCHEMA_CONTRACT",json.dumps({
