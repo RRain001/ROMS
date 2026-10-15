@@ -28,6 +28,11 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_rho_fallback_map.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_full_rho_boundary_map.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_full_rho_boundary_map.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_full_rho_coastline_repair.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_full_rho_coastline_repair.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_cgrid_velocity.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_cgrid_velocity.py'
+      - 'ROMS_Nesting/Data_pre/scripts/nesting/audit_ud1k_boundary_velocity_support.py'
       - 'ROMS_Nesting/configs/ud1k_kim2020_table1_trial.json'
       - 'ROMS_Nesting/configs/ud1k_user_20261014_frozen.json'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
@@ -61,6 +66,8 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_coastal_waterpath_fallback.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_rho_fallback_map.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_full_rho_boundary_map.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_full_rho_coastline_repair.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_cgrid_velocity.py' -v
           python -m py_compile \
             ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py \
             ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py
@@ -392,12 +399,60 @@ jobs:
           print("UD1K_ALL_1017_BOUNDARY_COUNTS",json.dumps(x["counts"],sort_keys=True))
           print("UD1K_ALL_1017_BOUNDARY_SCALAR_TEST",json.dumps(x["real_data_numeric_check"],sort_keys=True))
           PY
+      - name: Real 9 coastal crossing quad rescue with shoreline-clear 3-of-4 or bounded wet visible fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/nesting/ud1k_full_rho_coastline_repair.py \
+            --parent-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc" \
+            --child-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc" \
+            --full-map-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_all_1017_wet_rho_boundary_mapping.json" \
+            --gshhg-base "$RUNNER_TEMP/ES3K_REAL_SOURCE/GSHHS_shp" \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_all_1017_wet_rho_coast_sensitive_candidates.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          data=json.loads((root/"ud1k_all_1017_wet_rho_coast_sensitive_candidates.json").read_text())
+          assert len(data["all_1017_mapped_RHO_records"])==1017
+          assert data["input_ordinary_four_wet_GSHHG_conflicts"]==9
+          assert data["unresolved_coastline_conflicts"]==0
+          assert data["source_masks_modified"] is False
+          assert data["physical_staggered_UV_vertical_bry_flux"]=="NOT_RUN"
+          print("UD1K_1017_REPAIRED_GSHHG_CROSSING_QUADS",json.dumps({
+            "triangles":data["resolved_using_same_quad_safe_three_wet_triangle"],
+            "multi_wet_extrap":data["resolved_using_connected_multi_wet_extrapolation"],
+            "single_wet_extrap":data["resolved_using_single_wet_extrapolation"],
+            "unresolved":data["unresolved_coastline_conflicts"],
+          },sort_keys=True))
+          PY
+      - name: Audit native C-grid face support for all updated UD1K boundary parent RHO donors
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/scripts/nesting/audit_ud1k_boundary_velocity_support.py \
+            --parent-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc" \
+            --full-rho-map "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_all_1017_wet_rho_boundary_mapping.json" \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_native_cgrid_parent_face_support.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          p=root/"ud1k_native_cgrid_parent_face_support.json"
+          x=json.loads(p.read_text())
+          assert x["receiver_count"]==1017
+          assert x["parent_local_rotation_angle_available"] is True
+          assert x["physical_vector_flux_acceptance"]=="NOT_RUN"
+          print("UD1K_RHO_NATIVE_UV_FACE_POTENTIAL_BLOCKERS",x["receiver_RHO_points_with_missing_U_or_V_donor"])
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: ud1k-27-wet-boundary-mapping-small-json
           path: |
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_27_rho_wet_boundary_stencil_manifest.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_all_1017_wet_rho_boundary_mapping.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_all_1017_wet_rho_coast_sensitive_candidates.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_native_cgrid_parent_face_support.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_20_coast_visible_bounded_fallback.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_27_rho_wet_boundary_stencil_manifest.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_27_coastal_triangle_review.json
