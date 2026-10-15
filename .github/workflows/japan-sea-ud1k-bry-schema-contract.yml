@@ -14,6 +14,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_remap_preview.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_normal_flux_preview.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_nonconstant_boundary_flux_preview.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_optionb_manifest_contract.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_optionb_manifest_contract.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -39,6 +41,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_remap_preview.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_normal_flux_preview.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_nonconstant_boundary_flux_preview.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_optionb_manifest_contract.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_optionb_manifest_contract.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -75,6 +79,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_bry_schema_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_remap_preview.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_nonconstant_boundary_flux_preview.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_real_optionb_manifest_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_micro_preflight.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_converter_micro.py' -v
@@ -174,6 +179,56 @@ jobs:
           name: ud1k-synthetic-only-parent-history-and-bry-schema-fixture
           path: ${{ runner.temp }}/ud1k_synthetic_contract
           retention-days: 14
+
+  real-optionb-archived-static-mapping-contract:
+    # Small archived native 290x438 candidate-B grid + two donor JSONs
+    # (~2.3MB zipped); no parent ES3K 157MB artifact, no terrain download.
+    # Temporarily run this small archival regression on PR to establish
+    # interoperability; after acceptance it can be switched to manual-only.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install only small map contract dependencies
+        run: python -m pip install --disable-pip-version-check numpy netCDF4
+      - name: Reuse original I3 accepted small archived candidate-B artifact (NO GEBCO network)
+        uses: actions/download-artifact@v4
+        with:
+          name: ud1k-27-wet-boundary-mapping-small-json
+          run-id: 38680030642
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/real-static-optionb
+      - name: Audit actual Option B 1011 RHO, 1005 U, 1010 V donors and 1012 normal faces
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/real-static-optionb"
+          python ROMS_Nesting/Data_pre/nesting/ud1k_real_optionb_manifest_contract.py \
+            --grid "$root/UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc" \
+            --rho-map "$root/ud1k_core_shoreline_clear_1011_rho_map.json" \
+            --native-uv-map "$root/ud1k_core_shoreline_clear_native_uv_boundary_map.json" \
+            --report-json "$RUNNER_TEMP/UD1K_REAL_OPTIONB_STATIC_DONORS_ONLY.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          x=json.loads((Path(os.environ["RUNNER_TEMP"])/"UD1K_REAL_OPTIONB_STATIC_DONORS_ONLY.json").read_text())
+          assert {k:v["verified_native_wet_receiver_count"] for k,v in x["receivers"].items()} == {"rho":1011,"u":1005,"v":1010}
+          assert x["wet_native_open_normal_section_counts"]=={"south":382,"north":364,"west":0,"east":266}
+          assert x["total_wet_native_open_normal_faces"]==1012
+          assert x["parent_wet_cell_and_native_face_support"].startswith("NOT_RECHECKED")
+          assert x["actual_time_dependent_bry_and_parent_child_mass_flux"]=="NOT_RUN"
+          assert x["option_b_status"]=="COMPARISON_CANDIDATE_NOT_ACTIVE"
+          print("REAL_OPTION_B_ARCHIVED_STATIC_ONLY_DONORS_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-optionb-archived-static-donor-report-only
+          path: ${{ runner.temp }}/UD1K_REAL_OPTIONB_STATIC_DONORS_ONLY.json
+          retention-days: 7
 
   real-candidate-b-geometry-synthetic-bry-schema:
     # Opt-in only: routine push/PR checks must stay small and fast.
