@@ -19,7 +19,7 @@ for part in ("nesting","tests"):
     if p not in sys.path:sys.path.insert(0,p)
 
 from ud1k_cf_time_bridge import bridge_target_to_parent_cf_time
-from ud1k_boundary_remap_preview import prepare_boundary_preview
+from ud1k_boundary_remap_preview import prepare_boundary_preview,_face_target
 from ud1k_bry_schema_contract import write_synthetic_schema_fixture
 from test_ud1k_parent_history_contract import synthetic_parent_grid,synthetic_parent_history
 from test_ud1k_bry_schema_contract import child_grid
@@ -180,6 +180,43 @@ class SourcePreviewTimeAndWetFace(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"time gap"):
             self.preview(target_time_units=MJD_UNITS,
                          target_time_calendar="gregorian")
+
+    def test_child_grid_angle_wrap_on_native_u_and_v_faces(self):
+        h=np.full((3,4),100.)
+        zeta=np.zeros((3,4))
+        angle=np.zeros((3,4))
+        angle[1,1]=np.deg2rad(179.)
+        angle[1,2]=np.deg2rad(-179.)
+        # RHO j1 i1 and i2 bracket the native U face (1,1).
+        _,_,au=_face_target(h,zeta,angle,1,1,"u")
+        self.assertLess(abs(abs(au)-np.pi),1e-12)
+        angle[2,1]=np.deg2rad(-179.)
+        _,_,av=_face_target(h,zeta,angle,1,1,"v")
+        self.assertLess(abs(abs(av)-np.pi),1e-12)
+
+    def test_full_remapper_rotates_across_wrapped_native_face_angle(self):
+        with Dataset(self.child,"a") as ds:
+            angle=ds["angle"][:]
+            # Native U south face at eta_u=0, xi_u=3 uses rho x=3,4.
+            angle[0,3]=np.deg2rad(179.)
+            angle[0,4]=np.deg2rad(-179.)
+            # Native V south at xi_v=3 uses rho eta 0,1.
+            angle[1,3]=np.deg2rad(-179.)
+            ds["angle"][:]=angle
+        fields,_=self.preview(np.array([0.,1800.,3600.]))
+        # Parent local angle 0; geographic east U=.15, north V=-.05.
+        # Child native local angle nearly pi => U=-.15, V=+.05.
+        self.assertAlmostEqual(fields["south"]["u"][1,2,3],-.15,places=12)
+        self.assertAlmostEqual(fields["south"]["v"][1,2,3],+.05,places=12)
+
+    def test_ambiguous_opposite_native_face_angles_fail_closed(self):
+        h=np.full((3,4),100.)
+        zeta=np.zeros((3,4))
+        angle=np.zeros((3,4))
+        angle[1,1]=0.
+        angle[1,2]=np.pi
+        with self.assertRaisesRegex(ValueError,"ambiguous antipodal"):
+            _face_target(h,zeta,angle,1,1,"u")
 
     def test_wrong_bry_epoch_rejected_not_treated_as_source_time(self):
         with self.assertRaisesRegex(ValueError,"outside parent"):
