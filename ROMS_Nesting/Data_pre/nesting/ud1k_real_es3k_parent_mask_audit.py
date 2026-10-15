@@ -80,7 +80,6 @@ def check_real_parent_donors(
             if key=="h" and np.any(a[wet]<=0):
                 raise ValueError("real ES3K parent wet h not positive")
         h=np.asarray(ds["h"][:],dtype=float)
-        coordinate_pairs={}
         for kind,rows in records.items():
             source_key=SOURCES[kind][0]
             counts={"source_donor_references":0,"zero_weight_references":0,
@@ -91,8 +90,6 @@ def check_real_parent_donors(
                 weights=row["weights"]
                 for pair,weight in zip(donors,weights,strict=True):
                     j,i=pair
-                    if (j,i) not in coordinate_pairs:
-                        coordinate_pairs[(j,i)]=True
                     counts["source_donor_references"]+=1
                     if weight==0:
                         counts["zero_weight_references"]+=1
@@ -112,8 +109,9 @@ def check_real_parent_donors(
                 raise ValueError("source record count differs from original Option B manifest")
             counts["unique_parent_RHO_nodes"]=len(used)
             kinds[kind]=counts
-        all_j=np.array([j for j,i in unique],dtype=int)
-        all_i=np.array([i for j,i in unique],dtype=int)
+        ordered=sorted(unique)
+        all_j=np.array([j for j,i in ordered],dtype=int)
+        all_i=np.array([i for j,i in ordered],dtype=int)
         if not len(unique) or not np.isfinite(h[all_j,all_i]).all():
             raise ValueError("invalid ES3K real parent donor list or bathymetry")
         digest=hashlib.sha256(np.stack([all_j,all_i],axis=-1).astype("<i4")
