@@ -162,6 +162,75 @@ os.environ["ROMS_NESTING_ROOT"] = str(DATA_PRE_ROOT.parent)
 
 ---
 
+## 数据准备阶段新发现（2026-10-15 追加）
+
+### Q9. GLORYS 下载窗口的起点会静默决定初始场是哪一天
+
+**背景**
+`download_glorys12v1_staged.py:55` 的 `center_time()` 取的是**窗口起始日**的 12:00，不是窗口中点：
+
+```python
+def center_time(config: dict, window: TimeWindow) -> datetime:
+    hh, mm, ss = [int(item) for item in str(config["time_mean_center"]).split(":")]
+    return datetime(window.start.year, window.start.month, window.start.day, hh, mm, ss)
+```
+
+`write_initial_product()` 用它挑「离它最近的一帧」：
+
+```python
+target = np.datetime64(center_time(config, requested_window).strftime(...))
+time_index = int(np.argmin(np.abs(values - target)))
+```
+
+**后果（实测）**
+为「保险」把窗口从 `2018-01-02T00:00` 加宽到 `2018-01-01T12:00` 起点后，
+初始场被静默选成 **2018-01-01 12:00** 那一帧，而模型需要的是 **2018-01-02 12:00**。
+转换器不会报错（源文件只有一帧，`np.argmin` 返回 0），生成的 ini 表面上完全正常：
+
+```
+time_index=0
+source_time=2018-01-01T12:00:00     # 错：差一天
+model_time=2018-01-02T00:00:00
+```
+
+用 `--start 2018-01-02T00:00:00` 重下后恢复正常（与微型测试基线一致）：
+
+```
+time_index=0
+source_time=2018-01-02T12:00:00     # 对
+model_time=2018-01-02T00:00:00
+```
+
+**注意**：边界场不受影响 —— `write_boundary_product()` 保留请求窗口内的**全部**帧，
+再由 `create_ocean_bry_from_glorys.py` 按 `[start+12h, stop+12h]` 选取，所以窗口加宽只是多下几帧。
+
+**待决**
+1. `center_time()` 是否应改为取窗口中点（或显式接受一个 `--initial-time` 参数）？
+2. 是否应在 `write_initial_product()` 里校验「选中帧的时刻 == 期望源时刻」，不符即失败（fail-closed）？
+   当前这个静默错位只有把 `source_time` 与模型时刻对照才看得出来。
+
+### Q10. ERA5 凭据有两份，其中一份已失效
+
+**实测**
+- `/home/lhy/ROMS/credentials/era5_key.txt`（mode 664，2026-06-26）→ **401 Unauthorized**
+  （`cds.climate.copernicus.eu/api/retrieve/v1/processes/reanalysis-era5-single-levels/execution`，
+  `Authentication failed / operation not allowed`）
+- `/home/lhy/.config/roms/era5.env`（mode 600，2026-10-15 16:38 更新）→ **认证通过**，
+  请求 `0a813dcd-9a66-4cf6-9dae-775f61b9835b` 正常提交
+- 两份文件格式相同（`url:` + `key:`，key 均为 36 字符），但 key 值不同
+
+**待决**
+1. `credentials/era5_key.txt` 是应该更新为有效 key，还是删除以免误用？
+2. `download_era5_staged.py` 默认不读配置里的 `era5.credentials_file`，必须显式传
+   `--credentials-file` 或设 `CDSAPI_KEY`；是否应让默认路径也回退到 `~/.config/roms/era5.env`？
+
+### 关于 CDS 队列延迟（已知风险，非新问题）
+
+2026-10-15 上午的微型尝试中，大气请求成功、辐射请求长期停在 `accepted`（`era5_request_diagnosis.json`）。
+本轮全量请求同样在 `accepted` 排队。辐射请求是全流程最可能的时间瓶颈。
+
+---
+
 ## 附：已完成且无需决策的修复（本轮）
 
 1. **CI 路径过滤补漏**：`.github/workflows/japan-sea-ud1k-bry-schema-contract.yml` 的 `push` 与
