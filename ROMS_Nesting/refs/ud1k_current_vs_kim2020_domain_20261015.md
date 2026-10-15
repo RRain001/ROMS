@@ -26,4 +26,29 @@
 4. Run via [native 15″ CI workflow](../../.github/workflows/japan-sea-es3k-online-native.yml) using [compare_ud1k_domains.py](../Data_pre/scripts/nesting/compare_ud1k_domains.py) and upload JSON file `ud1k_current_vs_kim2020_table1_real_comparison.json`.
 5. Result may be **worse** than the current domain; do not assume the paper boundaries resolve the 27-gap issue. A completely all-wet stencil does not prove no coastline crossings. No native ROMS physics is run.
 
-**Completion:** source configuration frozen, trial source independent, comparison implemented; latest experimental outcome must be read from the actual CI job log/artifact, not inferred from the paper or historical run.
+## D. Verified outcome: Native 15″ real-data comparison (2026-10-15)
+
+**GitHub-hosted Ubuntu success:** [Actions #38660448988](https://github.com/RRain001/ROMS/actions/runs/38660448988), job `116180176178`; in-run comparison printed `PAPER_BOUNDARY_COMPARISON`. The full point-level static comparison report is permanently checked in at [ud1k_kim2020_20261015_real_comparison_evidence.json](ud1k_kim2020_20261015_real_comparison_evidence.json); original full GEBCO/GSHHG candidate grids and report were also uploaded to the successful run's 14-day artifact. Both child grids use identical GEBCO 2026 native 15″ and GSHHG v2.3.7 high L1 shoreline data and exactly the same connected ES3K parent candidate.
+
+| Metric | Frozen user bounds | Kim 2020 Table 1 bounds |
+| --- | ---: | ---: |
+| Domain lon E / lat N | 128.365528–132.411824 E; 34.965472–37.641398 N | 127.5–134.0 E; 35.5–39.0 N |
+| RHO shape eta×xi | 290×438 | 379×703 |
+| RHO wet points | **96,127** | **201,639** |
+| RHO land points | **30,893** | **64,798** |
+| Wet boundary RHO points | **1,017** | **1,426** |
+| Valid all-wet ES3K RHO quadrilaterals | **990** | **1,406** |
+| Uncovered child wet RHO points | **27** | **20** |
+| Fully supported wet boundary rate | **97.3451%** | **98.5975%** |
+| Uncovered south/north/west/east | **21 / 2 / 0 / 4** | **13 / 5 / 0 / 2** |
+| Buffered parent footprint + nearest parent-wet preflight | `PASS_PRELIMINARY_ONLY` | `PASS_PRELIMINARY_ONLY` |
+| Max nearest parent wet (m) | 4427.17 | 4042.96 |
+| Min buffered-parent ring clearance (m) | 140931.97 | 132114.56 |
+| ROMS water dynamics / vector & sigma / tracer flux | **NOT_RUN** | **NOT_RUN** |
+
+**Interpretation:** the reference paper bounds *reduce* static missing quadrilaterals **27→20**, and the unsupported fraction **2.6549%→1.4025%**, despite a larger wet boundary count. But the coastal interpolation gap is **not eliminated**. This is not a paper method validation or a demonstration that either candidate's physical boundary conditions are correct. The results depend on the real GEBCO/GSHHG mask and the selected approximate ES3K geometry; Kim et al.'s original bathymetry and model grid are not identical to those used here.
+
+**Important geographic evidence:** among the **13 paper-south** uncovered points at **35.5°N**, three lie at **129.388889–129.444444°E**, seven at **132.740741–132.814815°E**, two at **133.268519–133.277778°E**, and one at **133.453704°E**. The **5 paper-north** points are at **39°N, 127.861111–127.898148°E**; the **2 paper-east** points are at **134°E, 35.537037–35.546296°N**. Both the count and all zero-based `eta,xi`/lon/lat coordinates are in the JSON evidence. Remarkably, Kim et al. (2020) separately discuss coastal bathymetry/land-versus-sea discrepancies along their southern **35.5°N** boundary, including **132.7–134°E**, in the paper near Fig. 6 (print page 592–593). That supports further coastal-source interrogation, *not* forcing wet points to land.
+
+**Decision:** Keep the current user UD1K `ud1k_candidate.json` intact and treat the paper trial as a comparison only. Do not silently promote it on the basis of one static metric; assess the physics/research extent differences and the 20 coastal stencil points (plus RHO/U/V staggered checks) before deciding whether to select or adjust a domain.
+
