@@ -1,58 +1,8 @@
 name: ES3K I3 Public GEBCO2026 Native15s GSHHG
 
+# Full real GEBCO/GSHHG data rebuild is expensive: opt-in only.
+# Fast synthetic contracts run automatically in japan-sea-ud1k-bry-schema-contract.yml.
 on:
-  pull_request:
-    branches:
-      - feature/japan-sea-nesting
-    paths:
-      - 'ROMS_Nesting/Data_pre/scripts/nesting/fetch_es3k_online_data.py'
-      - '.github/workflows/japan-sea-es3k-online-native.yml'
-      - 'ROMS_Nesting/Data_pre/nesting/es3k_core_component_filter.py'
-      - 'ROMS_Nesting/Data_pre/scripts/nesting/export_es3k_core_mask_candidate.py'
-      - 'ROMS_Nesting/Data_pre/nesting/es3k_wet_domain_audit.py'
-      - 'ROMS_Nesting/Data_pre/nesting/es3k_core_bathymetry_smoothing.py'
-      - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_core_candidate.py'
-      - 'ROMS_Nesting/configs/es3k_i3_vertical_candidate.json'
-      - 'ROMS_Nesting/Data_pre/nesting/es3k_local_slope_projection.py'
-      - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_local_candidate.py'
-      - 'ROMS_Nesting/Data_pre/nesting/validate_nesting_geometries.py'
-      - 'ROMS_Nesting/Data_pre/scripts/nesting/compare_ud1k_domains.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py'
-      - 'ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_wet_triangle_review.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_wet_connected_triangle_review.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_wet_connected_triangle_review.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_coastal_waterpath_fallback.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_coastal_waterpath_fallback.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_rho_fallback_map.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_rho_fallback_map.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_full_rho_boundary_map.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_full_rho_boundary_map.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_full_rho_coastline_repair.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_full_rho_coastline_repair.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_cgrid_velocity.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_cgrid_velocity.py'
-      - 'ROMS_Nesting/Data_pre/scripts/nesting/audit_ud1k_boundary_velocity_support.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_staggered_face_map.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_staggered_face_map.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_vertical_flux_primitives.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_vertical_flux_primitives.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_native_face_component_review.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_native_face_component_review.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_native_face_shoreline_topology.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_native_face_shoreline_topology.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_single_v_face_radius_sensitivity.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_single_v_face_radius_sensitivity.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_connected_core_candidate.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_connected_core_candidate.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_core_rho_mapping_subset.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_perimeter_shoreline_consistency_candidate.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_perimeter_shoreline_consistency_candidate.py'
-      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_vertical_flux_geometry_smoke.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_vertical_flux_geometry_smoke.py'
-      - 'ROMS_Nesting/configs/ud1k_kim2020_table1_trial.json'
-      - 'ROMS_Nesting/configs/ud1k_user_20261014_frozen.json'
-      - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
   workflow_dispatch:
 
 permissions:
