@@ -98,7 +98,7 @@ class StrictParentHistoryTest(unittest.TestCase):
     def test_missing_wet_temperature_fails(self):
         with Dataset(self.h,"a") as f:
             f["temp"][0,1,1,1]=f["temp"]._FillValue
-        with self.assertRaisesRegex(ValueError,"temp contains missing wet"):
+        with self.assertRaisesRegex(ValueError,"temp wet missing field"):
             validate_parent_history(self.g,self.h)
 
     def test_nonmonotone_history_time_fails(self):
