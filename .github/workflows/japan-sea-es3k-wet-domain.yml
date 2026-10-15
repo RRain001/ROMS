@@ -1,23 +1,8 @@
 name: Japan Sea ES3K Wet-Domain I3 Audit
 
+# Test-only Japan Sea phase: run expensive or full-geometry checks manually.
+# Fast source data interface tests run on every scoped PR change.
 on:
-  pull_request:
-    branches:
-      - feature/japan-sea-nesting
-    paths:
-      - 'ROMS_Nesting/Data_pre/nesting/es3k_wet_domain_audit.py'
-      - 'ROMS_Nesting/Data_pre/scripts/nesting/audit_es3k_wet_domain.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
-      - 'ROMS_Nesting/Data_pre/nesting/es3k_core_bathymetry_smoothing.py'
-      - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_core_candidate.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_es3k_core_bathymetry_smoothing.py'
-      - 'ROMS_Nesting/configs/es3k_i3_vertical_candidate.json'
-      - 'ROMS_Nesting/Data_pre/nesting/es3k_local_slope_projection.py'
-      - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_local_candidate.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_es3k_local_slope_projection.py'
-      - 'ROMS_Nesting/Data_pre/tests/test_es3k_core_component_filter.py'
-      - 'ROMS_Nesting/Data_pre/nesting/es3k_core_component_filter.py'
-      - '.github/workflows/japan-sea-es3k-wet-domain.yml'
   workflow_dispatch:
 
 permissions:
