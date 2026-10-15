@@ -129,8 +129,9 @@ def audit_downloaded_sample(path:Path)->dict:
                 raise ValueError(f"GLORYS {name} has no physical units")
             source_fields[name]=str(var.units)
         return {
-            "status":"REAL_GLORYS_JAPAN_SEA_MINISUBSET_SOURCE_ADMITTED",
+            "status":"SMALL_GLORYS_SOURCE_FORMAT_ADMITTED_PROVENANCE_NOT_INDEPENDENTLY_VERIFIED",
             "source_dataset":SOURCE_DATASET,"file_bytes":size,
+            "source_authenticity":"SELF_REPORTED_FILE_METADATA_ONLY",
             "variable_units":source_fields,
             "time_frames":len(values),"first_CF_time":first_iso,"last_CF_time":last_iso,
             "bbox_actual":[float(lon.min()),float(lon.max()),float(lat.min()),float(lat.max())],
