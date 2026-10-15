@@ -33,6 +33,8 @@ on:
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_cgrid_velocity.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_cgrid_velocity.py'
       - 'ROMS_Nesting/Data_pre/scripts/nesting/audit_ud1k_boundary_velocity_support.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_staggered_face_map.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_staggered_face_map.py'
       - 'ROMS_Nesting/configs/ud1k_kim2020_table1_trial.json'
       - 'ROMS_Nesting/configs/ud1k_user_20261014_frozen.json'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
@@ -68,6 +70,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_full_rho_boundary_map.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_full_rho_coastline_repair.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_cgrid_velocity.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_staggered_face_map.py' -v
           python -m py_compile \
             ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py \
             ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py
@@ -451,6 +454,31 @@ jobs:
             "adjusted":len(x["vector_only_rho_stencil_manifest"]["adjusted_receivers"]),
           },sort_keys=True))
           PY
+      - name: Validate true UD1K native U-face and V-face coastal boundary donor maps on real data
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/nesting/ud1k_staggered_face_map.py \
+            --parent-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc" \
+            --child-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc" \
+            --gshhg-base "$RUNNER_TEMP/ES3K_REAL_SOURCE/GSHHS_shp" \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_native_uv_staggered_face_boundary_review.json"
+          python - <<'PY'
+          from pathlib import Path
+          import json,os
+          p=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"/"ud1k_native_uv_staggered_face_boundary_review.json"
+          d=json.loads(p.read_text())
+          assert d["all_current_parent_child_masks_unchanged"] is True
+          assert d["real_UD1K_u_v_ubar_vbar_bry_flux_validation"]=="NOT_RUN"
+          for kind in ("u","v"):
+              r=d["reports"][kind]
+              assert sum(r["counts_by_source_method"].values())==r["native_wet_boundary_face_count"]
+              print("REAL_NATIVE_"+kind.upper()+"_FACE_BOUNDARY_COUNTS",
+                    json.dumps({"wet_faces":r["native_wet_boundary_face_count"],
+                                "sides":r["side_counts_corner_overlap"],
+                                "methods":r["counts_by_source_method"],
+                                "unresolved":r["unresolved_face_receivers"]},sort_keys=True))
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: ud1k-27-wet-boundary-mapping-small-json
@@ -459,6 +487,7 @@ jobs:
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_all_1017_wet_rho_boundary_mapping.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_all_1017_wet_rho_coast_sensitive_candidates.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_native_cgrid_parent_face_support.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_native_uv_staggered_face_boundary_review.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_20_coast_visible_bounded_fallback.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_27_rho_wet_boundary_stencil_manifest.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_27_coastal_triangle_review.json
