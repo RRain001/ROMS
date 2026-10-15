@@ -15,6 +15,8 @@ import numpy as np
 import xarray as xr
 
 from case_naming import load_case_naming, staged_atmosphere_name
+from era5_action_credentials import resolve_era5_credentials
+
 from staged_data_utils import (
     ROOT,
     candidate_first,
@@ -25,7 +27,6 @@ from staged_data_utils import (
     get_time_window,
     load_download_config,
     normalize_longitudes,
-    parse_era5_credentials,
     sort_lat_lon_depth_time,
     accumulated_to_step_amount,
     step_amount_to_rate,
@@ -199,8 +200,11 @@ def main() -> None:
     stop = datetime.fromisoformat(args.stop) if args.stop else window.stop
     if start > stop:
         raise SystemExit("start must not be later than stop")
-    credentials_file = args.credentials_file or config["era5"]["credentials_file"]
-    url, key = parse_era5_credentials(credentials_file)
+    # CI uses CDSAPI_KEY injected by GitHub Actions Secrets; never touch
+    # the historic repository credentials file. Local fallback is allowed
+    # only for an explicit credential file kept OUTSIDE the Git tree.
+    credentials_file = args.credentials_file
+    url, key, credential_source = resolve_era5_credentials(credentials_file)
     if args.atm_output:
         atm_output = Path(args.atm_output)
     elif args.start or args.stop:
@@ -256,6 +260,7 @@ def main() -> None:
         rad_ds.to_netcdf(rad_output, engine="netcdf4")
         rad_src.close()
 
+    print(f"credentials_source={credential_source}")
     print(f"dataset={config['era5']['dataset']}")
     print(f"atm_output={atm_output}")
     print(f"rad_output={rad_output}")
