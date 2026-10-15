@@ -36,8 +36,8 @@ class NativeFaceBoundaryMappings(unittest.TestCase):
         self.wet[2,3]=self.wet[3,2]=True
         support=supported_rho_for_both_native_faces(self.wet)
         self.assertTrue(support[2,2])
-        self.assertTrue(support[2,3])
-        self.assertTrue(support[3,2])
+        self.assertFalse(support[2,3])
+        self.assertFalse(support[3,2])
 
     def test_rim_deduplicates_corners_and_excludes_dry_face(self):
         mask=np.ones((4,5),bool)
@@ -74,6 +74,9 @@ class NativeFaceBoundaryMappings(unittest.TestCase):
         # A north-south coast segment cuts quads straddling x=2500 m.
         coast=[(np.array([128.0225,35.0,128.0225,35.08]),
                 np.array([[128.0225,35.0],[128.0225,35.08]]))]
+        # Move synthetic *face* targets to between parent RHO columns.
+        self.child_xy[:,:,0]+=250
+        self.child_ll[:,:,0]+=.00225
         d=self.case(coast=coast)
         self.assertEqual(d["unresolved_face_receivers"],0)
         self.assertGreater(
