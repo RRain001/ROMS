@@ -27,8 +27,10 @@ from netCDF4 import Dataset
 
 try:
     from ud1k_vertical_flux_primitives import stretching4
+    from ud1k_parent_history_contract import validate_parent_history
 except ImportError:
     from .ud1k_vertical_flux_primitives import stretching4
+    from .ud1k_parent_history_contract import validate_parent_history
 
 SIDES=("south","north","west","east")
 FIELDS=("zeta","temp","salt","u","v","ubar","vbar")
@@ -149,6 +151,13 @@ def _parent_native_component(frame:dict,h:np.ndarray,wet:np.ndarray,params:dict,
     for fj,fi in faces:
         faceh,facezeta=_native_face_h_zeta(h,frame["zeta"],fj,fi,kind)
         src_z=physical_z(faceh,facezeta,n,params)
+        source_w=physical_z(faceh,facezeta,n,params,at="w")
+        source_ubar=float(np.sum(frame[kind][:,fj,fi]*np.diff(source_w))/(faceh+facezeta))
+        recorded=float(frame["ubar" if kind=="u" else "vbar"][fj,fi])
+        if not np.isfinite(source_ubar) or not np.isfinite(recorded):
+            raise ValueError("nonfinite parent wet C-grid barotropic source field")
+        counter["max_parent_native_barotropic_mismatch_mps"]=max(
+            counter["max_parent_native_barotropic_mismatch_mps"],abs(source_ubar-recorded))
         values.append(_source_profile(frame[kind][:,fj,fi],src_z,target_z,counter))
     return np.mean(values,axis=0)
 
@@ -219,6 +228,9 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
     times=np.asarray(child_times,dtype=float)
     if times.ndim!=1 or len(times)<2 or not np.isfinite(times).all() or not (np.diff(times)>0).all():
         raise ValueError("requested child times must be strictly increasing")
+    source_admission=validate_parent_history(parent_grid,parent_history,scan_values=True)
+    if not source_admission["full_wet_values_scanned"]:
+        raise ValueError("ES3K history full-wet-data admission not passed")
     with Dataset(parent_grid) as pg,Dataset(parent_history) as hs,Dataset(child_grid) as cg:
         pw=_finite(pg["mask_rho"][:]).astype(bool)
         parenth=_finite(pg["h"][:]);parentangle=_finite(pg["angle"][:])
@@ -313,11 +325,15 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
             "scope":"SOURCE_HISTORY_BASED_ROMS_BOUNDARY_NUMERICAL_PREVIEW",
             "status":"EXPERIMENTAL_NOT_PRODUCTION_BRY",
             "source_history":Path(parent_history).name,
+            "full_source_history_admission":"PASS",
             "target_grid":Path(child_grid).name,
             "time_count":len(times),"source_vertical_N":n_parent,
             "target_vertical_N":child_n,
             "wet_receivers_by_native_kind":{k:len(v) for k,v in maps.items()},
             "physical_z_profile_endpoint_clamps":dict(extrapolated),
+            "parent_native_2d_vs_3d_barotropic_mismatch_max_mps":float(
+                extrapolated["max_parent_native_barotropic_mismatch_mps"]),
+            "parent_native_barotropic_mismatch_acceptance":"DIAGNOSTIC_ONLY",
             "parent_field_time_interpolation":"PIECEWISE_LINEAR_INSIDE_HISTORY_TIME_RANGE",
             "source_velocity_collocation":"WET_NATIVE_PARENT_U_AND_V_FACES_AT_PARENT_RHO_DONORS",
             "child_velocity_rotation":"PARENT_GRID_TO_GEOGRAPHIC_TO_CHILD_GRID",
