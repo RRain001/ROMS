@@ -15,6 +15,8 @@ on:
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
+      - 'ROMS_Nesting/Data_pre/nesting/japan_sea_forcing_micro_preflight.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_forcing_micro_preflight.py'
       - '.github/workflows/japan-sea-ud1k-bry-schema-contract.yml'
   pull_request:
     branches:
@@ -30,6 +32,8 @@ on:
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
+      - 'ROMS_Nesting/Data_pre/nesting/japan_sea_forcing_micro_preflight.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_forcing_micro_preflight.py'
       - '.github/workflows/japan-sea-ud1k-bry-schema-contract.yml'
   workflow_dispatch:
 
@@ -55,6 +59,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_bry_schema_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_remap_preview.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_micro_preflight.py' -v
       - name: Invoke both CLIs against explicitly synthetic small ROMS fixtures
         shell: bash
         run: |
@@ -96,6 +101,55 @@ jobs:
                             "boundary_variables":output["complete_field_variables"],
                             "real_ES3K_history":"NOT_AVAILABLE"},sort_keys=True))
           PY
+      - name: Test existing no-nesting GLORYS ERA5 TPXO staged interfaces with 24h mock window (no download)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/japan_sea_micro_synthetic"
+          python - <<'PY'
+          import os,sys
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"japan_sea_micro_synthetic"
+          sys.path.insert(0,"ROMS_Nesting/Data_pre/tests")
+          from test_japan_sea_forcing_micro_preflight import (
+              synthetic_ocean,synthetic_era5,synthetic_tpxo
+          )
+          synthetic_ocean(root/"SYNTHETIC_GLORYS_daily.nc")
+          synthetic_era5(root/"SYNTHETIC_ERA5_atm_hourly.nc")
+          synthetic_era5(root/"SYNTHETIC_ERA5_rad_hourly.nc",radiation=True)
+          synthetic_tpxo(root/"SYNTHETIC_TPXO9_harmonics.nc")
+          PY
+          python ROMS_Nesting/Data_pre/nesting/japan_sea_forcing_micro_preflight.py \
+            --ocean "$RUNNER_TEMP/japan_sea_micro_synthetic/SYNTHETIC_GLORYS_daily.nc" \
+            --atmosphere "$RUNNER_TEMP/japan_sea_micro_synthetic/SYNTHETIC_ERA5_atm_hourly.nc" \
+            --radiation "$RUNNER_TEMP/japan_sea_micro_synthetic/SYNTHETIC_ERA5_rad_hourly.nc" \
+            --tides "$RUNNER_TEMP/japan_sea_micro_synthetic/SYNTHETIC_TPXO9_harmonics.nc" \
+            --start 2018-01-02T00:00:00 \
+            --stop 2018-01-03T00:00:00 \
+            --lon 130 --lat 37 \
+            --report "$RUNNER_TEMP/japan_sea_micro_synthetic/OFFLINE_ONLY_staged_source_contract.json"
+          python - <<'PY'
+          from pathlib import Path
+          import json,os
+          file=Path(os.environ["RUNNER_TEMP"])/"japan_sea_micro_synthetic"/"OFFLINE_ONLY_staged_source_contract.json"
+          report=json.loads(file.read_text())
+          assert report["status"]=="OFFLINE_STAGED_SOURCE_INTERFACE_MICRO_PREFLIGHT_PASS"
+          assert report["download_or_api_calls"]=="NONE"
+          assert report["ROMS_model_integration"]=="NOT_RUN"
+          assert report["real_ES3K_history"]=="NOT_RUN"
+          assert report["source_interfaces"]["ocean"]["time"]["largest_gap_hours"]==24.
+          assert report["source_interfaces"]["atmosphere"]["time"]["largest_gap_hours"]==1.
+          print("JAPAN_SEA_OFFLINE_MICRO_SOURCE_CONTRACT_PASS",json.dumps({
+              "sources":sorted(report["source_interfaces"]),
+              "duration_hours":24,
+              "api_calls":"NONE","ocean_run":"NOT_RUN"},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: japan-sea-SYNTHETIC-only-glorys-era5-tpxo-micro-interface
+          path: ${{ runner.temp }}/japan_sea_micro_synthetic
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         if: always()
         with:
