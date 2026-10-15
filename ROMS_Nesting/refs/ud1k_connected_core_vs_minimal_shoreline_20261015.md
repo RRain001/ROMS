@@ -64,6 +64,17 @@ Expected native ocean sizes after Option B:
 
 Option B therefore changes **just 23 RHO wet cells from the original 96,127** (20 disconnected plus 3 coastal boundary endpoints) and leaves the geographical rectangular extent identical. This is a **static candidate**; its actual influence on normal transport, coastline topology, local currents and stability cannot be judged without numerical hydrodynamics.
 
+## Real GEBCO/GSHHG native-15″ CI acceptance — 2026-10-15
+
+Both comparisons have now run successfully on the **same actual real candidate source data and GitHub-hosted Ubuntu**:
+
+- [**Option A native workflow #38678489659**](https://github.com/RRain001/ROMS/actions/runs/38678489659): PASS. Seven original RHO wet components, exactly 20 disconnected wet RHO exclusions (new total **96,107**), original source `h`, `lon_rho`, `lat_rho`, `pm`, `pn`, `angle` arrays unchanged. New RHO boundary **1,014**, U **1,009**, V **1,013**, zero missing native U/V wet-face-supported static donors; original 4 GSHHG-crossing perimeter native wet faces remain 1 U/3 V. Original V(0,30) is no longer a wet face because its two RHO cells form a disconnected component.
+- [**Option B native workflow #38678798738**](https://github.com/RRain001/ROMS/actions/runs/38678798738): PASS. It removes exactly three additional peripheral RHO positions `(0,40)`, `(0,42)`, `(23,437)` from Option A, and the remaining ocean is still exactly **one 4-connected wet RHO component** with **96,104** wet points. Native new wet RHO perimeter **1,011**, U **1,005**, V **1,010**; verified **zero** target wet U/V receivers lacking parent static donors, **zero** U/V perimeter wet-face segment GSHHG shoreline intersections. The 1,011 retained RHO source records keep the exact original 1,017 point coastline-approved donor indices and weights without re-interpolating them.
+- [**Actions artifact `ud1k-27-wet-boundary-mapping-small-json`**](https://github.com/RRain001/ROMS/actions/runs/38678798738): 30-day artifact containing both separate UD1K candidate NetCDF grids, original and new RHO/U/V donor manifests, removed-cell indices and topology reports. **Source frozen UD1K grid was never overwritten.**
+- All new source-level regression tests in the latest native workflow passed. This is an independent **static** geometry/donor/mask audit. Not a proof of seawater transport fidelity or successful ROMS hydrodynamic nesting.
+
+**Static decision:** Option B currently supplies the cleanest auditable candidate for a future test-run because it resolves **both** the physically disconnected small wet pools and the 4 crossing wet-face mask inconsistencies using 23 RHO cells out of the frozen original 96,127 (**~0.024%**), without changing geographical bounds, grid angle, spacing or bathymetry. Yet retaining a separate Option A and original supports sensitivity checks. **Do not overwrite user frozen grid or merge this PR without physical validation.**
+
 ## Explicit acceptance gates
 
 1. GitHub Actions native-15″ run must reproduce Option A's component counts and *separately demonstrate* zero source donor holds on all **1,014 RHO / 1,009 U / 1,013 V** candidate wet perimeter points.
