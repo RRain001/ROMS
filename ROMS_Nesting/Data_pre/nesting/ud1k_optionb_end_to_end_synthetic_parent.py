@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime,timedelta
 from pathlib import Path
 
 import numpy as np
@@ -36,7 +37,7 @@ TARGET_UNITS="days since 1858-11-17 00:00:00"
 TARGET_CALENDAR="gregorian"
 PARENT_TIMES=np.array([0.,3600.],dtype=np.float64)
 TARGET_TIMES=np.asarray(date2num(
-    ["2025-01-01 00:00:00","2025-01-01 01:00:00"],
+    [datetime(2025,1,1),datetime(2025,1,1,1)],
     units=TARGET_UNITS,calendar=TARGET_CALENDAR),dtype=np.float64)
 PARENT_N=3
 CHILD_N=4
