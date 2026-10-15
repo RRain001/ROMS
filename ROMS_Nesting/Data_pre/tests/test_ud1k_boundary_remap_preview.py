@@ -79,7 +79,7 @@ class ExperimentalSourceToChildNumerics(unittest.TestCase):
                 for key in ("zeta","temp","salt","u","v","ubar","vbar"):
                     self.assertIn(key,arrays[side])
                     kind="rho" if key in ("zeta","temp","salt") else "u" if key in ("u","ubar") else "v"
-                    mask=child["mask_"+kind][:]
+                    mask=np.asarray(child["mask_"+kind][:],dtype=bool)
                     edge=mask[0] if side=="south" else mask[-1] if side=="north" else mask[:,0] if side=="west" else mask[:,-1]
                     if edge.any():
                         expected={"zeta":.2,"temp":18.,"salt":34.,
@@ -119,7 +119,7 @@ class ExperimentalSourceToChildNumerics(unittest.TestCase):
         self.assertAlmostEqual(prepared["south"]["v"][0,1,2],-.15,places=12)
 
     def test_missing_wet_boundary_receiver_fails_closed(self):
-        self.faces["v"]["records"].pop()
+        self.faces["reports"]["v"]["records"].pop()
         with self.assertRaisesRegex(ValueError,"incomplete native v wet perimeter"):
             self.run_preview()
 
@@ -135,7 +135,7 @@ class ExperimentalSourceToChildNumerics(unittest.TestCase):
             self.run_preview()
 
     def test_missing_native_UV_support_rejected(self):
-        self.faces["u"]["records"][0]["native_parent_U_and_V_wet_face_support"]=False
+        self.faces["reports"]["u"]["records"][0]["native_parent_U_and_V_wet_face_support"]=False
         with self.assertRaisesRegex(ValueError,"lacks certified"):
             self.run_preview()
 
