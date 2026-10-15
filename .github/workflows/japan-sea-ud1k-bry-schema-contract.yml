@@ -24,6 +24,9 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_parent_smoke.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_es3k_parent_mask_audit.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_es3k_parent_mask_audit.py'
+      - 'ROMS_Nesting/Data_pre/cases/JAPAN_SEA/config/glorys12v1_download_config.json'
+      - 'ROMS_Nesting/Data_pre/nesting/japan_sea_glorys_micro_plan.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_glorys_micro_plan.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -59,6 +62,9 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_parent_smoke.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_es3k_parent_mask_audit.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_es3k_parent_mask_audit.py'
+      - 'ROMS_Nesting/Data_pre/cases/JAPAN_SEA/config/glorys12v1_download_config.json'
+      - 'ROMS_Nesting/Data_pre/nesting/japan_sea_glorys_micro_plan.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_glorys_micro_plan.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -100,9 +106,35 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_cf_time_and_source_face_support.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_optionb_synthetic_parent_smoke.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_real_es3k_parent_mask_audit.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_glorys_micro_plan.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_micro_preflight.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_converter_micro.py' -v
+      - name: Validate no-download real GLORYS 0.5 degree three-day request plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/japan_sea_glorys_no_download"
+          python ROMS_Nesting/Data_pre/nesting/japan_sea_glorys_micro_plan.py \
+            --plan-json "$RUNNER_TEMP/japan_sea_glorys_no_download/REAL_GLORYS_REQUEST_NOT_EXECUTED.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          p=Path(os.environ["RUNNER_TEMP"])/"japan_sea_glorys_no_download"/"REAL_GLORYS_REQUEST_NOT_EXECUTED.json"
+          a=json.loads(p.read_text())
+          assert a["mode"]=="SMALL_REAL_MARINE_REQUEST_PLAN_NOT_EXECUTED"
+          assert a["longitude_latitude_bbox"]==[129.75,130.25,36.75,37.25]
+          assert a["all_variables"]==["thetao","so","uo","vo","zos"]
+          assert a["max_depth_m"]==300.0
+          assert a["true_ocean_observations"]=="NOT_DOWNLOADED"
+          assert a["no_roms_integration"] and a["no_full_ES3K_download"]
+          print("JAPAN_SEA_GLORYS_REAL_MICRO_DOWNLOAD_PLAN_ONLY_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: japan-sea-glorys-REAL-request-plan-NOT-downloaded
+          path: ${{ runner.temp }}/japan_sea_glorys_no_download/REAL_GLORYS_REQUEST_NOT_EXECUTED.json
+          retention-days: 14
       - name: Invoke both CLIs against explicitly synthetic small ROMS fixtures
         shell: bash
         run: |
