@@ -186,10 +186,11 @@ jobs:
           retention-days: 14
 
   real-optionb-archived-static-mapping-contract:
-    # Small archived native 290x438 candidate-B grid + two donor JSONs
-    # (~2.3MB zipped); no parent ES3K 157MB artifact, no terrain download.
-    # Temporarily run this small archival regression on PR to establish
-    # interoperability; after acceptance it can be switched to manual-only.
+    # Proven success on Actions #38696848420: archived native real-grid
+    # manifest and 3-time × 41-layer synthetic flux over real metrics.
+    # Run manually only: avoids archived 30-day artifact expiration causing
+    # routine PR failures. No real ES3K parent history or new bathymetry.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     timeout-minutes: 8
     steps:
