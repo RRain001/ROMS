@@ -31,7 +31,7 @@ class ROMSVerticalPrimitives(unittest.TestCase):
         zr=vtransform2_depth(h,zeta,n=41,hc=50,theta_s=7,theta_b=2,at="rho")
         self.assertEqual(zw.shape,(2,42,2,3))
         self.assertEqual(zr.shape,(2,41,2,3))
-        np.testing.assert_allclose(zw[:,0],-h[None,:,:],atol=1e-12)
+        np.testing.assert_allclose(zw[:,0],np.broadcast_to(-h,zw[:,0].shape),atol=1e-12)
         np.testing.assert_allclose(zw[:,-1],zeta,atol=1e-12)
         self.assertTrue(np.all(np.diff(zw,axis=1)>0))
         self.assertTrue(np.all(zw[:,1:]>=zr-1e-9))
