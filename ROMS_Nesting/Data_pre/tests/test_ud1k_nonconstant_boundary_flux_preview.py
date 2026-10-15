@@ -191,6 +191,51 @@ class NonconstantSourceToChildFlux(unittest.TestCase):
             add_native_normal_face(audit,"south",0,"u",0,2,pm,pn,
                                    np.array([-1.,0.]),np.array([.2]),.2,1.)
 
+    def test_per_face_flux_mismatch_cannot_cancel_between_opposite_faces(self):
+        audit=new_flux_audit(1)
+        pm=np.full((4,5),1/3300.)
+        pn=np.full((4,5),1/3100.)
+        z_w=np.array([-100.,-50.,0.])
+        vel=np.array([.4,.2])
+        physical_bar=float(np.dot(vel,np.diff(z_w))/100)
+        # Two opposite equal-area faces: summed per-section errors could
+        # cancel if only totals were checked. Here each must be rejected.
+        add_native_normal_face(audit,"south",0,"v",0,1,pm,pn,
+                               z_w,vel,physical_bar+.1,100.)
+        add_native_normal_face(audit,"south",0,"v",0,2,pm,pn,
+                               z_w,vel,physical_bar-.1,100.)
+        self.assertAlmostEqual(
+            audit["normal_sections"]["south"][0]["outward_volume_flux_3d_m3s"],
+            audit["normal_sections"]["south"][0]["outward_volume_flux_2d_m3s"])
+        with self.assertRaisesRegex(ValueError,"individual face"):
+            finalize_flux_audit(audit)
+
+    def test_nonconstant_fields_save_and_reopen_28_var_synthetic_bry(self):
+        from ud1k_bry_schema_contract import write_synthetic_schema_fixture
+        fields,report=self.preview()
+        target=self.child.parent/"SYNTHETIC_nonconstant_UD1K_bry.nc"
+        expected_times=np.array([0.,1800.,3600.])
+        schema=write_synthetic_schema_fixture(
+            self.child,target,fields,expected_times,n=4,
+            time_units="seconds since 2025-01-01 00:00:00")
+        self.assertEqual(schema["status"],"SYNTHETIC_SCHEMA_TEST_ONLY")
+        self.assertEqual(schema["complete_field_variables"],28)
+        self.assertEqual(report["real_roms_bry_nc"],"NOT_RUN")
+        with Dataset(target) as f:
+            self.assertEqual(f["temp_south"].shape,(3,4,7))
+            self.assertEqual(f["u_south"].shape,(3,4,6))
+            self.assertEqual(f["v_south"].shape,(3,4,7))
+            self.assertEqual(f["vbar_north"].shape,(3,7))
+            self.assertEqual(f.getncattr("workflow_status"),
+                             "SYNTHETIC_SCHEMA_TEST_ONLY_NOT_ROMS_PHYSICS")
+            np.testing.assert_allclose(f["bry_time"][:],expected_times,atol=0)
+            for side in ("south","north","west","east"):
+                for name in ("zeta","temp","salt","u","v","ubar","vbar"):
+                    np.testing.assert_allclose(f[name+"_"+side][:],
+                                               fields[side][name],atol=3e-7,rtol=1e-6)
+            self.assertGreater(abs(f["zeta_south"][2,3]-f["zeta_south"][0,3]),1.0)
+            self.assertGreater(float(np.ptp(f["u_south"][1,:,3])),.03)
+
     def test_independent_face_geometry_metrics_correct(self):
         pm=np.full((4,5),1/3300.)
         pn=np.full((4,5),1/3100.)
