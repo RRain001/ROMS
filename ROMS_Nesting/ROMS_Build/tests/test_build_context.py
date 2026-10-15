@@ -52,13 +52,17 @@ class BuildConfigTests(unittest.TestCase):
             root=Path(tmp)
             paths=replace(c.paths,build_root=root/'build',build_dir=root/'build/Build_romsM',
                           bin_dir=root/'bin',logs_dir=root/'logs',output_dir=root/'output')
-            c=replace(c,paths=paths)
+            # case_root too: a successful build writes provenance under it, and
+            # this test must not leave records in the real case tree.
+            c=replace(c,case_root=root,paths=paths)
             paths.bin_dir.mkdir()
             raw=paths.bin_dir/'romsG';raw.write_bytes(b'UNIT_TEST_ARTIFACT');raw.chmod(0o755)
             with patch('build_context.subprocess.run',return_value=CompletedProcess([],0)):
                 self.assertEqual(execute_build(c,clean=False),0)
             self.assertEqual(c.expected_binary.read_bytes(),raw.read_bytes())
             self.assertTrue(os.access(c.expected_binary,os.X_OK))
+            self.assertTrue((root/'logs'/'build_provenance').is_dir(),
+                            'provenance must be written beside the case, not elsewhere')
     def test_gnu_profiles_do_not_source_intel_or_vendor_fallback(self):
         for name in ['roms_build_config.linux_gnu.json','roms_build_config.macos.json']:
             with self.subTest(profile=name):
