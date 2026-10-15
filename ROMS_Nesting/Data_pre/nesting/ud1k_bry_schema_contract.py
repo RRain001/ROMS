@@ -53,14 +53,14 @@ def boundary_spec(grid:Dataset,side:str,name:str,n:int,nt:int)->tuple[tuple[str,
 
 
 def validate_prepared(grid:Dataset,prepared:dict,time_s:np.ndarray,*,n:int,
-                      units:str)->dict:
+                      units:str,calendar:str="gregorian")->dict:
     times=np.asarray(time_s,dtype=float)
     if times.ndim!=1 or len(times)<2 or not np.isfinite(times).all() or not (np.diff(times)>0).all():
         raise ValueError("bry_time must have >=2 finite strictly ascending timestamps")
     if not isinstance(units,str) or " since " not in units.lower():
         raise ValueError("invalid CF bry_time epoch units")
     try:
-        num2date(times,units=units,calendar="gregorian")
+        num2date(times,units=units,calendar=calendar)
     except Exception as exc:
         raise ValueError("invalid CF bry_time epoch") from exc
     if not isinstance(n,int) or n<2:
@@ -92,7 +92,8 @@ def validate_prepared(grid:Dataset,prepared:dict,time_s:np.ndarray,*,n:int,
 def write_synthetic_schema_fixture(grid_path:Path,out_path:Path,prepared:dict,
                                    time_s:np.ndarray,*,n:int=4,
                                    hc:float=50.,theta_s:float=5.,theta_b:float=1.,
-                                   time_units:str="seconds since 2000-01-01 00:00:00")->dict:
+                                   time_units:str="seconds since 2000-01-01 00:00:00",
+                                   time_calendar:str="gregorian")->dict:
     """Opt-in fixture writer ONLY. Reject existing output (no overwrite)."""
     src=Path(grid_path);dst=Path(out_path)
     if src.resolve()==dst.resolve() or dst.exists():
@@ -100,7 +101,8 @@ def write_synthetic_schema_fixture(grid_path:Path,out_path:Path,prepared:dict,
     s,c=stretching4(n,theta_s,theta_b,at="rho")
     sw,cw=stretching4(n,theta_s,theta_b,at="w")
     with Dataset(src) as grid:
-        validated=validate_prepared(grid,prepared,time_s,n=n,units=time_units)
+        validated=validate_prepared(grid,prepared,time_s,n=n,units=time_units,
+                                    calendar=time_calendar)
         sizes={d:len(grid.dimensions[d]) for d in (
             "eta_rho","xi_rho","eta_u","xi_u","eta_v","xi_v")}
         dst.parent.mkdir(parents=True,exist_ok=True)
@@ -134,7 +136,7 @@ def write_synthetic_schema_fixture(grid_path:Path,out_path:Path,prepared:dict,
                 if name=="h":var.units="meter"
             t=f.createVariable("bry_time","f8",("bry_time",))
             t.units=time_units
-            t.calendar="gregorian"
+            t.calendar=time_calendar
             t.long_name="open boundary conditions time"
             t[:]=time_s
             for side in _SIDES:
@@ -160,6 +162,7 @@ def write_synthetic_schema_fixture(grid_path:Path,out_path:Path,prepared:dict,
             "time_count":int(len(time_s)),"s_rho_count":n,
             "complete_field_variables":len(_SIDES)*len(_NAMES),
             "source_grid":src.name,"output":dst.name,
+            "bry_time_units":time_units,"bry_time_calendar":time_calendar,
             "values":{"dry_perimeter":"synthetic fixture",
                       "wet_perimeter":"synthetic fixture, never physical ES3K history"},
             "actual_real_parent_ocean_history":"NOT_AVAILABLE",
