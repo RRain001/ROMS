@@ -143,3 +143,92 @@ def rotate_parent_to_child_rho(u_parent:np.ndarray,v_parent:np.ndarray,
         "child_v_axis_at_rho_only":np.stack(out_v,axis=-1),
         "scope":"COLLOCATED_RHO_VECTOR_DIAGNOSTIC_NOT_STAGGERED_UV_OR_BRY",
     }
+
+
+def vector_face_supported_stencils(wet:np.ndarray,records:list[dict])->dict:
+    """Derive *separate* vector-RHO stencils from existing coastline-safe map.
+
+    Only nonzero-weight parent RHO vertices having BOTH a physically wet
+    native U face and a wet native V face may support collocated vector
+    diagnostics. If a donor lacks one component, drop it from the *vector
+    map only* and renormalize positive remaining weights.
+
+    Scalar RHO mapping, geometry, masks and selected donor positions remain
+    untouched. This is not permission to apply RHO weights to child U/V faces.
+    """
+    pwet=np.asarray(wet,dtype=bool)
+    out=[]
+    adjustments=[]
+    failures=[]
+    for r in records:
+        if not bool(r.get("coastline_visible",False)):
+            raise ValueError("source row has unresolved GSHHG coastline conflict")
+        nodes=np.asarray(r["donor_eta_xi_zero_based"],dtype=int)
+        weights=np.asarray(r["weights"],dtype=float)
+        if nodes.ndim!=2 or nodes.shape[1]!=2 or len(nodes)!=len(weights):
+            raise ValueError("invalid donor row geometry")
+        if not np.isfinite(weights).all() or np.any(weights<0) or abs(weights.sum()-1)>1e-10:
+            raise ValueError("invalid source weights")
+        keep=[]
+        excluded=[]
+        for idx,((j,i),weight) in enumerate(zip(nodes,weights)):
+            if weight==0:
+                continue
+            if not (0<=j<pwet.shape[0] and 0<=i<pwet.shape[1]) or not pwet[j,i]:
+                raise ValueError("source includes dry/out of range RHO point")
+            u_faces=_valid_adjacent_faces(pwet,int(j),int(i),"u")
+            v_faces=_valid_adjacent_faces(pwet,int(j),int(i),"v")
+            if u_faces and v_faces:
+                keep.append(idx)
+            else:
+                excluded.append({"eta_rho_zero_based":int(j),
+                                 "xi_rho_zero_based":int(i),
+                                 "old_weight":float(weight),
+                                 "missing_native_u_faces":not bool(u_faces),
+                                 "missing_native_v_faces":not bool(v_faces)})
+        identity=(int(r["child_eta_rho_zero_based"]),int(r["child_xi_rho_zero_based"]))
+        if not keep or (excluded and len(keep)<2):
+            failures.append({"child_eta_xi_zero_based":list(identity),
+                             "remaining_supported_donors":len(keep),
+                             "excluded":excluded})
+            continue
+        new_nodes=nodes[keep]
+        new_weights=weights[keep]/np.sum(weights[keep])
+        if (new_weights<0).any() or not np.isfinite(new_weights).all() or abs(new_weights.sum()-1)>1e-12:
+            raise ValueError("cannot normalize remaining wet component weights")
+        row={
+            "child_eta_rho_zero_based":identity[0],
+            "child_xi_rho_zero_based":identity[1],
+            "donor_eta_xi_zero_based":new_nodes.astype(int).tolist(),
+            "weights":new_weights.astype(float).tolist(),
+            "coastline_visible":True,
+            "original_RHO_mapping_method":str(r["method"]),
+            "vector_only_face_supported_renormalization":bool(excluded),
+        }
+        out.append(row)
+        if excluded:
+            adjustments.append({"child_eta_xi_zero_based":list(identity),
+                                "excluded_donors":excluded,
+                                "remaining_supported_donors":int(len(keep)),
+                                "retained_old_weight_total":float(np.sum(weights[keep]))})
+    if failures:
+        return {
+            "status":"HOLD_VECTOR_SOURCE_FACE_SUPPORT",
+            "vector_boundary_rho_stencil_count":len(out),
+            "unresolved":failures,
+            "adjusted_receivers":adjustments,
+            "vector_only_stencils":out,
+            "physical_staggered_child_velocity_bry_flux":"NOT_RUN",
+        }
+    if len(out)!=len(records):
+        raise ValueError("lost receiver points during RHO vector-map derivation")
+    return {
+        "status":"RHO_VECTOR_DONOR_FACE_SUPPORT_PREFLIGHT_PASS_ONLY",
+        "vector_boundary_rho_stencil_count":len(out),
+        "removed_unsupported_parent_RHO_sources_on_receivers":len(adjustments),
+        "adjusted_receivers":adjustments,
+        "unresolved":[],
+        "vector_only_stencils":out,
+        "scalar_mapping_was_untouched":True,
+        "physical_staggered_child_velocity_bry_flux":"NOT_RUN",
+    }
