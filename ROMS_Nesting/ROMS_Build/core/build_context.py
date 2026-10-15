@@ -4,13 +4,16 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +24,7 @@ DATA_PRE_CORE = WORKSPACE_ROOT / "Data_pre" / "core"
 if str(DATA_PRE_CORE) not in sys.path:
     sys.path.insert(0, str(DATA_PRE_CORE))
 
-from case_context import export_case_context, resolve_case_context  # type: ignore  # noqa: E402
+from case_context import export_case_context, init_nesting_root, resolve_case_context  # type: ignore  # noqa: E402
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -154,6 +157,7 @@ def resolve_build_context(
     config_path: str | Path | None = None,
     variant: str | None = None,
 ) -> BuildContext:
+    init_nesting_root()
     case_context = resolve_case_context(case_name=case_name, case_root=case_root)
     export_case_context(case_context)
     project_params = _load_json(case_context.config_dir / "project_parameters.json")
@@ -324,7 +328,89 @@ def execute_build(context: BuildContext, *, clean: bool, jobs: int | None = None
             context.expected_binary.chmod(actual_binary.stat().st_mode)
         if not context.expected_binary.is_file():
             raise RuntimeError(f"make succeeded but expected executable is missing: {context.expected_binary}")
+        write_build_provenance(context, script)
     return result.returncode
+
+
+def _sha256(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _git_head(source_root: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(source_root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    head = (result.stdout or "").strip()
+    return head or None
+
+
+def write_build_provenance(context: BuildContext, build_command: str) -> Path:
+    """Record what this build actually produced.
+
+    One uniquely named file per build, so a stale snapshot can never be read as
+    evidence for the current artifact.  Everything here is measured from the
+    build that just ran -- nothing is copied from the configuration alone.
+    """
+    provenance_dir = context.case_root / "logs" / "build_provenance"
+    provenance_dir.mkdir(parents=True, exist_ok=True)
+
+    checkdefs = context.paths.build_dir / "checkdefs.f90"
+    strings = context.paths.build_dir / "mod_strings.f90"
+    fflags = None
+    if strings.is_file():
+        match = re.search(r'my_fflags\s*=\s*"([^"]*)"', strings.read_text(errors="ignore"))
+        fflags = match.group(1) if match else None
+    compiled_options: list[str] = []
+    if checkdefs.is_file():
+        compiled_options = sorted(set(re.findall(r"Coptions[^=]*='\s*([A-Z_0-9]+),", checkdefs.read_text(errors="ignore"))))
+
+    use_debug = bool(context.compiler.get("use_debug", False))
+    now = datetime.now(timezone.utc)
+    stamp = now.strftime("%Y%m%dT%H%M%S%fZ")
+    record = {
+        "generated_utc": now.isoformat(),
+        "case": context.case_name,
+        "build_kind": "debug" if use_debug else "release",
+        "use_debug": use_debug,
+        "use_parallel_io": bool(context.compiler.get("use_parallel_io", False)),
+        "use_netcdf4": bool(context.compiler.get("use_netcdf4", False)),
+        "io_policy": context.build_config.get("io_policy"),
+        "git_head": _git_head(context.roms_src),
+        "build_config": str(context.build_config_path),
+        "build_config_sha256": _sha256(context.build_config_path),
+        "roms_src": str(context.roms_src),
+        "header": str(context.variant.header_path),
+        "header_sha256": _sha256(context.variant.header_path),
+        "compiler": dict(context.compiler),
+        "fflags": fflags,
+        "compiled_options": compiled_options,
+        "binary": str(context.expected_binary),
+        "binary_bytes": context.expected_binary.stat().st_size if context.expected_binary.is_file() else None,
+        "binary_sha256": _sha256(context.expected_binary),
+        "build_directory": str(context.paths.build_dir),
+        "build_command": build_command,
+    }
+    path = provenance_dir / f"{stamp}_{context.build_config_path.stem}_{context.variant.name}.json"
+    suffix = 0
+    while path.exists():
+        suffix += 1
+        path = provenance_dir / (
+            f"{stamp}_{context.build_config_path.stem}_{context.variant.name}.{suffix}.json"
+        )
+    path.write_text(json.dumps(record, indent=2) + "\n")
+    return path
 
 
 def clean_build_tree(context: BuildContext) -> None:

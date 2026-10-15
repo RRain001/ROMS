@@ -6,7 +6,13 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-from case_context import DATA_PRE_ROOT, export_case_context, parse_case_args, resolve_case_context
+from case_context import (
+    DATA_PRE_ROOT,
+    export_case_context,
+    init_nesting_root,
+    parse_case_args,
+    resolve_case_context,
+)
 
 
 IMPLEMENTATION_DIR = DATA_PRE_ROOT / "impl" / "preprocessing"
@@ -14,6 +20,7 @@ CORE_DIR = DATA_PRE_ROOT / "core"
 
 
 def run_entrypoint(script_name: str) -> None:
+    init_nesting_root()
     impl_path = IMPLEMENTATION_DIR / script_name
     if not impl_path.exists():
         raise SystemExit(f"implementation not found: {impl_path}")
