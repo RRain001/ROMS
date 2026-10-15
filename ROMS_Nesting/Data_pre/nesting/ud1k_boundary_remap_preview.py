@@ -30,11 +30,13 @@ try:
     from ud1k_parent_history_contract import validate_parent_history
     from ud1k_boundary_normal_flux_preview import (
         NORMAL_KIND,new_flux_audit,add_native_normal_face,finalize_flux_audit)
+    from ud1k_cf_time_bridge import bridge_target_to_parent_cf_time
 except ImportError:
     from .ud1k_vertical_flux_primitives import stretching4
     from .ud1k_parent_history_contract import validate_parent_history
     from .ud1k_boundary_normal_flux_preview import (
         NORMAL_KIND,new_flux_audit,add_native_normal_face,finalize_flux_audit)
+    from .ud1k_cf_time_bridge import bridge_target_to_parent_cf_time
 
 SIDES=("south","north","west","east")
 FIELDS=("zeta","temp","salt","u","v","ubar","vbar")
@@ -115,6 +117,29 @@ def _adjacent_native(wet:np.ndarray,j:int,i:int,kind:str)->list[tuple[int,int]]:
     if kind=="v":
         return [(jj,i) for jj in (j-1,j) if 0<=jj<ny-1 and wet[jj,i] and wet[jj+1,i]]
     raise ValueError("unknown native component")
+
+
+def validate_source_donor_native_support(maps:dict,parent_wet:np.ndarray)->dict:
+    """Recheck BOTH true U/V wet parent faces, not just JSON audit flags.
+
+    This check runs against the ACTUAL supplied ES3K parent mask when a real
+    history becomes available. Test-only fixtures do not prove real I3 wetness.
+    """
+    wet=np.asarray(parent_wet,dtype=bool)
+    checked=set()
+    for kind in ("u","v"):
+        for receivers in maps[kind].values():
+            for (j,i),weight in receivers:
+                if (j,i) in checked:
+                    continue
+                # Even a zero-weight but listed donor must be physically
+                # valid; otherwise a broken source mask can hide in JSON.
+                if not _adjacent_native(wet,j,i,"u") or not _adjacent_native(wet,j,i,"v"):
+                    raise ValueError(f"certified parent native U/V donor has no actual wet face at {(j,i)}")
+                checked.add((j,i))
+    return {"parent_rho_nodes_checked_for_both_native_faces":len(checked),
+            "actual_parent_wet_UV_face_support":"PASS_AGAINST_SUPPLIED_PARENT_MASK",
+            "coastline_l1_intersection_recomputed":"NOT_RUN_RELY_ON_GSHHG_MANIFEST"}
 
 
 def _native_face_h_zeta(h:np.ndarray,zeta:np.ndarray,j:int,i:int,kind:str)->tuple[float,float]:
@@ -218,7 +243,10 @@ def _frame_at(history:Dataset,request:float)->dict:
 def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Path,
                              rho_map:dict,face_maps:dict,
                              child_times:np.ndarray,*,child_n:int,
-                             child_params:dict)->tuple[dict,dict]:
+                             child_params:dict,
+                             target_time_units:str|None=None,
+                             target_time_calendar:str|None=None,
+                             max_parent_gap_hours:float=3.)->tuple[dict,dict]:
     """Prepare all four sides from certified maps and real *or fixture* source.
 
     Returned arrays are experimental and must NOT be labeled production bry.
@@ -241,6 +269,20 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
         childh=_finite(cg["h"][:]);childangle=_finite(cg["angle"][:])
         if childh.shape!=childangle.shape or parenth.shape!=parentangle.shape:
             raise ValueError("parent/child h/angle shape mismatch")
+        if not np.isfinite(childh).all() or not np.isfinite(childangle).all():
+            raise ValueError("invalid child bathymetry/angle values")
+        for kind in ("rho","u","v"):
+            raw=_finite(cg["mask_"+kind][:])
+            if not np.isin(raw,(0,1)).all():
+                raise ValueError("child native wet masks must be finite binary")
+        child_wet=_finite(cg["mask_rho"][:]).astype(bool)
+        if (childh[child_wet]<=0).any():
+            raise ValueError("nonpositive actual wet child bathymetry")
+        masku=_finite(cg["mask_u"][:]).astype(bool)
+        maskv=_finite(cg["mask_v"][:]).astype(bool)
+        if (not np.array_equal(masku,child_wet[:,:-1]&child_wet[:,1:]) or
+                not np.array_equal(maskv,child_wet[:-1,:]&child_wet[1:,:])):
+            raise ValueError("child staggered wet face mask inconsistent with RHO mask")
         if ("pm" in cg.variables)!=("pn" in cg.variables):
             raise ValueError("child native normal flux requires BOTH pm and pn")
         has_metrics="pm" in cg.variables
@@ -261,6 +303,16 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
         if int(hs["Vtransform"][()])!=2 or int(hs["Vstretching"][()])!=4:
             raise ValueError("unsupported parent vertical transform")
         n_parent=len(hs.dimensions["s_rho"])
+        tvar=hs["ocean_time"]
+        time_bridge=bridge_target_to_parent_cf_time(
+            times,_finite(tvar[:]),
+            parent_units=tvar.units,
+            parent_calendar=getattr(tvar,"calendar","standard"),
+            target_units=target_time_units,
+            target_calendar=target_time_calendar,
+            max_gap_hours=max_parent_gap_hours)
+        source_frame_times=time_bridge["parent_time_values"]
+        source_support=validate_source_donor_native_support(maps,pw)
         for key in FIELDS:
             if key not in hs.variables:
                 raise ValueError("missing ES3K physical source history field "+key)
@@ -277,7 +329,7 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
                     side_data[field+"_"+side]=np.zeros(shp,dtype=float)
             arrays[kind]=side_data
         extrapolated=Counter()
-        for t_index,when in enumerate(times):
+        for t_index,when in enumerate(source_frame_times):
             frame=_frame_at(hs,float(when))
             zeta_child_by_kind={}
             for kind in ("rho","u","v"):
@@ -352,6 +404,10 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
             "status":"EXPERIMENTAL_NOT_PRODUCTION_BRY",
             "source_history":Path(parent_history).name,
             "full_source_history_admission":"PASS",
+            "source_native_donor_support":source_support,
+            "source_target_CF_time_bridge":{
+                k: v.tolist() if isinstance(v,np.ndarray) else v
+                for k,v in time_bridge.items()},
             "target_grid":Path(child_grid).name,
             "time_count":len(times),"source_vertical_N":n_parent,
             "target_vertical_N":child_n,
