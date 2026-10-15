@@ -12,6 +12,9 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_bry_schema_contract.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_remap_preview.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_remap_preview.py'
+      - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
       - '.github/workflows/japan-sea-ud1k-bry-schema-contract.yml'
   pull_request:
     branches:
@@ -24,6 +27,9 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_bry_schema_contract.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_remap_preview.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_remap_preview.py'
+      - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
       - '.github/workflows/japan-sea-ud1k-bry-schema-contract.yml'
   workflow_dispatch:
 
@@ -48,6 +54,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_parent_history_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_bry_schema_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_remap_preview.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
       - name: Invoke both CLIs against explicitly synthetic small ROMS fixtures
         shell: bash
         run: |
@@ -97,6 +104,8 @@ jobs:
           retention-days: 14
 
   real-candidate-b-geometry-synthetic-bry-schema:
+    # Opt-in only: routine push/PR checks must stay small and fast.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     needs: synthetic-only-history-and-bry-contract
     timeout-minutes: 10
@@ -163,3 +172,21 @@ jobs:
           name: ud1k-real-candidateB-grid-SYNTHETIC-only-41level-bry-schema
           path: ${{ runner.temp }}/ud1k_real_grid_SYNTHETIC_bry
           retention-days: 14
+
+  era5-secret-presence-manual-check:
+    # Manual only, never on untrusted pull requests; no API/network call.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    env:
+      CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
+    steps:
+      - name: Verify GitHub Actions ERA5 secret exists, never print secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CDSAPI_KEY:-}" ]; then
+            echo 'CDSAPI_KEY Actions Secret not configured. Set the rotated token in repository Settings > Secrets and variables > Actions.'
+            exit 1
+          fi
+          echo 'CDSAPI_KEY Actions Secret is configured (secret value is never displayed).'
