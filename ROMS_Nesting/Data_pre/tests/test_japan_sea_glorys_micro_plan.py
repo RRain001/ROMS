@@ -62,6 +62,29 @@ class GLORYSMicroSampleContract(unittest.TestCase):
         self.assertTrue(cfg["no_full_ES3K_download"])
         self.assertTrue(cfg["no_roms_integration"])
 
+    def test_real_case_glorys_config_loads_through_existing_no_nesting_loader(self):
+        # Launch fresh process: the shared case context is computed at
+        # module import time. Do not leak another test's current-case env.
+        import subprocess
+        env=os.environ.copy()
+        env["ROMS_CASE_NAME"]="JAPAN_SEA"
+        repo_root=ROOT.parents[2]
+        script=(
+            "import sys;"
+            "sys.path.insert(0,'ROMS_Nesting/Data_pre/core');"
+            "from ocean_source_utils import load_glorys_config;"
+            "a=load_glorys_config();"
+            "assert a['dataset_id_daily']=='cmems_mod_glo_phy_my_0.083deg_P1D-m';"
+            "assert a['variables_3d']==['thetao','so','uo','vo'];"
+            "assert a['variables_2d']==['zos'];"
+            "assert a['boundary_download_strategy']=='edge_bands';"
+            "assert a['configuration_status']=='SOURCE_METADATA_ONLY_NO_PRODUCTION_YEAR_APPROVED'"
+        )
+        result=subprocess.run([sys.executable,"-c",script],
+            cwd=repo_root,env=env,check=False,capture_output=True,text=True,
+            timeout=12)
+        self.assertEqual(result.returncode,0,msg=result.stderr[:800])
+
     def test_reject_modified_production_scale_bbox_or_time(self):
         for key,bad in (("longitude_latitude_bbox",[121.9,150.4,30.8,52.]),
                         ("test_window_not_production",["2024-01-01","2025-01-01"]),
