@@ -14,6 +14,7 @@ import numpy as np
 from netCDF4 import Dataset, num2date
 
 from case_naming import continuous_tides_name, load_case_naming, output_product_name, roms_input_name, run_infile_name
+from external_forcing_coverage import UNVERIFIED_MARKER, check_boundary_coverage
 from formal_online_workflow import (
     continuous_source_name,
     load_formal_online_workflow,
@@ -76,6 +77,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start-time", default=None, help="Independent test start; never writes case dates")
     parser.add_argument("--stop-time", default=None, help="Independent test stop; never writes case dates")
     parser.add_argument("--template", default=None, help="Override ROMS .in template path")
+    parser.add_argument(
+        "--allow-unverified-forcing",
+        action="store_true",
+        help=(
+            "Emit a plan even when external boundary coverage cannot be verified. "
+            f"The generated .in is stamped {UNVERIFIED_MARKER} and the run gate refuses it."
+        ),
+    )
     parser.add_argument("--dry-run", "--dry-equivalent", action="store_true", help="Resolve and print planned output without writing files")
     return parser.parse_args()
 
@@ -453,6 +462,64 @@ def external_model_stop(params: dict, forcing_mode: str, forcing_bry: str | None
         return configured
 
 
+def resolve_boundary_path(forcing_bry: str | None) -> Path | None:
+    if not forcing_bry or str(forcing_bry).strip().lower() in {"none", "null", ""}:
+        return None
+    candidate = Path(str(forcing_bry))
+    return candidate if candidate.is_absolute() else (RUN_DIR / candidate).resolve()
+
+
+def external_coverage_evidence(
+    forcing_bry: str | None, start: datetime, stop: datetime, args: argparse.Namespace
+) -> list[str]:
+    """Verify the file that is actually written into ``BRYNAME``.
+
+    Returns the comment lines to embed in the generated ``.in``.  ``UNKNOWN``
+    (cannot be determined) and ``INSUFFICIENT`` (determined to be too short) are
+    both refusals -- they are never collapsed into the configured stop time.
+    """
+    bry_path = resolve_boundary_path(forcing_bry)
+    if bry_path is None:
+        raise SystemExit(
+            "external forcing requires a boundary file (BRYNAME); refusing to write a runnable plan"
+        )
+    report = check_boundary_coverage(bry_path, start, stop)
+    lines = [
+        "! boundary coverage evidence (measured, not assumed):",
+        f"!   file = {bry_path}",
+        f"!   status = {report.status}",
+        f"!   required window = {start.isoformat()} -> {stop.isoformat()}",
+    ]
+    for axis in report.axes:
+        if axis.error:
+            lines.append(f"!   {axis.variable}: ERROR {axis.error}")
+        else:
+            lines.append(
+                f"!   {axis.variable}: n={axis.count} units={axis.units!r} calendar={axis.calendar!r} "
+                f"{axis.start.isoformat()} -> {axis.stop.isoformat()} "
+                f"strictly_increasing={axis.strictly_increasing}"
+            )
+    if report.ok:
+        return lines
+
+    for reason in report.reasons:
+        lines.append(f"!   reason: {reason}")
+    if not getattr(args, "allow_unverified_forcing", False):
+        raise SystemExit(
+            f"external boundary coverage {report.status}; refusing to generate a runnable plan.\n"
+            + report.describe()
+            + "\nPass --allow-unverified-forcing to emit a plan stamped "
+            + UNVERIFIED_MARKER
+            + " (the run gate still refuses it)."
+        )
+    lines.insert(
+        0,
+        f"! {UNVERIFIED_MARKER}: this plan is NOT runnable. "
+        "Boundary coverage could not be proven for the requested window.",
+    )
+    return lines
+
+
 def common_year_offset_days(start: datetime) -> float:
     year_start = datetime(start.year, 1, 1)
     return (start - year_start).total_seconds() / 86400.0
@@ -602,9 +669,11 @@ def base_text(
                          "external_6h": 21600, "external_24h": 86400}
             if mode not in durations or forcing_mode != "external":
                 raise SystemExit("external test modes require external forcing and a supported duration")
+            # The requested window is never shortened. Coverage is proven further
+            # down against the file actually written into BRYNAME, so the legacy
+            # boundary_stop fallback (which silently returns the configured stop
+            # whenever the axis cannot be parsed) is not used for these modes.
             stop = start + timedelta(seconds=durations[mode])
-            if stop > boundary_stop:
-                raise SystemExit("test stop exceeds configured boundary coverage; refusing to shorten test")
             title = f"{naming.title} external forcing TEST ONLY {mode}"
             out_prefix = mode
         elif mode == "pilot_1day":
@@ -640,6 +709,9 @@ def base_text(
             title = f"{naming.title} smoke run"
             out_prefix = "smoke"
     forcing = forcing_paths(args, forcing_mode, mode, params, start=start, stop=stop)
+    coverage_lines: list[str] = []
+    if mode.startswith("external_"):
+        coverage_lines = external_coverage_evidence(forcing["bry"], start, stop, args)
 
     seconds = int((stop - start).total_seconds())
     ntimes = max(1, int(round(seconds / dt_seconds)))
@@ -654,7 +726,10 @@ def base_text(
     nrst = nhis if mode == "smoke" else max(1, int(round(24 * 3600 / dt_seconds)))
     text = template_path.read_text()
     profile_note = f" {profile}" if profile else ""
-    text = f"! Draft {naming.slug} {mode}{profile_note} input derived from roms_upwelling.in.\n" + text
+    header = f"! Draft {naming.slug} {mode}{profile_note} input derived from roms_upwelling.in.\n"
+    if coverage_lines:
+        header += "\n".join(coverage_lines) + "\n"
+    text = header + text
     text = replace_line(text, "TITLE", title)
     app_cpp = f"{naming.cpp_name}_{profile.upper()}" if profile else naming.cpp_name
     text = replace_line(text, "MyAppCPP", app_cpp)

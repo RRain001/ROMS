@@ -63,7 +63,7 @@
     },
     "external_1h": {
       "build_variant": "default",
-      "binary": "romsM_japan_sea",
+      "binary": "romsM_japan_sea_release",
       "fallback_binaries": [],
       "infile": "ocean_japan_sea_external_1h.in",
       "log_file": "external_1h.log",
@@ -85,7 +85,7 @@
     },
     "external_6h": {
       "build_variant": "default",
-      "binary": "romsM_japan_sea",
+      "binary": "romsM_japan_sea_release",
       "fallback_binaries": [],
       "infile": "ocean_japan_sea_external_6h.in",
       "log_file": "external_6h.log",
@@ -107,7 +107,7 @@
     },
     "external_24h": {
       "build_variant": "default",
-      "binary": "romsM_japan_sea",
+      "binary": "romsM_japan_sea_release",
       "fallback_binaries": [],
       "infile": "ocean_japan_sea_external_24h.in",
       "log_file": "external_24h.log",
@@ -127,5 +127,10 @@
         "HDF5"
       ]
     }
-  }
+  },
+  "build_kind_by_mode": {
+    "romsM_japan_sea": "debug",
+    "romsM_japan_sea_release": "release"
+  },
+  "build_kind_note": "Debug binary serves smoke/external_startup (short diagnostics, runtime checks on); the optimized release binary serves the 1h/6h/24h runs. Neither may be substituted for the other."
 }

@@ -10,7 +10,14 @@ on:
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_pilot_infile.py'
       - 'ROMS_Nesting/Data_pre/cases/JAPAN_SEA/**'
       - 'ROMS_Nesting/Data_pre/core/case_context.py'
+      - 'ROMS_Nesting/Data_pre/core/entrypoint_runner.py'
+      - 'ROMS_Nesting/Data_pre/core/external_forcing_coverage.py'
       - 'ROMS_Nesting/Data_pre/core/roms_preprocessing_utils.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_external_forcing_coverage.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_nesting_root_init.py'
+      - 'ROMS_Nesting/ROMS_Run/core/**'
+      - 'ROMS_Nesting/ROMS_Run/tests/**'
+      - 'ROMS_Nesting/scripts/check_isolation.py'
       - 'ROMS_Nesting/ROMS_Build/core/build_context.py'
       - 'ROMS_Nesting/ROMS_Build/tests/test_build_context.py'
       - 'ROMS_Nesting/ROMS_Build/env/**'
@@ -60,7 +67,14 @@ on:
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_pilot_infile.py'
       - 'ROMS_Nesting/Data_pre/cases/JAPAN_SEA/**'
       - 'ROMS_Nesting/Data_pre/core/case_context.py'
+      - 'ROMS_Nesting/Data_pre/core/entrypoint_runner.py'
+      - 'ROMS_Nesting/Data_pre/core/external_forcing_coverage.py'
       - 'ROMS_Nesting/Data_pre/core/roms_preprocessing_utils.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_external_forcing_coverage.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_nesting_root_init.py'
+      - 'ROMS_Nesting/ROMS_Run/core/**'
+      - 'ROMS_Nesting/ROMS_Run/tests/**'
+      - 'ROMS_Nesting/scripts/check_isolation.py'
       - 'ROMS_Nesting/ROMS_Build/core/build_context.py'
       - 'ROMS_Nesting/ROMS_Build/tests/test_build_context.py'
       - 'ROMS_Nesting/ROMS_Build/env/**'
@@ -122,6 +136,9 @@ jobs:
         run: |
           set -euo pipefail
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_external_test_case.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_external_forcing_coverage.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_nesting_root_init.py' -v
+          python -m unittest discover -s ROMS_Nesting/ROMS_Run/tests -p 'test_external_forcing_gate.py' -v
           python -m unittest discover -s ROMS_Nesting/ROMS_Build/tests -p 'test_build_context.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_parent_history_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_bry_schema_contract.py' -v
