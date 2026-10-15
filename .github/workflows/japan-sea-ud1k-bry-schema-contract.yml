@@ -16,6 +16,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_nonconstant_boundary_flux_preview.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_optionb_manifest_contract.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_optionb_manifest_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_synthetic_dynamic_section.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_dynamic_section.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -43,6 +45,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_nonconstant_boundary_flux_preview.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_optionb_manifest_contract.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_optionb_manifest_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_synthetic_dynamic_section.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_dynamic_section.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -80,6 +84,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_remap_preview.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_nonconstant_boundary_flux_preview.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_real_optionb_manifest_contract.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_optionb_synthetic_dynamic_section.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_micro_preflight.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_converter_micro.py' -v
@@ -223,11 +228,31 @@ jobs:
           assert x["option_b_status"]=="COMPARISON_CANDIDATE_NOT_ACTIVE"
           print("REAL_OPTION_B_ARCHIVED_STATIC_ONLY_DONORS_PASS")
           PY
+      - name: Exercise synthetic 41-level 3-frame shear and changing sea level on REAL Option B native metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/nesting/ud1k_optionb_synthetic_dynamic_section.py \
+            --grid "$RUNNER_TEMP/real-static-optionb/UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc" \
+            --report-json "$RUNNER_TEMP/UD1K_REAL_OPTIONB_SYNTHETIC_TIME_SHEAR_41LEVEL.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          x=json.loads((Path(os.environ["RUNNER_TEMP"])/"UD1K_REAL_OPTIONB_SYNTHETIC_TIME_SHEAR_41LEVEL.json").read_text())
+          assert x["total_wet_normal_face_samples"]==3036
+          assert x["max_section_2d_vs_3d_relative_mismatch"]<1e-10
+          assert x["max_individual_face_2d_vs_3d_relative_mismatch"]<1e-10
+          assert x["normal_face_2d_vs_3d_integration_check"]=="PASS"
+          assert x["parent_to_child_mass_conservation"]=="NOT_RUN"
+          assert x["real_ocean_physics"]=="NOT_RUN"
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: real-optionb-archived-static-donor-report-only
-          path: ${{ runner.temp }}/UD1K_REAL_OPTIONB_STATIC_DONORS_ONLY.json
+          path: |
+            ${{ runner.temp }}/UD1K_REAL_OPTIONB_STATIC_DONORS_ONLY.json
+            ${{ runner.temp }}/UD1K_REAL_OPTIONB_SYNTHETIC_TIME_SHEAR_41LEVEL.json
           retention-days: 7
 
   real-candidate-b-geometry-synthetic-bry-schema:
