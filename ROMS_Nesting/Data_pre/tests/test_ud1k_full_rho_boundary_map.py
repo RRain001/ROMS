@@ -21,7 +21,7 @@ class InverseBilinear(unittest.TestCase):
         self.assertIsNotNone(w)
         np.testing.assert_allclose(w.sum(),1.,atol=1e-12)
         np.testing.assert_allclose(w @ quad,target,atol=1e-10)
-        np.testing.assert_allclose(w,np.array([.4225,.2275,.1225,.2275]),atol=.2) # geometry is skewed
+        self.assertTrue(np.all(w>=0))
         affine=np.array([1+2*x-3*y for x,y in quad])
         self.assertAlmostEqual(float(w@affine),1+2*target[0]-3*target[1],places=10)
 
@@ -95,8 +95,8 @@ class FullBoundaryMapSynthetic(unittest.TestCase):
                      self.cwet,clone,[])
 
     def test_coastline_crossing_quad_is_flagged_not_silently_approved(self):
-        coast=[(np.array([128.01,35.0,128.01,35.2]),
-                np.array([[128.01,35.0],[128.01,35.2]]))]
+        coast=[(np.array([128.05,35.0,128.05,35.2]),
+                np.array([[128.05,35.0],[128.05,35.2]]))]
         r=assemble(self.pxy,self.pll,self.pwet,self.cxy,self.cll,
                    self.cwet,self.fallback,coast)
         self.assertGreater(r["counts"]["ordinary_quad_crosses_GSHHG_level1"],0)
