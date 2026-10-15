@@ -37,6 +37,7 @@ class ExternalInfileTest(unittest.TestCase):
     def test_smoke_respects_explicit_external_forcing(self):
         p=self.generate('smoke');self.assertEqual(p.returncode,0,p.stdout+p.stderr)
         text=(self.root/'run/ocean_japan_sea_smoke.in').read_text()
+        self.assertIn('FORCING_UNVERIFIED',text)
         self.assertRegex(text,r'LBC\(isFsur\)\s*==\s*Clo\s+Cha\s+Cha\s+Cha')
         self.assertRegex(text,r'NFFILES\s*==\s*2')
         self.assertRegex(text,r'TIME_REF\s*=\s*18581117.0d0')

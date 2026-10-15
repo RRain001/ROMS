@@ -47,6 +47,7 @@ class ExternalForcingGateTest(unittest.TestCase):
         self.input_dir.mkdir()
         self.context = SimpleNamespace(
             case_root=self.root,
+            mode=SimpleNamespace(name="external_24h"),
             paths=SimpleNamespace(run_dir=self.run_dir, input_dir=self.input_dir),
         )
 
@@ -138,8 +139,39 @@ class ExternalForcingGateTest(unittest.TestCase):
         self.write_bry("bry.nc", [1.0, 2.0])
         self.assertEqual(self.gate(), [])
 
-    def test_bryname_none_is_not_checked(self):
-        self.assertEqual(self.gate(bry="none"), [])
+    def test_external_mode_without_bryname_is_refused(self):
+        """A declared external mode must not sidestep the gate by naming no file."""
+        issues = self.gate(bry="none")
+        self.assertTrue(issues)
+        self.assertIn("declares no boundary file", issues[0])
+
+    def test_data_boundary_without_bryname_is_refused(self):
+        """A non-external mode asking for Cha/RadNud still needs a boundary file."""
+        context = SimpleNamespace(**{**self.context.__dict__, "mode": SimpleNamespace(name="smoke")})
+        infile = self.run_dir / "ocean_forced.in"
+        infile.write_text(
+            "    BRYNAME == none\n"
+            "   LBC(isFsur) ==   Clo     Cha     Cha     Cha\n"
+            "      NTIMES == 8640\n          DT == 10.0d0\n      DSTART = 58120.0d0\n"
+        )
+        issues = validate_external_forcing_coverage(
+            context, parse_infile_metadata(infile), infile.read_text()
+        )
+        self.assertTrue(issues)
+        self.assertIn("requests data boundary conditions", issues[0])
+
+    def test_closed_non_external_mode_without_bryname_is_allowed(self):
+        context = SimpleNamespace(**{**self.context.__dict__, "mode": SimpleNamespace(name="smoke")})
+        infile = self.run_dir / "ocean_closed.in"
+        infile.write_text(
+            "    BRYNAME == none\n"
+            "   LBC(isFsur) ==   Per     Clo     Per     Clo\n"
+            "      NTIMES == 5\n          DT == 10.0d0\n      DSTART = 58120.0d0\n"
+        )
+        issues = validate_external_forcing_coverage(
+            context, parse_infile_metadata(infile), infile.read_text()
+        )
+        self.assertEqual(issues, [])
 
 
 if __name__ == "__main__":

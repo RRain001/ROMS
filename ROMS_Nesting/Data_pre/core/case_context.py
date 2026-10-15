@@ -39,28 +39,36 @@ def init_nesting_root() -> Path:
     need ``${ROMS_NESTING_ROOT}`` expanded (the build and run frameworks, and the
     preprocessing entrypoints) call this first.
 
-    An already-set value is honoured when it names a real nesting checkout, so a
-    user can point the framework at another tree deliberately.  Anything else --
-    a typo, a path to a plain directory, a stale export -- fails closed instead
-    of being silently replaced by this checkout.  Because the root is resolved
-    once and every consumer reads it back from the environment, one process
-    never mixes two different worktrees.
+    The value must name *this* checkout.  Pointing it at a different tree is
+    refused rather than honoured: `DATA_PRE_ROOT`, `CASES_ROOT` and the
+    implementation directory stay relative to the Python modules that are
+    actually running, so accepting another root would silently pair one tree's
+    code and configuration with another tree's data.  Any mismatch -- a typo, a
+    plain directory, a stale export, a second checkout -- fails closed instead
+    of being silently replaced.  Because the root is resolved once and every
+    consumer reads it back from the environment, one process never mixes two
+    different worktrees.
     """
-    default = default_nesting_root()
+    default = default_nesting_root().resolve()
     configured = (os.environ.get(NESTING_ROOT_ENV) or "").strip()
     if not configured:
         root = default
     else:
         candidate = Path(configured).expanduser()
-        if not candidate.is_absolute():
-            candidate = (Path.cwd() / candidate).resolve()
-        else:
-            candidate = candidate.resolve()
+        candidate = (candidate if candidate.is_absolute() else Path.cwd() / candidate).resolve()
         if not is_nesting_root(candidate):
             raise SystemExit(
                 f"{NESTING_ROOT_ENV}={configured!r} is not a ROMS nesting checkout: "
                 f"expected {', '.join(NESTING_ROOT_MARKERS)} under {candidate}. "
                 f"This checkout is {default}. Unset it or point it at a real nesting tree."
+            )
+        if candidate != default:
+            raise SystemExit(
+                f"{NESTING_ROOT_ENV}={configured!r} names a different checkout than the running "
+                f"code ({default}). Cross-checkout rebinding is not supported: the Data_pre cases "
+                "root and the implementation directory stay relative to the running modules, so "
+                "this would mix one tree's configuration with another tree's data. "
+                f"Run from {candidate} instead, or unset {NESTING_ROOT_ENV}."
             )
         root = candidate
     os.environ[NESTING_ROOT_ENV] = str(root)

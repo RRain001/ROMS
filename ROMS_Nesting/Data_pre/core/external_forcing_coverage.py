@@ -18,6 +18,7 @@ the run gate refuses it.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -107,6 +108,42 @@ def boundary_time_variables(ds: Dataset) -> list[str]:
     return sorted(names)
 
 
+#: Boundary field groups and the time axis each group is indexed by.
+_GROUP_AXIS = {
+    "zeta": "zeta_time",
+    "ubar": "v2d_time",
+    "vbar": "v2d_time",
+    "u": "v3d_time",
+    "v": "v3d_time",
+    "temp": "temp_time",
+    "salt": "salt_time",
+}
+_BOUNDARY_SUFFIXES = ("_west", "_east", "_south", "_north")
+
+
+def required_time_axes(ds: Dataset) -> dict[str, list[str]]:
+    """Which time axes the file's *own* boundary fields require.
+
+    Enumerating only the axes that happen to exist cannot see an axis that is
+    missing while its fields are present, so the requirement is derived from the
+    field variables themselves.
+    """
+    required: dict[str, list[str]] = {}
+    for name in ds.variables:
+        # The group index follows the suffix for dye fields (dye_west_01), so
+        # strip it before looking for the suffix.
+        stripped = re.sub(r"_\d+$", "", name)
+        for suffix in _BOUNDARY_SUFFIXES:
+            if not stripped.endswith(suffix):
+                continue
+            group = stripped[: -len(suffix)]
+            axis = _GROUP_AXIS.get(group) or ("dye_time" if group.startswith("dye") else None)
+            if axis:
+                required.setdefault(axis, []).append(name)
+            break
+    return required
+
+
 def _inspect_axis(ds: Dataset, name: str) -> TimeAxisReport:
     var = ds.variables[name]
     units = getattr(var, "units", None)
@@ -166,10 +203,18 @@ def check_boundary_coverage(
 
     try:
         names = boundary_time_variables(ds)
+        required = required_time_axes(ds)
         if not names:
             return CoverageReport(
                 UNKNOWN, path, required_start, required_stop, (),
                 ("no boundary time axis found (expected at least one *_time variable)",),
+            )
+        missing = sorted(axis for axis in required if axis not in names)
+        if missing:
+            detail = "; ".join(f"{axis} required by {', '.join(required[axis])}" for axis in missing)
+            return CoverageReport(
+                UNKNOWN, path, required_start, required_stop, (),
+                (f"boundary file is missing time axes its fields require: {detail}",),
             )
         axes = tuple(_inspect_axis(ds, name) for name in names)
     finally:

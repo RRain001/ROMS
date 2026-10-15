@@ -435,31 +435,49 @@ def external_model_start_value(forcing_mode: str, forcing_ini: str | None) -> fl
         return None
 
 
-def external_model_stop(params: dict, forcing_mode: str, forcing_bry: str | None) -> datetime:
+def external_model_stop(params: dict, forcing_mode: str, forcing_bry: str | None) -> datetime | None:
+    """Latest model time the boundary file can support.
+
+    Returns the configured stop when no boundary file applies at all (an
+    internal, non-external run).  Returns ``None`` when external forcing was
+    requested but the available coverage cannot be established -- callers must
+    refuse rather than fall back to the configured stop, which would silently
+    integrate past the end of the boundary data.
+    """
     configured = datetime.fromisoformat(params["time"]["stop"])
     if forcing_mode != "external" or not forcing_bry:
         return configured
-    bry_path = (RUN_DIR / forcing_bry).resolve()
-    if not bry_path.exists():
-        return configured
+    bry_path = resolve_boundary_path(forcing_bry)
+    if bry_path is None or not bry_path.exists():
+        return None
     try:
         with Dataset(bry_path) as ds:
             if "zeta_time" not in ds.variables:
-                return configured
+                return None
             time_var = ds.variables["zeta_time"]
             units = getattr(time_var, "units", None)
             if not units:
-                return configured
+                return None
             calendar = getattr(time_var, "calendar", "standard")
             values = time_var[:]
             if values.size == 0:
-                return configured
+                return None
             parsed = num2date(values, units=units, calendar=calendar)
             value = parsed[-1]
             actual = datetime(value.year, value.month, value.day, value.hour, value.minute, value.second)
             return min(configured, actual)
     except Exception:  # noqa: BLE001
-        return configured
+        return None
+
+
+def require_boundary_stop(boundary_stop: datetime | None, mode: str) -> datetime:
+    """Refuse to auto-shorten or auto-extend when coverage is undeterminable."""
+    if boundary_stop is None:
+        raise SystemExit(
+            f"{mode}: boundary coverage cannot be established, so the run window cannot be "
+            "bounded against it; provide a readable boundary file or use a non-external mode"
+        )
+    return boundary_stop
 
 
 def resolve_boundary_path(forcing_bry: str | None) -> Path | None:
@@ -664,6 +682,11 @@ def base_text(
             if not ini_path.exists():
                 start = glorys_center_time(load_glorys_config(args.config), start)
         boundary_stop = external_model_stop(params, forcing_mode, forcing_preview["bry"])
+        if mode == "pilot_1day" or mode.startswith("online_"):
+            # These modes auto-shorten against boundary coverage, so they must
+            # refuse when that coverage cannot be established instead of running
+            # the full configured window past the end of the data.
+            boundary_stop = require_boundary_stop(boundary_stop, mode)
         if mode.startswith("external_"):
             durations = {"external_startup": dt_seconds * 5, "external_1h": 3600,
                          "external_6h": 21600, "external_24h": 86400}
@@ -710,7 +733,11 @@ def base_text(
             out_prefix = "smoke"
     forcing = forcing_paths(args, forcing_mode, mode, params, start=start, stop=stop)
     coverage_lines: list[str] = []
-    if mode.startswith("external_"):
+    if forcing_mode == "external":
+        # Any plan that asks ROMS for external boundary data carries the measured
+        # coverage evidence -- the external test modes and an explicitly external
+        # smoke run alike.  Without real files the plan is stamped instead of
+        # being refused, unless the caller wants the strict behaviour.
         coverage_lines = external_coverage_evidence(forcing["bry"], start, stop, args)
 
     seconds = int((stop - start).total_seconds())

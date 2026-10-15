@@ -92,11 +92,20 @@ class InitNestingRootTest(unittest.TestCase):
         self.assertEqual(init_nesting_root(), default_nesting_root())
         self.assertEqual(os.environ[NESTING_ROOT_ENV], str(default_nesting_root()))
 
-    def test_explicit_valid_checkout_is_honoured(self):
+    def test_this_checkout_explicitly_set_is_honoured(self):
+        os.environ[NESTING_ROOT_ENV] = str(default_nesting_root())
+        self.assertEqual(init_nesting_root(), default_nesting_root().resolve())
+
+    def test_a_different_checkout_fails_closed(self):
+        """Accepting another tree would mix its data with this tree's code."""
         other = _make_checkout(self.root / "other_checkout")
         os.environ[NESTING_ROOT_ENV] = str(other)
-        self.assertEqual(init_nesting_root(), other.resolve())
-        self.assertEqual(os.environ[NESTING_ROOT_ENV], str(other.resolve()))
+        with self.assertRaises(SystemExit) as caught:
+            init_nesting_root()
+        message = str(caught.exception)
+        self.assertIn("different checkout", message)
+        self.assertIn("Cross-checkout rebinding is not supported", message)
+        self.assertEqual(os.environ[NESTING_ROOT_ENV], str(other))
 
     def test_directory_that_is_not_a_checkout_fails_closed(self):
         plain = self.root / "plain"

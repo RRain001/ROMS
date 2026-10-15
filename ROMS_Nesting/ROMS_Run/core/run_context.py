@@ -644,6 +644,22 @@ def _parse_float_scalar(text: str, key: str) -> float | None:
         return None
 
 
+#: LBC types that read a boundary file.  ``Clo`` and ``Per`` do not.
+DATA_BOUNDARY_TYPES = {"Cha", "Fla", "Nud", "RadNud", "Rad", "Gra", "Mar"}
+
+
+def infile_data_boundary_types(infile_text: str) -> list[str]:
+    """Boundary conditions in the infile that need boundary data."""
+    found: set[str] = set()
+    for raw_line in infile_text.splitlines():
+        line = strip_comment(raw_line)
+        match = re.match(r"\s*LBC\(\s*\w+\s*\)\s*=+\s*(.*)", line)
+        if not match:
+            continue
+        found.update(token for token in match.group(1).split() if token in DATA_BOUNDARY_TYPES)
+    return sorted(found)
+
+
 def validate_external_forcing_coverage(
     context: RunContext, metadata: InfileMetadata, infile_text: str
 ) -> list[str]:
@@ -653,6 +669,10 @@ def validate_external_forcing_coverage(
     test modes and an explicitly external smoke run alike.  The requested window
     is taken from the infile itself (``DSTART``/``NTIMES``/``DT``), not from the
     case configuration, so the check follows what ROMS will actually integrate.
+
+    A declared external mode cannot sidestep the gate by naming no boundary file,
+    and a mode that asks ROMS for data boundaries cannot either.  Only genuinely
+    closed or periodic setups are exempt.
     """
     issues: list[str] = []
     if UNVERIFIED_MARKER in infile_text:
@@ -662,12 +682,26 @@ def validate_external_forcing_coverage(
         )
         return issues
 
+    declared_external = str(context.mode.name).startswith("external_")
+    data_boundaries = infile_data_boundary_types(infile_text)
     bry_tokens = [
         token
         for key, token, _ in metadata.keyed_tokens
         if key == "BRYNAME" and Path(token).name.lower() not in {"none", "null"}
     ]
+
     if not bry_tokens:
+        if declared_external:
+            issues.append(
+                f"mode {context.mode.name} is an external-forcing mode but its infile declares no "
+                "boundary file (BRYNAME); the external coverage gate cannot be satisfied"
+            )
+        elif data_boundaries:
+            issues.append(
+                "infile requests data boundary conditions ("
+                + ", ".join(data_boundaries)
+                + ") but declares no boundary file (BRYNAME)"
+            )
         return issues
 
     dstart = _parse_float_scalar(infile_text, "DSTART")

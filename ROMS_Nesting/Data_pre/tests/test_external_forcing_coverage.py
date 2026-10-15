@@ -27,6 +27,7 @@ from external_forcing_coverage import (  # noqa: E402
     check_boundary_coverage,
     datetime_to_mjd,
     mjd_to_datetime,
+    required_time_axes,
 )
 
 START = datetime(2018, 1, 2, 0, 0, 0)
@@ -103,6 +104,33 @@ class CoverageModuleTest(unittest.TestCase):
         report = self.check(path)
         self.assertEqual(report.status, UNKNOWN)
         self.assertIn("cannot be opened", report.reasons[0])
+
+    def test_missing_required_axis_is_unknown(self):
+        """Fields present but their time axis absent: existing axes alone can't see it."""
+        path = _write_bry(self.root / "missing_axis.nc", {"zeta_time": (_days(1, 2), UNITS)})
+        with Dataset(path, "a") as ds:
+            ds.createDimension("eta_rho2", 2)
+            ds.createVariable("temp_east", "f8", ("eta_rho2",))[:] = 1.0
+        report = self.check(path)
+        self.assertEqual(report.status, UNKNOWN)
+        self.assertIn("missing time axes its fields require", report.reasons[0])
+        self.assertIn("temp_time", report.reasons[0])
+
+    def test_required_time_axes_maps_each_group(self):
+        path = _write_bry(
+            self.root / "groups.nc",
+            {"zeta_time": (_days(1, 2), UNITS), "v3d_time": (_days(1, 2), UNITS)},
+        )
+        with Dataset(path, "a") as ds:
+            for name in ("ubar_south", "v_east", "dye_west_01"):
+                ds.createVariable(name, "f8", ("eta_rho",))[:] = 1.0
+        with Dataset(path) as ds:
+            required = required_time_axes(ds)
+        # v_east pulls in v3d_time as well; all four axes are present in the file.
+        self.assertEqual(sorted(required), ["dye_time", "v2d_time", "v3d_time", "zeta_time"])
+        self.assertIn("ubar_south", required["v2d_time"])
+        self.assertIn("dye_west_01", required["dye_time"])
+        self.assertIn("v_east", required["v3d_time"])
 
     # ---- INSUFFICIENT: coverage established but too short ---------------
 
