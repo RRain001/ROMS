@@ -22,6 +22,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_cf_time_and_source_face_support.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_end_to_end_synthetic_parent.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_parent_smoke.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_es3k_parent_mask_audit.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_es3k_parent_mask_audit.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -55,6 +57,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_cf_time_and_source_face_support.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_end_to_end_synthetic_parent.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_parent_smoke.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_es3k_parent_mask_audit.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_es3k_parent_mask_audit.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -95,6 +99,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_optionb_synthetic_dynamic_section.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_cf_time_and_source_face_support.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_optionb_synthetic_parent_smoke.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_real_es3k_parent_mask_audit.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_micro_preflight.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_converter_micro.py' -v
@@ -194,6 +199,70 @@ jobs:
           name: ud1k-synthetic-only-parent-history-and-bry-schema-fixture
           path: ${{ runner.temp }}/ud1k_synthetic_contract
           retention-days: 14
+
+  real-es3k-parent-mask-one-time:
+    # One-time real parental mask acceptance only. Original native source
+    # archive ~157MB was produced in a prior successful I3 GEBCO/GSHHG job.
+    # Pull-request trigger exists only for initial independent audit;
+    # switch this job back to workflow_dispatch immediately after SUCCESS.
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install minimal parent C-grid native mask audit dependencies
+        run: python -m pip install --disable-pip-version-check numpy netCDF4
+      - name: Reuse actual archived I3 ES3K grid (no new terrain/network download)
+        uses: actions/download-artifact@v4
+        with:
+          name: es3k-real-public-gebco2026-native15s-gshhg237
+          run-id: 38680030642
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/archived_real_parent
+      - name: Reuse small archived actual UD1K Option B grid and original stencils
+        uses: actions/download-artifact@v4
+        with:
+          name: ud1k-27-wet-boundary-mapping-small-json
+          run-id: 38680030642
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/archived_real_child
+      - name: Independently recheck actual real parent wet RHO and U plus V faces
+        shell: bash
+        run: |
+          set -euo pipefail
+          parent=$(find "$RUNNER_TEMP/archived_real_parent" -type f -name 'ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc' -print -quit)
+          [ -n "$parent" ] || { echo 'Real original I3 parent file absent'; exit 2; }
+          python ROMS_Nesting/Data_pre/nesting/ud1k_real_es3k_parent_mask_audit.py \
+            --parent-grid "$parent" \
+            --child-grid "$RUNNER_TEMP/archived_real_child/UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc" \
+            --rho-map "$RUNNER_TEMP/archived_real_child/ud1k_core_shoreline_clear_1011_rho_map.json" \
+            --native-uv-map "$RUNNER_TEMP/archived_real_child/ud1k_core_shoreline_clear_native_uv_boundary_map.json" \
+            --report-json "$RUNNER_TEMP/REAL_ES3K_PARENT_MASK_OPTIONB_STENCIL_SUPPORT_REPORT.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          r=json.loads((Path(os.environ["RUNNER_TEMP"])/"REAL_ES3K_PARENT_MASK_OPTIONB_STENCIL_SUPPORT_REPORT.json").read_text())
+          assert r["status"]=="REAL_ES3K_PARENT_MASK_ALL_OPTIONB_RHO_U_V_DONORS_PASS"
+          assert r["source_grid_mask"]=="ACTUAL_GEBCO2026_GSHHG237_ES3K_I3_NOT_ARTIFICIAL"
+          assert r["receivers_by_kind"]=={"rho":1011,"u":1005,"v":1010}
+          assert r["actual_RHO_and_native_UV_donor_checks"]=="PASS"
+          assert r["native_child_normal_face_counts"]=={"south":382,"north":364,"west":0,"east":266}
+          assert r["real_parent_ES3K_time_dependent_history"]=="NOT_AVAILABLE"
+          assert r["real_ES3K_UD1K_parent_child_transport_mass_conservation"]=="NOT_RUN"
+          print("REAL_ES3K_PARENT_WET_NATIVE_DONOR_INDEPENDENT_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-ES3K-parent-mask-optionb-donor-independent-audit
+          path: ${{ runner.temp }}/REAL_ES3K_PARENT_MASK_OPTIONB_STENCIL_SUPPORT_REPORT.json
+          retention-days: 30
 
   real-optionb-archived-static-mapping-contract:
     # Proven success on Actions #38696848420: archived native real-grid
