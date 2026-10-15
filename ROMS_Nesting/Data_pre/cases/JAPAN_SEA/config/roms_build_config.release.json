@@ -1,0 +1,48 @@
+{
+  "default_variant": "default",
+  "build_kind": "release",
+  "compiler": {
+    "fort": "ifort",
+    "use_mpi": true,
+    "use_mpif90": true,
+    "which_mpi": "intel",
+    "use_large": true,
+    "static": true,
+    "exec": true,
+    "use_netcdf4": true,
+    "use_parallel_io": false,
+    "use_debug": false
+  },
+  "paths": {
+    "roms_src": "${ROMS_NESTING_ROOT}/roms_src/roms",
+    "my_local_paths": "${ROMS_NESTING_ROOT}/ROMS_Build/env/linux_intel.sh",
+    "oneapi_setvars": "$HOME/intel/oneapi/setvars.sh",
+    "netcdf_root": "$HOME/roms_build/install",
+    "hdf5_root": "$HOME/roms_build/install",
+    "mpi_root": "$HOME/intel/oneapi/mpi/2021.9.0"
+  },
+  "build": {
+    "build_subdir": "build/Build_romsM_release",
+    "bin_subdir": "bin",
+    "jobs": 4,
+    "clean_first_default": true,
+    "make_variables": {
+      "FC": "mpiifort"
+    }
+  },
+  "variants": {
+    "default": {
+      "roms_application": "JAPAN_SEA",
+      "header_dir": "run",
+      "analytical_dir": "run",
+      "header_name": "japan_sea.h",
+      "executable_name": "romsM_japan_sea_release",
+      "fallback_binary_paths": []
+    }
+  },
+  "use_legacy_library_paths": false,
+  "platform": "Linux ifort/Intel MPI matching main FDNPP (user confirmed)",
+  "io_policy": "MPI compute; NetCDF4/HDF5 output via master rank; parallel-capable NetCDF library ABI also probed",
+  "paired_debug_config": "roms_build_config.json",
+  "note": "Optimized partner of the debug build. Separate build_subdir so the debug artifacts are never destroyed; separate executable name so neither binary can be mistaken for the other."
+}

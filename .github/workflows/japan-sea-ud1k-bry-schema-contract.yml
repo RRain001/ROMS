@@ -1,0 +1,532 @@
+name: Japan Sea UD1K ROMS History and BRY Schema Contract
+
+on:
+  push:
+    branches:
+      - codex/es3k-i3-wet-domain-audit-20261014
+    paths:
+      - 'ROMS_Nesting/Data_pre/core/external_test_case.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_external_test_case.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_pilot_infile.py'
+      - 'ROMS_Nesting/Data_pre/cases/JAPAN_SEA/**'
+      - 'ROMS_Nesting/Data_pre/core/case_context.py'
+      - 'ROMS_Nesting/Data_pre/core/entrypoint_runner.py'
+      - 'ROMS_Nesting/Data_pre/core/external_forcing_coverage.py'
+      - 'ROMS_Nesting/Data_pre/core/roms_preprocessing_utils.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_external_forcing_coverage.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_nesting_root_init.py'
+      - 'ROMS_Nesting/ROMS_Run/core/**'
+      - 'ROMS_Nesting/ROMS_Run/tests/**'
+      - 'ROMS_Nesting/scripts/check_isolation.py'
+      - 'ROMS_Nesting/ROMS_Build/core/build_context.py'
+      - 'ROMS_Nesting/ROMS_Build/tests/test_build_context.py'
+      - 'ROMS_Nesting/ROMS_Build/tests/test_verify_case_build.py'
+      - 'ROMS_Nesting/ROMS_Build/env/**'
+      - 'ROMS_Nesting/ROMS_Build/scripts/build/verify_case_build.py'
+      - 'ROMS_Nesting/ROMS_Build/scripts/env/validate_toolchain.py'
+      - 'ROMS_Nesting/configs/templates/**'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_parent_history_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_bry_schema_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_vertical_flux_primitives.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_parent_history_contract.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_bry_schema_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_remap_preview.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_remap_preview.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_normal_flux_preview.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_nonconstant_boundary_flux_preview.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_optionb_manifest_contract.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_optionb_manifest_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_synthetic_dynamic_section.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_dynamic_section.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_cf_time_bridge.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_cf_time_and_source_face_support.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_end_to_end_synthetic_parent.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_parent_smoke.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_es3k_parent_mask_audit.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_es3k_parent_mask_audit.py'
+      - 'ROMS_Nesting/Data_pre/cases/JAPAN_SEA/config/glorys12v1_download_config.json'
+      - 'ROMS_Nesting/Data_pre/nesting/japan_sea_glorys_micro_plan.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_glorys_micro_plan.py'
+      - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
+      - 'ROMS_Nesting/Data_pre/nesting/japan_sea_forcing_micro_preflight.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_forcing_micro_preflight.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_forcing_converter_micro.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_atm_forcing_from_era5.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_ocean_ini_from_glorys.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_ocean_bry_from_glorys.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_rad_forcing_from_era5.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_tides_from_tpxo.py'
+      - '.github/workflows/japan-sea-ud1k-bry-schema-contract.yml'
+  pull_request:
+    branches:
+      - feature/japan-sea-nesting
+    paths:
+      - 'ROMS_Nesting/Data_pre/core/external_test_case.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_external_test_case.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_pilot_infile.py'
+      - 'ROMS_Nesting/Data_pre/cases/JAPAN_SEA/**'
+      - 'ROMS_Nesting/Data_pre/core/case_context.py'
+      - 'ROMS_Nesting/Data_pre/core/entrypoint_runner.py'
+      - 'ROMS_Nesting/Data_pre/core/external_forcing_coverage.py'
+      - 'ROMS_Nesting/Data_pre/core/roms_preprocessing_utils.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_external_forcing_coverage.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_nesting_root_init.py'
+      - 'ROMS_Nesting/ROMS_Run/core/**'
+      - 'ROMS_Nesting/ROMS_Run/tests/**'
+      - 'ROMS_Nesting/scripts/check_isolation.py'
+      - 'ROMS_Nesting/ROMS_Build/core/build_context.py'
+      - 'ROMS_Nesting/ROMS_Build/tests/test_build_context.py'
+      - 'ROMS_Nesting/ROMS_Build/tests/test_verify_case_build.py'
+      - 'ROMS_Nesting/ROMS_Build/env/**'
+      - 'ROMS_Nesting/ROMS_Build/scripts/build/verify_case_build.py'
+      - 'ROMS_Nesting/ROMS_Build/scripts/env/validate_toolchain.py'
+      - 'ROMS_Nesting/configs/templates/**'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_parent_history_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_bry_schema_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_vertical_flux_primitives.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_parent_history_contract.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_bry_schema_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_remap_preview.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_remap_preview.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_normal_flux_preview.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_nonconstant_boundary_flux_preview.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_optionb_manifest_contract.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_optionb_manifest_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_synthetic_dynamic_section.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_dynamic_section.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_cf_time_bridge.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_cf_time_and_source_face_support.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_end_to_end_synthetic_parent.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_parent_smoke.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_real_es3k_parent_mask_audit.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_real_es3k_parent_mask_audit.py'
+      - 'ROMS_Nesting/Data_pre/cases/JAPAN_SEA/config/glorys12v1_download_config.json'
+      - 'ROMS_Nesting/Data_pre/nesting/japan_sea_glorys_micro_plan.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_glorys_micro_plan.py'
+      - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
+      - 'ROMS_Nesting/Data_pre/nesting/japan_sea_forcing_micro_preflight.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_forcing_micro_preflight.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_forcing_converter_micro.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_atm_forcing_from_era5.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_ocean_ini_from_glorys.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_ocean_bry_from_glorys.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_rad_forcing_from_era5.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_tides_from_tpxo.py'
+      - '.github/workflows/japan-sea-ud1k-bry-schema-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  synthetic-only-history-and-bry-contract:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install bounded contract dependencies
+        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4
+      - name: Strict source ROMS history and schema synthetic regressions
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_external_test_case.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_external_forcing_coverage.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_nesting_root_init.py' -v
+          python -m unittest discover -s ROMS_Nesting/ROMS_Run/tests -p 'test_external_forcing_gate.py' -v
+          python -m unittest discover -s ROMS_Nesting/ROMS_Build/tests -p 'test_build_context.py' -v
+          python -m unittest discover -s ROMS_Nesting/ROMS_Build/tests -p 'test_verify_case_build.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_parent_history_contract.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_bry_schema_contract.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_remap_preview.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_nonconstant_boundary_flux_preview.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_real_optionb_manifest_contract.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_optionb_synthetic_dynamic_section.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_cf_time_and_source_face_support.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_optionb_synthetic_parent_smoke.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_real_es3k_parent_mask_audit.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_glorys_micro_plan.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_micro_preflight.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_converter_micro.py' -v
+      - name: Validate no-download real GLORYS 0.5 degree three-day request plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/japan_sea_glorys_no_download"
+          python ROMS_Nesting/Data_pre/nesting/japan_sea_glorys_micro_plan.py \
+            --plan-json "$RUNNER_TEMP/japan_sea_glorys_no_download/REAL_GLORYS_REQUEST_NOT_EXECUTED.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          p=Path(os.environ["RUNNER_TEMP"])/"japan_sea_glorys_no_download"/"REAL_GLORYS_REQUEST_NOT_EXECUTED.json"
+          a=json.loads(p.read_text())
+          assert a["mode"]=="SMALL_REAL_MARINE_REQUEST_PLAN_NOT_EXECUTED"
+          assert a["longitude_latitude_bbox"]==[129.75,130.25,36.75,37.25]
+          assert a["all_variables"]==["thetao","so","uo","vo","zos"]
+          assert a["max_depth_m"]==300.0
+          assert a["true_ocean_observations"]=="NOT_DOWNLOADED"
+          assert a["no_roms_integration"] and a["no_full_ES3K_download"]
+          print("JAPAN_SEA_GLORYS_REAL_MICRO_DOWNLOAD_PLAN_ONLY_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: japan-sea-glorys-REAL-request-plan-NOT-downloaded
+          path: ${{ runner.temp }}/japan_sea_glorys_no_download/REAL_GLORYS_REQUEST_NOT_EXECUTED.json
+          retention-days: 14
+      - name: Invoke both CLIs against explicitly synthetic small ROMS fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ud1k_synthetic_contract"
+          python - <<'PY'
+          import sys,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ud1k_synthetic_contract"
+          sys.path.insert(0,"ROMS_Nesting/Data_pre/tests")
+          from test_ud1k_parent_history_contract import synthetic_parent_grid,synthetic_parent_history
+          from test_ud1k_bry_schema_contract import child_grid
+          synthetic_parent_grid(root/"SYNTHETIC_es3k_grid.nc")
+          synthetic_parent_history(root/"SYNTHETIC_es3k_history.nc")
+          child_grid(root/"SYNTHETIC_small_ud1k_grid.nc")
+          PY
+          python ROMS_Nesting/Data_pre/nesting/ud1k_parent_history_contract.py \
+            --parent-grid "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_es3k_grid.nc" \
+            --history "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_es3k_history.nc" \
+            --report "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_parent_history_contract.json"
+          python ROMS_Nesting/Data_pre/nesting/ud1k_bry_schema_contract.py \
+            --child-grid "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_small_ud1k_grid.nc" \
+            --output "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_ONLY_ud1k_bry.nc" \
+            --report "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_only_bry_schema.json" \
+            --synthetic-fixture-only
+          python - <<'PY'
+          from pathlib import Path
+          import json,os
+          root=Path(os.environ["RUNNER_TEMP"])/"ud1k_synthetic_contract"
+          history=json.loads((root/"SYNTHETIC_parent_history_contract.json").read_text())
+          output=json.loads((root/"SYNTHETIC_only_bry_schema.json").read_text())
+          assert history["full_wet_values_scanned"] is True
+          assert set(history["wet_field_checks"])=={"zeta","temp","salt","u","v","ubar","vbar"}
+          assert history["physical_roms_bry_nc_and_hydrodynamics"]=="NOT_RUN"
+          assert output["complete_field_variables"]==28 and output["status"]=="SYNTHETIC_SCHEMA_TEST_ONLY"
+          assert output["real_one_way_open_boundary_physics"]=="NOT_RUN"
+          print("UD1K_HISTORY_BRY_SYNTHETIC_CONTRACT_PASS",
+                json.dumps({"fields":len(history["wet_field_checks"]),
+                            "boundary_variables":output["complete_field_variables"],
+                            "real_ES3K_history":"NOT_AVAILABLE"},sort_keys=True))
+          PY
+      - name: Test existing no-nesting GLORYS ERA5 TPXO staged interfaces with 24h mock window (no download)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/japan_sea_micro_synthetic"
+          python - <<'PY'
+          import os,sys
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"japan_sea_micro_synthetic"
+          sys.path.insert(0,"ROMS_Nesting/Data_pre/tests")
+          from test_japan_sea_forcing_micro_preflight import (
+              synthetic_ocean,synthetic_era5,synthetic_tpxo
+          )
+          synthetic_ocean(root/"SYNTHETIC_GLORYS_daily.nc")
+          synthetic_era5(root/"SYNTHETIC_ERA5_atm_hourly.nc")
+          synthetic_era5(root/"SYNTHETIC_ERA5_rad_hourly.nc",radiation=True)
+          synthetic_tpxo(root/"SYNTHETIC_TPXO9_harmonics.nc")
+          PY
+          python ROMS_Nesting/Data_pre/nesting/japan_sea_forcing_micro_preflight.py \
+            --ocean "$RUNNER_TEMP/japan_sea_micro_synthetic/SYNTHETIC_GLORYS_daily.nc" \
+            --atmosphere "$RUNNER_TEMP/japan_sea_micro_synthetic/SYNTHETIC_ERA5_atm_hourly.nc" \
+            --radiation "$RUNNER_TEMP/japan_sea_micro_synthetic/SYNTHETIC_ERA5_rad_hourly.nc" \
+            --tides "$RUNNER_TEMP/japan_sea_micro_synthetic/SYNTHETIC_TPXO9_harmonics.nc" \
+            --start 2018-01-02T00:00:00 \
+            --stop 2018-01-03T00:00:00 \
+            --lon 130 --lat 37 \
+            --report "$RUNNER_TEMP/japan_sea_micro_synthetic/OFFLINE_ONLY_staged_source_contract.json"
+          python - <<'PY'
+          from pathlib import Path
+          import json,os
+          file=Path(os.environ["RUNNER_TEMP"])/"japan_sea_micro_synthetic"/"OFFLINE_ONLY_staged_source_contract.json"
+          report=json.loads(file.read_text())
+          assert report["status"]=="OFFLINE_STAGED_SOURCE_INTERFACE_MICRO_PREFLIGHT_PASS"
+          assert report["download_or_api_calls"]=="NONE"
+          assert report["ROMS_model_integration"]=="NOT_RUN"
+          assert report["real_ES3K_history"]=="NOT_RUN"
+          assert report["source_interfaces"]["ocean"]["time"]["largest_gap_hours"]==24.
+          assert report["source_interfaces"]["atmosphere"]["time"]["largest_gap_hours"]==1.
+          print("JAPAN_SEA_OFFLINE_MICRO_SOURCE_CONTRACT_PASS",json.dumps({
+              "sources":sorted(report["source_interfaces"]),
+              "duration_hours":24,
+              "api_calls":"NONE","ocean_run":"NOT_RUN"},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: japan-sea-SYNTHETIC-only-glorys-era5-tpxo-micro-interface
+          path: ${{ runner.temp }}/japan_sea_micro_synthetic
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ud1k-synthetic-only-parent-history-and-bry-schema-fixture
+          path: ${{ runner.temp }}/ud1k_synthetic_contract
+          retention-days: 14
+
+  real-es3k-parent-mask-one-time:
+    # Independent REAL ES3K wet/native U/V donor audit PASSED on
+    # Actions #38701634361: 909 distinct parent RHO donors.
+    # Manual-only now: 157MB historic archive expires, and routine CI
+    # must not redownload source grids or repeat expensive work.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install minimal parent C-grid native mask audit dependencies
+        run: python -m pip install --disable-pip-version-check numpy netCDF4
+      - name: Reuse actual archived I3 ES3K grid (no new terrain/network download)
+        uses: actions/download-artifact@v4
+        with:
+          name: es3k-real-public-gebco2026-native15s-gshhg237
+          run-id: 38680030642
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/archived_real_parent
+      - name: Reuse small archived actual UD1K Option B grid and original stencils
+        uses: actions/download-artifact@v4
+        with:
+          name: ud1k-27-wet-boundary-mapping-small-json
+          run-id: 38680030642
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/archived_real_child
+      - name: Independently recheck actual real parent wet RHO and U plus V faces
+        shell: bash
+        run: |
+          set -euo pipefail
+          parent=$(find "$RUNNER_TEMP/archived_real_parent" -type f -name 'ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc' -print -quit)
+          [ -n "$parent" ] || { echo 'Real original I3 parent file absent'; exit 2; }
+          python ROMS_Nesting/Data_pre/nesting/ud1k_real_es3k_parent_mask_audit.py \
+            --parent-grid "$parent" \
+            --child-grid "$RUNNER_TEMP/archived_real_child/UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc" \
+            --rho-map "$RUNNER_TEMP/archived_real_child/ud1k_core_shoreline_clear_1011_rho_map.json" \
+            --native-uv-map "$RUNNER_TEMP/archived_real_child/ud1k_core_shoreline_clear_native_uv_boundary_map.json" \
+            --report-json "$RUNNER_TEMP/REAL_ES3K_PARENT_MASK_OPTIONB_STENCIL_SUPPORT_REPORT.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          r=json.loads((Path(os.environ["RUNNER_TEMP"])/"REAL_ES3K_PARENT_MASK_OPTIONB_STENCIL_SUPPORT_REPORT.json").read_text())
+          assert r["status"]=="REAL_ES3K_PARENT_MASK_ALL_OPTIONB_RHO_U_V_DONORS_PASS"
+          assert r["source_grid_mask"]=="ACTUAL_GEBCO2026_GSHHG237_ES3K_I3_NOT_ARTIFICIAL"
+          assert r["receivers_by_kind"]=={"rho":1011,"u":1005,"v":1010}
+          assert r["actual_RHO_and_native_UV_donor_checks"]=="PASS"
+          assert r["native_child_normal_face_counts"]=={"south":382,"north":364,"west":0,"east":266}
+          assert r["real_parent_ES3K_time_dependent_history"]=="NOT_AVAILABLE"
+          assert r["real_ES3K_UD1K_parent_child_transport_mass_conservation"]=="NOT_RUN"
+          print("REAL_ES3K_PARENT_WET_NATIVE_DONOR_INDEPENDENT_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-ES3K-parent-mask-optionb-donor-independent-audit
+          path: ${{ runner.temp }}/REAL_ES3K_PARENT_MASK_OPTIONB_STENCIL_SUPPORT_REPORT.json
+          retention-days: 30
+
+  real-optionb-archived-static-mapping-contract:
+    # Proven success on Actions #38696848420: archived native real-grid
+    # manifest and 3-time × 41-layer synthetic flux over real metrics.
+    # Run manually only: avoids archived 30-day artifact expiration causing
+    # routine PR failures. No real ES3K parent history or new bathymetry.
+    # Real archived Option B all-maps -> synthetic full parent -> 28-field
+    # NetCDF integration passed Actions #38699786571. Run manually only:
+    # prior source artifact is expiring and routine PR checks stay offline.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install only small map contract dependencies
+        run: python -m pip install --disable-pip-version-check numpy netCDF4
+      - name: Reuse original I3 accepted small archived candidate-B artifact (NO GEBCO network)
+        uses: actions/download-artifact@v4
+        with:
+          name: ud1k-27-wet-boundary-mapping-small-json
+          run-id: 38680030642
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/real-static-optionb
+      - name: Audit actual Option B 1011 RHO, 1005 U, 1010 V donors and 1012 normal faces
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/real-static-optionb"
+          python ROMS_Nesting/Data_pre/nesting/ud1k_real_optionb_manifest_contract.py \
+            --grid "$root/UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc" \
+            --rho-map "$root/ud1k_core_shoreline_clear_1011_rho_map.json" \
+            --native-uv-map "$root/ud1k_core_shoreline_clear_native_uv_boundary_map.json" \
+            --report-json "$RUNNER_TEMP/UD1K_REAL_OPTIONB_STATIC_DONORS_ONLY.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          x=json.loads((Path(os.environ["RUNNER_TEMP"])/"UD1K_REAL_OPTIONB_STATIC_DONORS_ONLY.json").read_text())
+          assert {k:v["verified_native_wet_receiver_count"] for k,v in x["receivers"].items()} == {"rho":1011,"u":1005,"v":1010}
+          assert x["wet_native_open_normal_section_counts"]=={"south":382,"north":364,"west":0,"east":266}
+          assert x["total_wet_native_open_normal_faces"]==1012
+          assert x["parent_wet_cell_and_native_face_support"].startswith("NOT_RECHECKED")
+          assert x["actual_time_dependent_bry_and_parent_child_mass_flux"]=="NOT_RUN"
+          assert x["option_b_status"]=="COMPARISON_CANDIDATE_NOT_ACTIVE"
+          print("REAL_OPTION_B_ARCHIVED_STATIC_ONLY_DONORS_PASS")
+          PY
+      - name: Exercise synthetic 41-level 3-frame shear and changing sea level on REAL Option B native metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/nesting/ud1k_optionb_synthetic_dynamic_section.py \
+            --grid "$RUNNER_TEMP/real-static-optionb/UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc" \
+            --report-json "$RUNNER_TEMP/UD1K_REAL_OPTIONB_SYNTHETIC_TIME_SHEAR_41LEVEL.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          x=json.loads((Path(os.environ["RUNNER_TEMP"])/"UD1K_REAL_OPTIONB_SYNTHETIC_TIME_SHEAR_41LEVEL.json").read_text())
+          assert x["total_wet_normal_face_samples"]==3036
+          assert x["max_section_2d_vs_3d_relative_mismatch"]<1e-10
+          assert x["max_individual_face_2d_vs_3d_relative_mismatch"]<1e-10
+          assert x["normal_face_2d_vs_3d_integration_check"]=="PASS"
+          assert x["parent_to_child_mass_conservation"]=="NOT_RUN"
+          assert x["real_ocean_physics"]=="NOT_RUN"
+          PY
+      - name: End-to-end REAL Option B donor maps, synthetic full ES3K C-grid/history, actual four-side BRY write
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/optionb_synthetic_source_to_bry"
+          python ROMS_Nesting/Data_pre/nesting/ud1k_optionb_end_to_end_synthetic_parent.py \
+            --child-grid "$RUNNER_TEMP/real-static-optionb/UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc" \
+            --rho-map "$RUNNER_TEMP/real-static-optionb/ud1k_core_shoreline_clear_1011_rho_map.json" \
+            --native-uv-map "$RUNNER_TEMP/real-static-optionb/ud1k_core_shoreline_clear_native_uv_boundary_map.json" \
+            --output-dir "$RUNNER_TEMP/optionb_synthetic_source_to_bry"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ["RUNNER_TEMP"])/"optionb_synthetic_source_to_bry"/"REAL_OPTIONB_SYNTHETIC_PARENT_TO_BRY_SMOKE_REPORT.json"
+          x=json.loads(p.read_text())
+          assert x["status"]=="REAL_OPTIONB_DONORS_FULL_SYNTHETIC_SOURCE_TO_BRY_PASS"
+          assert x["rho_u_v_receiver_counts"]=={"rho":1011,"u":1005,"v":1010}
+          assert x["normal_face_time_samples"]==2024
+          assert x["complete_bry_field_variables"]==28
+          assert x["CF_target_MJD_to_source_seconds"]=="PASS"
+          assert x["parent_grid_status"].startswith("FICTIONAL_ALL_WET")
+          assert x["source_donor_certified_parent_mask_independent_recheck"]=="NOT_RUN_ON_ACTUAL_PARENT"
+          assert x["true_parent_child_transport_conservation"]=="NOT_RUN"
+          assert x["real_ES3K_and_UD1K_ocean_integrations"]=="NOT_RUN"
+          print("OPTION_B_REAL_STENCIL_SYNTHETIC_PARENT_2TIMES_28BRY_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-optionb-archived-static-donor-report-only
+          path: |
+            ${{ runner.temp }}/UD1K_REAL_OPTIONB_STATIC_DONORS_ONLY.json
+            ${{ runner.temp }}/UD1K_REAL_OPTIONB_SYNTHETIC_TIME_SHEAR_41LEVEL.json
+            ${{ runner.temp }}/optionb_synthetic_source_to_bry/REAL_OPTIONB_SYNTHETIC_PARENT_TO_BRY_SMOKE_REPORT.json
+          retention-days: 7
+
+  real-candidate-b-geometry-synthetic-bry-schema:
+    # Opt-in only: routine push/PR checks must stay small and fast.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    needs: synthetic-only-history-and-bry-contract
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ROMS NetCDF schema fixture dependencies
+        run: python -m pip install --disable-pip-version-check numpy netCDF4
+      - name: Download previously validated real-native UD1K candidate B, never original grid
+        uses: actions/download-artifact@v4
+        with:
+          name: ud1k-27-wet-boundary-mapping-small-json
+          run-id: 38680030642
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/real-native-source
+      - name: Create full-size 41-level SYNTHETIC boundary NetCDF on real candidate B grid geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ud1k_real_grid_SYNTHETIC_bry"
+          test -s "$RUNNER_TEMP/real-native-source/UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc"
+          python ROMS_Nesting/Data_pre/nesting/ud1k_bry_schema_contract.py \
+            --child-grid "$RUNNER_TEMP/real-native-source/UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc" \
+            --output "$RUNNER_TEMP/ud1k_real_grid_SYNTHETIC_bry/SYNTHETIC_ONLY_UD1K41_bry.nc" \
+            --report "$RUNNER_TEMP/ud1k_real_grid_SYNTHETIC_bry/SYNTHETIC_ONLY_UD1K41_schema.json" \
+            --synthetic-n-levels 41 \
+            --synthetic-fixture-only
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          import numpy as np
+          from netCDF4 import Dataset
+          root=Path(os.environ["RUNNER_TEMP"])
+          outfile=root/"ud1k_real_grid_SYNTHETIC_bry"/"SYNTHETIC_ONLY_UD1K41_bry.nc"
+          d=json.loads((root/"ud1k_real_grid_SYNTHETIC_bry"/"SYNTHETIC_ONLY_UD1K41_schema.json").read_text())
+          with Dataset(outfile) as f,Dataset(root/"real-native-source"/"UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc") as g:
+              assert g["mask_rho"][:].sum()==96104
+              assert f.getncattr("workflow_status")=="SYNTHETIC_SCHEMA_TEST_ONLY_NOT_ROMS_PHYSICS"
+              assert len(f.dimensions["xi_rho"])==438 and len(f.dimensions["eta_rho"])==290
+              assert len(f.dimensions["xi_u"])==437 and len(f.dimensions["eta_v"])==289
+              assert len(f.dimensions["s_rho"])==41
+              assert f["zeta_south"].shape==(2,438)
+              assert f["u_south"].shape==(2,41,437)
+              assert f["v_south"].shape==(2,41,438)
+              assert f["u_east"].shape==(2,41,290)
+              assert f["v_east"].shape==(2,41,289)
+              assert f["temp_north"].shape==(2,41,438)
+              assert f["salt_west"].shape==(2,41,290)
+              assert np.isfinite(f["u_east"][:]).all()
+          assert d["complete_field_variables"]==28
+          assert d["status"]=="SYNTHETIC_SCHEMA_TEST_ONLY"
+          assert d["actual_real_parent_ocean_history"]=="NOT_AVAILABLE"
+          assert d["real_one_way_open_boundary_physics"]=="NOT_RUN"
+          print("UD1K_REAL_CANDIDATE_B_GEOMETRY_BRY_SYNTHETIC_41LEVEL_SCHEMA_PASS",
+                json.dumps({"rho":[290,438],"s_rho":41,
+                            "complete_boundary_fields":28,
+                            "true_parent_history":"NOT_AVAILABLE"},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ud1k-real-candidateB-grid-SYNTHETIC-only-41level-bry-schema
+          path: ${{ runner.temp }}/ud1k_real_grid_SYNTHETIC_bry
+          retention-days: 14
+
+  era5-secret-presence-manual-check:
+    # Manual only, never on untrusted pull requests; no API/network call.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    env:
+      CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
+    steps:
+      - name: Verify GitHub Actions ERA5 secret exists, never print secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CDSAPI_KEY:-}" ]; then
+            echo 'CDSAPI_KEY Actions Secret not configured. Set the rotated token in repository Settings > Secrets and variables > Actions.'
+            exit 1
+          fi
+          echo 'CDSAPI_KEY Actions Secret is configured (secret value is never displayed).'

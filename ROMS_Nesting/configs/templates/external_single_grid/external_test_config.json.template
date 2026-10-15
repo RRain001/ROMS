@@ -1,0 +1,35 @@
+{
+  "purpose": "OFFLINE_ONE_WAY_SINGLE_GRID_TEST_TEMPLATE",
+  "test_start": "2018-01-02T00:00:00",
+  "test_stop": "2018-01-03T00:00:00",
+  "dt_seconds": 10,
+  "header_template": "${CASE_SLUG}.h",
+  "modes": [
+    "external_startup",
+    "external_1h",
+    "external_6h",
+    "external_24h"
+  ],
+  "grid": {
+    "archive": "${SOURCE_ARCHIVE_URL}",
+    "artifact_id": null,
+    "artifact_name": "${SOURCE_ARTIFACT}",
+    "source_name": "${SOURCE_GRID_NAME}",
+    "source_sha256": "${SOURCE_SHA256}",
+    "rho_shape": null,
+    "wet_rho_points": null,
+    "max_rx0": "${MAX_RX0}",
+    "max_rx1": "${MAX_RX1}",
+    "max_orthogonality_deg": "${MAX_ORTHOGONALITY_DEG}"
+  },
+  "forcing_paths": {
+    "ini": "${INI_PATH_FROM_RUN_DIR}",
+    "bry": "${BRY_PATH_FROM_RUN_DIR}",
+    "atm": "${ATM_PATH_FROM_RUN_DIR}",
+    "rad": "${RAD_PATH_FROM_RUN_DIR}",
+    "tides": "${TIDES_PATH_FROM_RUN_DIR}"
+  },
+  "hydrodynamics_authorized_in_this_stage": false,
+  "production_year_selected": false,
+  "candidate_design_promoted": false
+}

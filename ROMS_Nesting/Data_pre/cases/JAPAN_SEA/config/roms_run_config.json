@@ -1,22 +1,136 @@
 {
-  "launcher": "mpirun",
-  "np": 1,
-  "shell_init_files": [],
+  "launcher": "$HOME/intel/oneapi/mpi/2021.9.0/bin/mpirun",
+  "np": 4,
+  "shell_init_files": [
+    "$HOME/intel/oneapi/setvars.sh",
+    "${ROMS_NESTING_ROOT}/ROMS_Build/env/linux_intel.sh"
+  ],
   "library_paths": [],
-  "env": {},
+  "env": {
+    "MPI_ROOT": "$HOME/intel/oneapi/mpi/2021.9.0",
+    "NETCDF": "$HOME/roms_build/install"
+  },
   "build_layout": {
     "build_root": "build",
     "build_dir": "build/Build_romsM",
     "bin_dir": "bin"
   },
-  "default_run_mode": "smoke",
+  "default_run_mode": "external_startup",
   "run_modes": {
     "smoke": {
       "build_variant": "default",
       "binary": "romsM_japan_sea",
       "fallback_binaries": [],
       "infile": "ocean_japan_sea_smoke.in",
-      "log_file": "smoke.log"
+      "log_file": "smoke.log",
+      "required_cpp_defs": [
+        "MASKING",
+        "CURVGRID",
+        "SOLVE3D",
+        "SALINITY",
+        "MY25_MIXING",
+        "UV_SMAGORINSKY",
+        "TS_SMAGORINSKY",
+        "BULK_FLUXES",
+        "SSH_TIDES",
+        "UV_TIDES",
+        "RAMP_TIDES",
+        "TIDES_DATE",
+        "HDF5"
+      ]
+    },
+    "external_startup": {
+      "build_variant": "default",
+      "binary": "romsM_japan_sea",
+      "fallback_binaries": [],
+      "infile": "ocean_japan_sea_external_startup.in",
+      "log_file": "external_startup.log",
+      "required_cpp_defs": [
+        "MASKING",
+        "CURVGRID",
+        "SOLVE3D",
+        "SALINITY",
+        "MY25_MIXING",
+        "UV_SMAGORINSKY",
+        "TS_SMAGORINSKY",
+        "BULK_FLUXES",
+        "SSH_TIDES",
+        "UV_TIDES",
+        "RAMP_TIDES",
+        "TIDES_DATE",
+        "HDF5"
+      ]
+    },
+    "external_1h": {
+      "build_variant": "default",
+      "binary": "romsM_japan_sea_release",
+      "fallback_binaries": [],
+      "infile": "ocean_japan_sea_external_1h.in",
+      "log_file": "external_1h.log",
+      "required_cpp_defs": [
+        "MASKING",
+        "CURVGRID",
+        "SOLVE3D",
+        "SALINITY",
+        "MY25_MIXING",
+        "UV_SMAGORINSKY",
+        "TS_SMAGORINSKY",
+        "BULK_FLUXES",
+        "SSH_TIDES",
+        "UV_TIDES",
+        "RAMP_TIDES",
+        "TIDES_DATE",
+        "HDF5"
+      ]
+    },
+    "external_6h": {
+      "build_variant": "default",
+      "binary": "romsM_japan_sea_release",
+      "fallback_binaries": [],
+      "infile": "ocean_japan_sea_external_6h.in",
+      "log_file": "external_6h.log",
+      "required_cpp_defs": [
+        "MASKING",
+        "CURVGRID",
+        "SOLVE3D",
+        "SALINITY",
+        "MY25_MIXING",
+        "UV_SMAGORINSKY",
+        "TS_SMAGORINSKY",
+        "BULK_FLUXES",
+        "SSH_TIDES",
+        "UV_TIDES",
+        "RAMP_TIDES",
+        "TIDES_DATE",
+        "HDF5"
+      ]
+    },
+    "external_24h": {
+      "build_variant": "default",
+      "binary": "romsM_japan_sea_release",
+      "fallback_binaries": [],
+      "infile": "ocean_japan_sea_external_24h.in",
+      "log_file": "external_24h.log",
+      "required_cpp_defs": [
+        "MASKING",
+        "CURVGRID",
+        "SOLVE3D",
+        "SALINITY",
+        "MY25_MIXING",
+        "UV_SMAGORINSKY",
+        "TS_SMAGORINSKY",
+        "BULK_FLUXES",
+        "SSH_TIDES",
+        "UV_TIDES",
+        "RAMP_TIDES",
+        "TIDES_DATE",
+        "HDF5"
+      ]
     }
-  }
+  },
+  "build_kind_by_mode": {
+    "romsM_japan_sea": "debug",
+    "romsM_japan_sea_release": "release"
+  },
+  "build_kind_note": "Debug binary serves smoke/external_startup (short diagnostics, runtime checks on); the optimized release binary serves the 1h/6h/24h runs. Neither may be substituted for the other."
 }

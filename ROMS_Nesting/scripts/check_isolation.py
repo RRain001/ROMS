@@ -8,10 +8,16 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-os.environ["ROMS_NESTING_ROOT"] = str(ROOT)
 os.environ["ROMS_CASE_NAME"] = "JAPAN_SEA"
 os.environ.pop("ROMS_CASE_ROOT", None)
 sys.path[0:0] = [str(ROOT / "Data_pre" / "core"), str(ROOT / "ROMS_Build" / "core"), str(ROOT / "ROMS_Run" / "core")]
+
+from case_context import init_nesting_root  # noqa: E402
+
+# Explicit initialisation, not an import side effect: this check pins its own
+# checkout and refuses to run against a different or invalid tree.
+os.environ["ROMS_NESTING_ROOT"] = str(ROOT)
+init_nesting_root()
 
 def within(value: Path, parent: Path) -> bool:
     return value.resolve().is_relative_to(parent.resolve())

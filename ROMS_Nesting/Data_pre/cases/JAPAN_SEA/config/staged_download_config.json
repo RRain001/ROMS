@@ -1,0 +1,25 @@
+{
+  "purpose": "JAPAN_SEA_ES3K_EXTERNAL_TEST_WINDOW_NOT_PRODUCTION",
+  "era5_bbox_buffer_deg": 0.25,
+  "time": {
+    "start": "2018-01-02T00:00:00",
+    "stop": "2018-01-03T00:00:00"
+  },
+  "era5": {
+    "dataset": "reanalysis-era5-single-levels",
+    "atm_variables": [
+      "10m_u_component_of_wind",
+      "10m_v_component_of_wind",
+      "2m_temperature",
+      "2m_dewpoint_temperature",
+      "surface_pressure",
+      "total_precipitation",
+      "evaporation"
+    ],
+    "rad_variables": [
+      "surface_solar_radiation_downwards",
+      "surface_thermal_radiation_downwards",
+      "surface_net_thermal_radiation"
+    ]
+  }
+}
