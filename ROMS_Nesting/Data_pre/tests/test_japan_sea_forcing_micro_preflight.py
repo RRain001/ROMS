@@ -132,7 +132,7 @@ class OfflineExternalForcingMicro(unittest.TestCase):
 
     def test_reject_era5_missing_time_coverage(self):
         with Dataset(self.atm,"a") as ds:
-            ds["time"][:]=np.arange(73,dtype=float)+24
+            ds["time"][:]=np.arange(73,dtype=float)+30
         with self.assertRaisesRegex(ValueError,"not bracket"):
             self.run_audit()
 
