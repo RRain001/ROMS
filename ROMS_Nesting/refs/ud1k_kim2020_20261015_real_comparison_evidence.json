@@ -1,0 +1,400 @@
+{
+  "comparison": "CURRENT_UD1K_VS_KIM2020_TABLE1_DOMAIN_SAME_ES3K_SOURCE",
+  "parent_grid_path": "ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc",
+  "same_parent_bathymetry_and_coastline": true,
+  "child_bathymetry_and_coastline_source": "SAME_GEBCO2026_AND_GSHHG237_NATIVE15S",
+  "source_of_paper_bounds": "Kim et al. 2020, Journal of Korean Society of Coastal and Ocean Engineers 32(6):587-601, Table 1, DOI 10.9765/KSCOE.2020.32.6.587",
+  "scope": "RHO_WET_OPEN_BOUNDARY_GEOMETRIC_PREFLIGHT_ONLY",
+  "cases": {
+    "CURRENT_USER_20261014": {
+      "spec_path": "ROMS_Nesting/configs/ud1k_user_20261014_frozen.json",
+      "grid_path": "UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc",
+      "actual_bounds_wsen": {
+        "west": 128.36552777777777,
+        "east": 132.41182407407408,
+        "south": 34.965472222222225,
+        "north": 37.64139814814815
+      },
+      "rho_shape_eta_xi": [
+        290,
+        438
+      ],
+      "rho_wet_cells": 96127,
+      "rho_land_cells": 30893,
+      "rho_wet_fraction": 0.7567863328609667,
+      "preflight_status": "PASS_PRELIMINARY_ONLY",
+      "full_wet_quad_stencils": {
+        "method": "EXHAUSTIVE_RADIUS_BOUNDED_ALL_WET_RHO_QUAD_CONTAINS_CHILD_POINT",
+        "search_completeness": "NO_FIXED_NEAREST_K_CENTROID_TRUNCATION",
+        "child_wet_boundary_rho_points": 1017,
+        "with_full_wet_parent_rho_quad": 990,
+        "without_full_wet_parent_rho_quad": 27,
+        "fraction_with_full_wet_quad": 0.9734513274336283,
+        "uncovered_by_logical_side_corner_counts_overlap": {
+          "south": 21,
+          "north": 2,
+          "west": 0,
+          "east": 4
+        },
+        "uncovered_sample_limit": 256,
+        "uncovered_sample_ij_lonlat": [
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 9,
+            "lon": 128.4488611111111,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 10,
+            "lon": 128.45812037037035,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 11,
+            "lon": 128.46737962962962,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 12,
+            "lon": 128.47663888888889,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 13,
+            "lon": 128.48589814814815,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 14,
+            "lon": 128.4951574074074,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 15,
+            "lon": 128.50441666666666,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 19,
+            "lon": 128.5414537037037,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 20,
+            "lon": 128.55071296296296,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 21,
+            "lon": 128.55997222222223,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 25,
+            "lon": 128.59700925925927,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 27,
+            "lon": 128.61552777777777,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 28,
+            "lon": 128.62478703703704,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 30,
+            "lon": 128.64330555555554,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 38,
+            "lon": 128.71737962962962,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 40,
+            "lon": 128.73589814814815,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 41,
+            "lon": 128.7451574074074,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 42,
+            "lon": 128.75441666666666,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 49,
+            "lon": 128.81923148148147,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 407,
+            "lon": 132.13404629629628,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 408,
+            "lon": 132.14330555555554,
+            "lat": 34.965472222222225
+          },
+          {
+            "eta_rho_zero_based": 23,
+            "xi_rho_zero_based": 437,
+            "lon": 132.41182407407408,
+            "lat": 35.17843518518519
+          },
+          {
+            "eta_rho_zero_based": 24,
+            "xi_rho_zero_based": 437,
+            "lon": 132.41182407407408,
+            "lat": 35.187694444444446
+          },
+          {
+            "eta_rho_zero_based": 25,
+            "xi_rho_zero_based": 437,
+            "lon": 132.41182407407408,
+            "lat": 35.196953703703706
+          },
+          {
+            "eta_rho_zero_based": 26,
+            "xi_rho_zero_based": 437,
+            "lon": 132.41182407407408,
+            "lat": 35.206212962962965
+          },
+          {
+            "eta_rho_zero_based": 289,
+            "xi_rho_zero_based": 74,
+            "lon": 129.05071296296296,
+            "lat": 37.64139814814815
+          },
+          {
+            "eta_rho_zero_based": 289,
+            "xi_rho_zero_based": 75,
+            "lon": 129.05997222222223,
+            "lat": 37.64139814814815
+          }
+        ],
+        "disposition": "COASTAL_STENCIL_REVIEW_REQUIRED_NOT_A_PHYSICS_FAILURE",
+        "physical_velocity_rotation_vertical_remap_and_flux": "NOT_RUN"
+      },
+      "nearest_wet_max_distance_m": 4427.166714043529,
+      "buffered_parent_boundary_gap_min_m": 140931.97457392397,
+      "physical_nesting_status": "NOT_RUN"
+    },
+    "KIM2020_TABLE1": {
+      "spec_path": "ROMS_Nesting/configs/ud1k_kim2020_table1_trial.json",
+      "grid_path": "UD1K_KIM2020_TABLE1_REAL_CANDIDATE.nc",
+      "actual_bounds_wsen": {
+        "west": 127.5,
+        "east": 134,
+        "south": 35.5,
+        "north": 39
+      },
+      "rho_shape_eta_xi": [
+        379,
+        703
+      ],
+      "rho_wet_cells": 201639,
+      "rho_land_cells": 64798,
+      "rho_wet_fraction": 0.7567980423139429,
+      "preflight_status": "PASS_PRELIMINARY_ONLY",
+      "full_wet_quad_stencils": {
+        "method": "EXHAUSTIVE_RADIUS_BOUNDED_ALL_WET_RHO_QUAD_CONTAINS_CHILD_POINT",
+        "search_completeness": "NO_FIXED_NEAREST_K_CENTROID_TRUNCATION",
+        "child_wet_boundary_rho_points": 1426,
+        "with_full_wet_parent_rho_quad": 1406,
+        "without_full_wet_parent_rho_quad": 20,
+        "fraction_with_full_wet_quad": 0.9859747545582047,
+        "uncovered_by_logical_side_corner_counts_overlap": {
+          "south": 13,
+          "north": 5,
+          "west": 0,
+          "east": 2
+        },
+        "uncovered_sample_limit": 256,
+        "uncovered_sample_ij_lonlat": [
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 204,
+            "lon": 129.38888888888889,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 205,
+            "lon": 129.39814814814815,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 210,
+            "lon": 129.44444444444446,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 566,
+            "lon": 132.74074074074073,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 567,
+            "lon": 132.75,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 570,
+            "lon": 132.77777777777777,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 571,
+            "lon": 132.78703703703704,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 572,
+            "lon": 132.7962962962963,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 573,
+            "lon": 132.80555555555554,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 574,
+            "lon": 132.8148148148148,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 623,
+            "lon": 133.2685185185185,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 624,
+            "lon": 133.27777777777777,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 0,
+            "xi_rho_zero_based": 643,
+            "lon": 133.4537037037037,
+            "lat": 35.5
+          },
+          {
+            "eta_rho_zero_based": 4,
+            "xi_rho_zero_based": 702,
+            "lon": 134,
+            "lat": 35.53703703703704
+          },
+          {
+            "eta_rho_zero_based": 5,
+            "xi_rho_zero_based": 702,
+            "lon": 134,
+            "lat": 35.5462962962963
+          },
+          {
+            "eta_rho_zero_based": 378,
+            "xi_rho_zero_based": 39,
+            "lon": 127.86111111111111,
+            "lat": 39
+          },
+          {
+            "eta_rho_zero_based": 378,
+            "xi_rho_zero_based": 40,
+            "lon": 127.87037037037037,
+            "lat": 39
+          },
+          {
+            "eta_rho_zero_based": 378,
+            "xi_rho_zero_based": 41,
+            "lon": 127.87962962962963,
+            "lat": 39
+          },
+          {
+            "eta_rho_zero_based": 378,
+            "xi_rho_zero_based": 42,
+            "lon": 127.88888888888889,
+            "lat": 39
+          },
+          {
+            "eta_rho_zero_based": 378,
+            "xi_rho_zero_based": 43,
+            "lon": 127.89814814814815,
+            "lat": 39
+          }
+        ],
+        "disposition": "COASTAL_STENCIL_REVIEW_REQUIRED_NOT_A_PHYSICS_FAILURE",
+        "physical_velocity_rotation_vertical_remap_and_flux": "NOT_RUN"
+      },
+      "nearest_wet_max_distance_m": 4042.9609976999095,
+      "buffered_parent_boundary_gap_min_m": 132114.5610644039,
+      "physical_nesting_status": "NOT_RUN"
+    }
+  },
+  "comparison_summary": {
+    "current_uncovered": 27,
+    "paper_uncovered": 20,
+    "current_wet_boundary": 1017,
+    "paper_wet_boundary": 1426,
+    "current_full_quad_fraction": 0.9734513274336283,
+    "paper_full_quad_fraction": 0.9859747545582047,
+    "same_number_of_uncovered": false,
+    "paper_uncovered_by_side": {
+      "south": 13,
+      "north": 5,
+      "west": 0,
+      "east": 2
+    },
+    "paper_static_footprint_preflight": "PASS_PRELIMINARY_ONLY"
+  },
+  "original_config_mutated": false,
+  "physical_validation": "NOT_RUN",
+  "evidence": {
+    "github_actions_run": "https://github.com/RRain001/ROMS/actions/runs/38660448988",
+    "job_id": 116180176178,
+    "run_conclusion": "SUCCESS",
+    "workflow": "ES3K I3 Public GEBCO2026 Native15s GSHHG",
+    "workflow_commit": "8449a9e009c56b33ef688b2a17f188c2cfa26696",
+    "generated_from": "ACTUAL_UNMODIFIED_GITHUB_ACTIONS_JOB_LOG",
+    "record_saved_at": "2026-10-15",
+    "scope": "STATIC_GEOMETRIC_WET_RHO_ONLY_NOT_ROMS_PHYSICS"
+  }
+}
