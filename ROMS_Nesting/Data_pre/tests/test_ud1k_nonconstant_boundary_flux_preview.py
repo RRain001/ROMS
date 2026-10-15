@@ -146,9 +146,16 @@ class NonconstantSourceToChildFlux(unittest.TestCase):
         self.assertEqual(audit["total_wet_normal_face_samples"],54)
         self.assertGreater(abs(sections["south"][1]["outward_volume_flux_3d_m3s"]),100)
         self.assertGreater(abs(sections["north"][1]["outward_volume_flux_3d_m3s"]),100)
-        # North V faces and South V faces point in opposite outward directions.
-        self.assertLess(sections["south"][1]["outward_volume_flux_3d_m3s"]*
-                        sections["north"][1]["outward_volume_flux_3d_m3s"],0)
+        # Recompute each boundary section with its OWN signed native
+        # barotropic field. Different local rotations can make the two
+        # oriented physical velocities have different signs; never assume
+        # opposite section totals solely from outward sign convention.
+        for side,sign in (("south",-1),("north",1)):
+            wet_v=fields[side]["vbar"][1,1:7]
+            independently_integrated=sign*3300.*126.*float(np.sum(wet_v))
+            self.assertAlmostEqual(
+                sections[side][1]["outward_volume_flux_2d_m3s"],
+                independently_integrated,delta=1e-8*max(1.,abs(independently_integrated)))
 
     def test_grid_metrics_missing_or_nonpositive_are_rejected(self):
         with Dataset(self.child,"a") as g:
