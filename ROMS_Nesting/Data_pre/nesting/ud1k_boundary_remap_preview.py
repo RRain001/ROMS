@@ -28,9 +28,13 @@ from netCDF4 import Dataset
 try:
     from ud1k_vertical_flux_primitives import stretching4
     from ud1k_parent_history_contract import validate_parent_history
+    from ud1k_boundary_normal_flux_preview import (
+        NORMAL_KIND,new_flux_audit,add_native_normal_face,finalize_flux_audit)
 except ImportError:
     from .ud1k_vertical_flux_primitives import stretching4
     from .ud1k_parent_history_contract import validate_parent_history
+    from .ud1k_boundary_normal_flux_preview import (
+        NORMAL_KIND,new_flux_audit,add_native_normal_face,finalize_flux_audit)
 
 SIDES=("south","north","west","east")
 FIELDS=("zeta","temp","salt","u","v","ubar","vbar")
@@ -237,6 +241,20 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
         childh=_finite(cg["h"][:]);childangle=_finite(cg["angle"][:])
         if childh.shape!=childangle.shape or parenth.shape!=parentangle.shape:
             raise ValueError("parent/child h/angle shape mismatch")
+        if ("pm" in cg.variables)!=("pn" in cg.variables):
+            raise ValueError("child native normal flux requires BOTH pm and pn")
+        has_metrics="pm" in cg.variables
+        if has_metrics:
+            childpm=_finite(cg["pm"][:])
+            childpn=_finite(cg["pn"][:])
+            if (childpm.shape!=childh.shape or childpn.shape!=childh.shape or
+                    not np.isfinite(childpm).all() or not np.isfinite(childpn).all() or
+                    (childpm<=0).any() or (childpn<=0).any()):
+                raise ValueError("child ROMS pm/pn metrics invalid")
+            normal_flux=new_flux_audit(len(times))
+        else:
+            normal_flux=None
+            childpm=childpn=None
         maps=_validated_maps(pw,cg,rho_map["records"],face_maps["reports"])
         child_masks={k:_finite(cg["mask_"+k][:]).astype(bool) for k in ("rho","u","v")}
         src_params={k:float(hs[k][()]) for k in ("theta_s","theta_b","hc")}
@@ -308,6 +326,10 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
                         index=i if side in ("south","north") else j
                         arrays[kind][kind+"_"+side][t_index,:,index]=profile
                         arrays[kind][("ubar" if kind=="u" else "vbar")+"_"+side][t_index,index]=bar
+                        if normal_flux is not None and NORMAL_KIND[side]==kind:
+                            add_native_normal_face(
+                                normal_flux,side,t_index,kind,j,i,childpm,childpn,
+                                z_w,profile,bar,surface+targeth)
         prepared={side:{name:arrays["rho" if name in ("zeta","temp","salt")
                                   else "u" if name in ("u","ubar") else "v"][name+"_"+side]
                         for name in FIELDS} for side in SIDES}
@@ -321,8 +343,12 @@ def prepare_boundary_preview(parent_grid:Path,parent_history:Path,child_grid:Pat
                     data=prepared[side][fld]
                     if not np.isfinite(data[...,w]).all():
                         raise ValueError("preview failed to assign finite values to wet boundary")
+        flux_report=(finalize_flux_audit(normal_flux) if normal_flux is not None else
+                     {"status":"NOT_RUN_MISSING_CHILD_PM_PN_GRID_METRICS",
+                      "parent_to_child_mass_conservation":"NOT_RUN"})
         return prepared,{
             "scope":"SOURCE_HISTORY_BASED_ROMS_BOUNDARY_NUMERICAL_PREVIEW",
+            "native_normal_section_flux_diagnostic":flux_report,
             "status":"EXPERIMENTAL_NOT_PRODUCTION_BRY",
             "source_history":Path(parent_history).name,
             "full_source_history_admission":"PASS",
