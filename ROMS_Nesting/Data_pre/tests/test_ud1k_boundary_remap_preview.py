@@ -11,6 +11,7 @@ from netCDF4 import Dataset
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"nesting"))
 from ud1k_boundary_remap_preview import prepare_boundary_preview,physical_z
+from ud1k_bry_schema_contract import write_synthetic_schema_fixture
 from test_ud1k_parent_history_contract import synthetic_parent_grid,synthetic_parent_history
 from test_ud1k_bry_schema_contract import child_grid
 
@@ -104,6 +105,26 @@ class ExperimentalSourceToChildNumerics(unittest.TestCase):
             f["v"][0,0,1,1]=np.nan
         with self.assertRaisesRegex(ValueError,"wet missing field"):
             self.run_preview()
+
+    def test_source_based_preview_through_complete_28_field_synthetic_NETCDF(self):
+        times=np.array([0.,1800.,3600.])
+        prepared,report=self.run_preview(times)
+        output=self.child.parent/"SYNTHETIC_SOURCE_DRIVEN_UV_RHO_UD1K_BRY.nc"
+        result=write_synthetic_schema_fixture(
+            self.child,output,prepared,times,n=4,
+            time_units="seconds since 2025-01-01 00:00:00")
+        self.assertEqual(result["complete_field_variables"],28)
+        with Dataset(output) as f:
+            self.assertEqual(f["bry_time"].units,
+                             "seconds since 2025-01-01 00:00:00")
+            np.testing.assert_allclose(f["bry_time"][:],times,atol=0)
+            for side in ("south","north","west","east"):
+                for field in ("zeta","temp","salt","u","v","ubar","vbar"):
+                    np.testing.assert_allclose(f[field+"_"+side][:],
+                        prepared[side][field],atol=5e-7,rtol=0)
+            self.assertEqual(f.getncattr("workflow_status"),
+                             "SYNTHETIC_SCHEMA_TEST_ONLY_NOT_ROMS_PHYSICS")
+        self.assertEqual(report["real_roms_bry_nc"],"NOT_RUN")
 
     def test_parent_source_history_linear_time_interpolation(self):
         with Dataset(self.history,"a") as f:
