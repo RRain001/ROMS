@@ -43,6 +43,9 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_native_face_shoreline_topology.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_single_v_face_radius_sensitivity.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_single_v_face_radius_sensitivity.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_connected_core_candidate.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_connected_core_candidate.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_core_rho_mapping_subset.py'
       - 'ROMS_Nesting/configs/ud1k_kim2020_table1_trial.json'
       - 'ROMS_Nesting/configs/ud1k_user_20261014_frozen.json'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
@@ -83,6 +86,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_native_face_component_review.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_native_face_shoreline_topology.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_single_v_face_radius_sensitivity.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_connected_core_candidate.py' -v
           python -m py_compile \
             ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py \
             ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py
@@ -560,6 +564,77 @@ jobs:
               "donor_count":d["first_water_visible_candidate_count"],
               "target_crosses_coastline":d["child_V_face_RHO_neighbor_segment_intersects_GSHHG_L1"]},sort_keys=True))
           PY
+      - name: Create separate current UD1K connected core-only wet-mask candidate (do not edit original)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/nesting/ud1k_connected_core_candidate.py \
+            --original-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc" \
+            --output-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_CONNECTED_CORE_ONLY_COMPARISON_CANDIDATE.nc" \
+            --report-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_dominant_connected_wet_core_only_review.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          data=json.loads((root/"ud1k_dominant_connected_wet_core_only_review.json").read_text())
+          assert data["wet_component_count"]==7
+          assert data["component_mask_differences"]["mask_rho"]["removed_total"]==20
+          assert data["component_mask_differences"]["mask_rho"]["new_wet_perimeter"]==1014
+          assert data["component_mask_differences"]["mask_u"]["new_wet_perimeter"]==1009
+          assert data["component_mask_differences"]["mask_v"]["new_wet_perimeter"]==1013
+          assert data["new_wet_V_eta0_xi30"] is False
+          assert data["original_coordinate_and_bathymetry_arrays_bitwise_unchanged"]
+          assert data["source_grid_modified"] is False
+          print("UD1K_CORE_ONLY_SOURCE_GRID_UNCHANGED",json.dumps({
+            "wet_components":data["wet_component_count"],
+            "removed_rho":data["component_mask_differences"]["mask_rho"]["removed_total"],
+            "new_rho_perimeter":data["component_mask_differences"]["mask_rho"]["new_wet_perimeter"]},sort_keys=True))
+          PY
+      - name: Compare native ES3K to separate connected-core UD1K U/V and RHO boundary mapping
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/nesting/ud1k_staggered_face_map.py \
+            --parent-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc" \
+            --child-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_CONNECTED_CORE_ONLY_COMPARISON_CANDIDATE.nc" \
+            --gshhg-base "$RUNNER_TEMP/ES3K_REAL_SOURCE/GSHHS_shp" \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_core_only_native_uv_boundary_map.json"
+          python ROMS_Nesting/Data_pre/nesting/ud1k_core_rho_mapping_subset.py \
+            --original-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc" \
+            --core-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_CONNECTED_CORE_ONLY_COMPARISON_CANDIDATE.nc" \
+            --full-repaired-rho-map "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_all_1017_wet_rho_coast_sensitive_candidates.json" \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_core_only_1014_validated_rho_donors.json"
+          python ROMS_Nesting/Data_pre/nesting/ud1k_native_face_shoreline_topology.py \
+            --child-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_CONNECTED_CORE_ONLY_COMPARISON_CANDIDATE.nc" \
+            --gshhg-base "$RUNNER_TEMP/ES3K_REAL_SOURCE/GSHHS_shp" \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_core_only_face_shoreline_review.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          m=json.loads((root/"ud1k_core_only_native_uv_boundary_map.json").read_text())
+          rho=json.loads((root/"ud1k_core_only_1014_validated_rho_donors.json").read_text())
+          coast=json.loads((root/"ud1k_core_only_face_shoreline_review.json").read_text())
+          assert m["reports"]["u"]["native_wet_boundary_face_count"]==1009
+          assert m["reports"]["v"]["native_wet_boundary_face_count"]==1013
+          assert m["reports"]["u"]["unresolved_face_receivers"]==0
+          assert m["reports"]["v"]["unresolved_face_receivers"]==0
+          assert rho["core_candidate_wet_RHO_perimeter_count"]==1014
+          assert rho["removed_disconnected_boundary_RHO_receivers"]==[[0,27],[0,28],[0,30]]
+          assert coast["reports"]["u"]["wet_face_RHO_to_RHO_segment_crosses_GSHHG_count"]==1
+          assert coast["reports"]["v"]["wet_face_RHO_to_RHO_segment_crosses_GSHHG_count"]==3
+          assert m["real_UD1K_u_v_ubar_vbar_bry_flux_validation"]=="NOT_RUN"
+          print("UD1K_CORE_ONLY_STATIC_CGRID_MAPPING",json.dumps({
+            "rho_wet_receivers":rho["core_candidate_wet_RHO_perimeter_count"],
+            "u_wet_faces":m["reports"]["u"]["native_wet_boundary_face_count"],
+            "v_wet_faces":m["reports"]["v"]["native_wet_boundary_face_count"],
+            "u_unresolved":m["reports"]["u"]["unresolved_face_receivers"],
+            "v_unresolved":m["reports"]["v"]["unresolved_face_receivers"],
+            "coast_crossing_u":coast["reports"]["u"]["wet_face_RHO_to_RHO_segment_crosses_GSHHG_count"],
+            "coast_crossing_v":coast["reports"]["v"]["wet_face_RHO_to_RHO_segment_crosses_GSHHG_count"],
+            "hydrodynamics":"NOT_RUN",
+          },sort_keys=True))
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: ud1k-27-wet-boundary-mapping-small-json
@@ -572,6 +647,11 @@ jobs:
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_one_v_face_native_component_review.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_native_face_coastline_segment_review.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_last_vface30_native_radius_sensitivity.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/UD1K_CONNECTED_CORE_ONLY_COMPARISON_CANDIDATE.nc
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_dominant_connected_wet_core_only_review.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_core_only_native_uv_boundary_map.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_core_only_1014_validated_rho_donors.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_core_only_face_shoreline_review.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_20_coast_visible_bounded_fallback.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_27_rho_wet_boundary_stencil_manifest.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_27_coastal_triangle_review.json
