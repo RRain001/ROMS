@@ -17,6 +17,9 @@ on:
       - 'ROMS_Nesting/Data_pre/scripts/nesting/smooth_es3k_local_candidate.py'
       - 'ROMS_Nesting/Data_pre/nesting/validate_nesting_geometries.py'
       - 'ROMS_Nesting/Data_pre/scripts/nesting/compare_ud1k_domains.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py'
+      - 'ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_wet_triangle_review.py'
       - 'ROMS_Nesting/configs/ud1k_kim2020_table1_trial.json'
       - 'ROMS_Nesting/configs/ud1k_user_20261014_frozen.json'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
@@ -43,6 +46,12 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check \
             numpy scipy netCDF4 pyproj pillow pyshp shapely rasterio requests
+      - name: Synthetic 3-wet local triangle and coastline rejection regressions
+        run: |
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_wet_triangle_review.py' -v
+          python -m py_compile \
+            ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py \
+            ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py
       - name: Fetch bounded real GEBCO 2026 and GSHHG 2.3.7
         run: |
           python ROMS_Nesting/Data_pre/scripts/nesting/fetch_es3k_online_data.py \
@@ -256,6 +265,26 @@ jobs:
           print("PAPER_BOUNDARY_COMPARISON: "+
                 json.dumps(s,sort_keys=True,ensure_ascii=False))
           PY
+      - name: Real 27-point current UD1K local wet-triangle and GSHHG audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py \
+            --parent-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc" \
+            --child-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc" \
+            --preflight-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/real_es3k_ud1k_preflight.json" \
+            --gshhg-base "$RUNNER_TEMP/ES3K_REAL_SOURCE/GSHHS_shp" \
+            --gshhg-resolution h \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_current_27_coastal_triangle_review.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"/"ud1k_current_27_coastal_triangle_review.json"
+          r=json.loads(p.read_text())
+          assert len(r["records"])==27 and sum(r["status_counts"].values())==27
+          assert r["source_masks_modified"] is False and r["physical_validation"]=="NOT_RUN"
+          print("TRIANGLE_BARYCENTRIC_GSHHG_27_REAL_COUNTS",json.dumps(r["status_counts"],sort_keys=True))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -277,6 +306,7 @@ jobs:
             ${{ runner.temp }}/ES3K_REAL_SOURCE/UD1K_KIM2020_TABLE1_REAL_CANDIDATE.nc
             ${{ runner.temp }}/ES3K_REAL_SOURCE/real_ud1k_kim2020_grid_report.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_vs_kim2020_table1_real_comparison.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_27_coastal_triangle_review.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc
             ${{ runner.temp }}/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc
           if-no-files-found: warn
