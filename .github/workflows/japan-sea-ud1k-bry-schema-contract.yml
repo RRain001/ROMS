@@ -201,11 +201,11 @@ jobs:
           retention-days: 14
 
   real-es3k-parent-mask-one-time:
-    # One-time real parental mask acceptance only. Original native source
-    # archive ~157MB was produced in a prior successful I3 GEBCO/GSHHG job.
-    # Pull-request trigger exists only for initial independent audit;
-    # switch this job back to workflow_dispatch immediately after SUCCESS.
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    # Independent REAL ES3K wet/native U/V donor audit PASSED on
+    # Actions #38701634361: 909 distinct parent RHO donors.
+    # Manual-only now: 157MB historic archive expires, and routine CI
+    # must not redownload source grids or repeat expensive work.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     timeout-minutes: 12
     permissions:
