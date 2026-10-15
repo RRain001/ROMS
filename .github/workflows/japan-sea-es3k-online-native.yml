@@ -35,6 +35,8 @@ on:
       - 'ROMS_Nesting/Data_pre/scripts/nesting/audit_ud1k_boundary_velocity_support.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_staggered_face_map.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_staggered_face_map.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_vertical_flux_primitives.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_vertical_flux_primitives.py'
       - 'ROMS_Nesting/configs/ud1k_kim2020_table1_trial.json'
       - 'ROMS_Nesting/configs/ud1k_user_20261014_frozen.json'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
@@ -71,6 +73,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_full_rho_coastline_repair.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_cgrid_velocity.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_staggered_face_map.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_vertical_flux_primitives.py' -v
           python -m py_compile \
             ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py \
             ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py
