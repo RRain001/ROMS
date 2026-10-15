@@ -68,7 +68,7 @@ class GLORYSMicroSampleContract(unittest.TestCase):
         import subprocess
         env=os.environ.copy()
         env["ROMS_CASE_NAME"]="JAPAN_SEA"
-        repo_root=ROOT.parents[2]
+        repo_root=ROOT.parents[1]
         script=(
             "import sys;"
             "sys.path.insert(0,'ROMS_Nesting/Data_pre/core');"
