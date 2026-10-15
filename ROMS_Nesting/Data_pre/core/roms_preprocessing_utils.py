@@ -227,7 +227,9 @@ def resolve_grid_path(
         return grid_path
     configured = load_project_params().get("paths", {}).get("active_grid")
     if configured:
-        active = ROOT / os.path.expandvars(str(configured))
+        active = Path(os.path.expandvars(os.path.expanduser(str(configured))))
+        active = active if active.is_absolute() else ROOT / active
+        active = active.resolve()
         if not active.is_file():
             raise SystemExit(f"configured active grid not found: {active}")
         return active
