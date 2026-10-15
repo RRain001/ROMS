@@ -37,7 +37,8 @@ def new_flux_audit(nt:int)->dict:
             side:[{"wet_native_normal_face_count":0,
                    "outward_volume_flux_3d_m3s":0.,
                    "outward_volume_flux_2d_m3s":0.,
-                   "face_2d_vs_3d_max_abs_difference_m3s":0.}
+                   "face_2d_vs_3d_max_abs_difference_m3s":0.,
+                   "face_2d_vs_3d_max_relative_difference":0.}
                   for _ in range(nt)]
             for side in NORMAL_KIND
         },
@@ -76,6 +77,11 @@ def add_native_normal_face(audit:dict,side:str,t:int,kind:str,
     entry["outward_volume_flux_2d_m3s"]+=q2
     entry["face_2d_vs_3d_max_abs_difference_m3s"]=max(
         entry["face_2d_vs_3d_max_abs_difference_m3s"],abs(q3-q2))
+    # Check each wet physical face independently: opposite numerical errors
+    # must never cancel into a falsely passing section-integrated comparison.
+    entry["face_2d_vs_3d_max_relative_difference"]=max(
+        entry["face_2d_vs_3d_max_relative_difference"],
+        abs(q3-q2)/max(1.,abs(q3),abs(q2)))
 
 
 def finalize_flux_audit(audit:dict,*,max_relative_error:float=1e-10)->dict:
@@ -89,9 +95,13 @@ def finalize_flux_audit(audit:dict,*,max_relative_error:float=1e-10)->dict:
         scale=max(1.,abs(a),abs(b))
         rel=abs(a-b)/scale
         worst=max(worst,rel)
-        if rel>max_relative_error:
-            raise ValueError("2D and 3D native section volume flux mismatch")
+        if (rel>max_relative_error or
+                entry["face_2d_vs_3d_max_relative_difference"]>max_relative_error):
+            raise ValueError("2D and 3D native section/individual face volume flux mismatch")
     audit["max_section_2d_vs_3d_relative_mismatch"]=float(worst)
+    audit["max_individual_face_2d_vs_3d_relative_mismatch"]=float(max(
+        (e["face_2d_vs_3d_max_relative_difference"] for e in all_entries),
+        default=0.))
     audit["total_wet_normal_face_samples"]=sum(
         e["wet_native_normal_face_count"] for e in all_entries)
     audit["normal_face_2d_vs_3d_integration_check"]="PASS"
