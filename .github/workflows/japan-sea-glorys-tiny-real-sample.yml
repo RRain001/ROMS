@@ -1,0 +1,73 @@
+name: Japan Sea GLORYS Small Real Source Sample - Opt In
+
+# Explicit manual only. NEVER downloads the whole ES3K or UD1K region,
+# nor runs a ROMS ocean integration. No connection to ERA5/CDSAPI_KEY.
+on:
+  workflow_dispatch:
+    inputs:
+      execute_real_tiny_download:
+        description: 'Request 0.5x0.5 degree, 2-day GLORYS sample (Marine account required)'
+        type: boolean
+        default: false
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  restricted-marine-mini:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    env:
+      ROMS_CASE_NAME: JAPAN_SEA
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install minimal local plan prerequisites
+        run: python -m pip install --disable-pip-version-check numpy netCDF4
+      - name: Generate exact size-limited real GLORYS request plan, no network
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/japan_sea_marine_micro"
+          python ROMS_Nesting/Data_pre/nesting/japan_sea_glorys_micro_plan.py \
+            --plan-json "$RUNNER_TEMP/japan_sea_marine_micro/SOURCE_REQUEST_PLAN_ONLY.json"
+      - name: One explicit authenticated small request (Marine credentials, not ERA5 CDS)
+        if: inputs.execute_real_tiny_download
+        timeout-minutes: 8
+        env:
+          COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUSMARINE_SERVICE_USERNAME }}
+          COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUSMARINE_SERVICE_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Prevent Copernicus Toolbox interactive login during CI.
+          if [ -z "${COPERNICUSMARINE_SERVICE_USERNAME:-}" ] || [ -z "${COPERNICUSMARINE_SERVICE_PASSWORD:-}" ]; then
+            echo 'Separate Copernicus Marine username/password repository secrets required to opt in. ERA5 CDSAPI_KEY is not a Marine credential.'
+            exit 2
+          fi
+          python -m pip install --disable-pip-version-check 'copernicusmarine>=2,<3' xarray scipy netCDF4
+          python ROMS_Nesting/Data_pre/nesting/japan_sea_glorys_micro_plan.py \
+            --execute \
+            --plan-json "$RUNNER_TEMP/japan_sea_marine_micro/EXECUTED_REAL_MARINE_SOURCE_PROVENANCE.json" \
+            --output "$RUNNER_TEMP/japan_sea_marine_micro/REAL_GLORYS_2018Jan_0p5deg_300m_TEST.nc"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'japan_sea_marine_micro'/'EXECUTED_REAL_MARINE_SOURCE_PROVENANCE.json'
+          d=json.loads(p.read_text())
+          assert d['mode']=='REAL_SMALL_DOWNLOAD_EXECUTED'
+          assert d['download_result']['time_frames']>=2
+          assert d['download_result']['file_bytes']<=5242880
+          assert d['download_result']['actual_ES3K_or_UD1K_ROMs_integration']=='NOT_RUN'
+          print('REAL_GLORYS_MARINE_SMALL_SOURCE_FORMAT_PASS',d['download_result']['file_bytes'])
+          PY
+      - name: Preserve capped test evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: japan-sea-glorys-mini-manual-real-only-if-explicit
+          path: ${{ runner.temp }}/japan_sea_marine_micro/
+          retention-days: 3
