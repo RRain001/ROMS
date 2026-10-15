@@ -89,6 +89,22 @@ class ExperimentalSourceToChildNumerics(unittest.TestCase):
         self.assertEqual(set(report["wet_receivers_by_native_kind"]),
                          {"rho","u","v"})
 
+    def test_source_native_2d_vs_3d_barotropic_mismatch_is_explicit_diagnostic(self):
+        with Dataset(self.history,"a") as f:
+            f["ubar"][:]=.7
+            f["vbar"][:]=.4
+        _,report=self.run_preview()
+        self.assertEqual(report["full_source_history_admission"],"PASS")
+        self.assertGreater(report["parent_native_2d_vs_3d_barotropic_mismatch_max_mps"],.5)
+        self.assertEqual(report["parent_native_barotropic_mismatch_acceptance"],
+                         "DIAGNOSTIC_ONLY")
+
+    def test_missing_wet_source_history_passes_no_admission_gate(self):
+        with Dataset(self.history,"a") as f:
+            f["v"][0,0,1,1]=np.nan
+        with self.assertRaisesRegex(ValueError,"wet missing field"):
+            self.run_preview()
+
     def test_parent_source_history_linear_time_interpolation(self):
         with Dataset(self.history,"a") as f:
             f["temp"][1]=20.
