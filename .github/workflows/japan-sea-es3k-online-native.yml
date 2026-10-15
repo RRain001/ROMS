@@ -39,6 +39,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_vertical_flux_primitives.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_native_face_component_review.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_native_face_component_review.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_native_face_shoreline_topology.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_native_face_shoreline_topology.py'
       - 'ROMS_Nesting/configs/ud1k_kim2020_table1_trial.json'
       - 'ROMS_Nesting/configs/ud1k_user_20261014_frozen.json'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
@@ -77,6 +79,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_staggered_face_map.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_vertical_flux_primitives.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_native_face_component_review.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_native_face_shoreline_topology.py' -v
           python -m py_compile \
             ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py \
             ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py
@@ -509,6 +512,29 @@ jobs:
             "locations":[(r["child_eta_face_zero_based"],r["child_xi_face_zero_based"])
                          for r in x["receiver_source_records"]]},sort_keys=True))
           PY
+      - name: Check if true GSHHG coastline crosses native UD1K wet face segments
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/nesting/ud1k_native_face_shoreline_topology.py \
+            --child-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc" \
+            --gshhg-base "$RUNNER_TEMP/ES3K_REAL_SOURCE/GSHHS_shp" \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_native_face_coastline_segment_review.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"
+          d=json.loads((root/"ud1k_native_face_coastline_segment_review.json").read_text())
+          assert d["masks_mutated"] is False
+          assert d["hydrodynamic_bry_nc"]=="NOT_RUN"
+          assert d["reports"]["u"]["wet_perimeter_face_count"]==1010
+          assert d["reports"]["v"]["wet_perimeter_face_count"]==1015
+          print("UD1K_NATIVE_CGRID_REAL_SHORELINE_SEGMENT_CHECK",json.dumps({
+              "U_coastline_crossings":d["reports"]["u"]["wet_face_RHO_to_RHO_segment_crosses_GSHHG_count"],
+              "V_coastline_crossings":d["reports"]["v"]["wet_face_RHO_to_RHO_segment_crosses_GSHHG_count"],
+              "target_v_face_0_30_coastline_crosses":d["special_hold_V_face_eta0_xi30_crosses_real_coastline"],
+          },sort_keys=True))
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: ud1k-27-wet-boundary-mapping-small-json
@@ -519,6 +545,7 @@ jobs:
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_native_cgrid_parent_face_support.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_native_uv_staggered_face_boundary_review.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_one_v_face_native_component_review.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_native_face_coastline_segment_review.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_20_coast_visible_bounded_fallback.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_27_rho_wet_boundary_stencil_manifest.json
             ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_27_coastal_triangle_review.json
