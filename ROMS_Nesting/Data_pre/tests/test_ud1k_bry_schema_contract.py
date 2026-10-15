@@ -89,6 +89,23 @@ class SyntheticOnlyBoundaryOutput(unittest.TestCase):
             self.assertEqual(sum((field+"_"+side in f.variables)
                                   for side in _SIDES for field in _NAMES),28)
 
+    def test_non_gregorian_CF_calendar_is_preserved_in_file_not_overwritten(self):
+        report=write_synthetic_schema_fixture(
+            self.grid,self.bry,self.prepared,np.array([60000.,60000.125]),
+            n=3,time_units="days since 1858-11-17 00:00:00",
+            time_calendar="proleptic_gregorian")
+        self.assertEqual(report["bry_time_calendar"],"proleptic_gregorian")
+        with Dataset(self.bry) as f:
+            self.assertEqual(f["bry_time"].calendar,"proleptic_gregorian")
+            np.testing.assert_allclose(f["bry_time"][:],[60000.,60000.125],atol=0)
+
+    def test_invalid_explicit_bry_calendar_rejected_before_write(self):
+        with self.assertRaisesRegex(ValueError,"invalid CF bry_time"):
+            write_synthetic_schema_fixture(
+                self.grid,self.bry,self.prepared,np.array([0.,3600.]),
+                n=3,time_calendar="nonexistent_ROMs_calendar")
+        self.assertFalse(self.bry.exists())
+
     def test_no_input_nan_on_wet_boundary_allowed(self):
         self.prepared["north"]["u"][0,0,-1]=np.nan
         with self.assertRaisesRegex(ValueError,"NaN/Inf"):
