@@ -17,6 +17,12 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/nesting/japan_sea_forcing_micro_preflight.py'
       - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_forcing_micro_preflight.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_forcing_converter_micro.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_atm_forcing_from_era5.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_ocean_ini_from_glorys.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_ocean_bry_from_glorys.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_rad_forcing_from_era5.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_tides_from_tpxo.py'
       - '.github/workflows/japan-sea-ud1k-bry-schema-contract.yml'
   pull_request:
     branches:
@@ -34,6 +40,12 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/nesting/japan_sea_forcing_micro_preflight.py'
       - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_forcing_micro_preflight.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_japan_sea_forcing_converter_micro.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_atm_forcing_from_era5.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_ocean_ini_from_glorys.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_ocean_bry_from_glorys.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_rad_forcing_from_era5.py'
+      - 'ROMS_Nesting/Data_pre/impl/preprocessing/create_tides_from_tpxo.py'
       - '.github/workflows/japan-sea-ud1k-bry-schema-contract.yml'
   workflow_dispatch:
 
@@ -60,6 +72,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_remap_preview.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_micro_preflight.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_converter_micro.py' -v
       - name: Invoke both CLIs against explicitly synthetic small ROMS fixtures
         shell: bash
         run: |
