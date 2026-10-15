@@ -12,6 +12,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_bry_schema_contract.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_remap_preview.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_remap_preview.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_normal_flux_preview.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_nonconstant_boundary_flux_preview.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -35,6 +37,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_bry_schema_contract.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_remap_preview.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_remap_preview.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_normal_flux_preview.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_nonconstant_boundary_flux_preview.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -70,6 +74,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_parent_history_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_bry_schema_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_remap_preview.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_nonconstant_boundary_flux_preview.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_micro_preflight.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_converter_micro.py' -v
