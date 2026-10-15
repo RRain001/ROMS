@@ -1,0 +1,88 @@
+name: Japan Sea UD1K ROMS History and BRY Schema Contract
+
+on:
+  push:
+    branches:
+      - codex/es3k-i3-wet-domain-audit-20261014
+    paths:
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_parent_history_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_bry_schema_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_vertical_flux_primitives.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_parent_history_contract.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_bry_schema_contract.py'
+      - '.github/workflows/japan-sea-ud1k-bry-schema-contract.yml'
+  pull_request:
+    branches:
+      - feature/japan-sea-nesting
+    paths:
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_parent_history_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_bry_schema_contract.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_vertical_flux_primitives.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_parent_history_contract.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_bry_schema_contract.py'
+      - '.github/workflows/japan-sea-ud1k-bry-schema-contract.yml'
+  workflow_dispatch:
+
+jobs:
+  synthetic-only-history-and-bry-contract:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install bounded contract dependencies
+        run: python -m pip install --disable-pip-version-check numpy scipy netCDF4
+      - name: Strict source ROMS history and schema synthetic regressions
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_parent_history_contract.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_bry_schema_contract.py' -v
+      - name: Invoke both CLIs against explicitly synthetic small ROMS fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ud1k_synthetic_contract"
+          python - <<'PY'
+          import sys,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"ud1k_synthetic_contract"
+          sys.path.insert(0,"ROMS_Nesting/Data_pre/tests")
+          from test_ud1k_parent_history_contract import synthetic_parent_grid,synthetic_parent_history
+          from test_ud1k_bry_schema_contract import child_grid
+          synthetic_parent_grid(root/"SYNTHETIC_es3k_grid.nc")
+          synthetic_parent_history(root/"SYNTHETIC_es3k_history.nc")
+          child_grid(root/"SYNTHETIC_small_ud1k_grid.nc")
+          PY
+          python ROMS_Nesting/Data_pre/nesting/ud1k_parent_history_contract.py \
+            --parent-grid "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_es3k_grid.nc" \
+            --history "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_es3k_history.nc" \
+            --report "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_parent_history_contract.json"
+          python ROMS_Nesting/Data_pre/nesting/ud1k_bry_schema_contract.py \
+            --child-grid "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_small_ud1k_grid.nc" \
+            --output "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_ONLY_ud1k_bry.nc" \
+            --report "$RUNNER_TEMP/ud1k_synthetic_contract/SYNTHETIC_only_bry_schema.json" \
+            --synthetic-fixture-only
+          python - <<'PY'
+          from pathlib import Path
+          import json,os
+          root=Path(os.environ["RUNNER_TEMP"])/"ud1k_synthetic_contract"
+          history=json.loads((root/"SYNTHETIC_parent_history_contract.json").read_text())
+          output=json.loads((root/"SYNTHETIC_only_bry_schema.json").read_text())
+          assert history["full_wet_values_scanned"] is True
+          assert set(history["wet_field_checks"])=={"zeta","temp","salt","u","v","ubar","vbar"}
+          assert history["physical_roms_bry_nc_and_hydrodynamics"]=="NOT_RUN"
+          assert output["complete_field_variables"]==28 and output["status"]=="SYNTHETIC_SCHEMA_TEST_ONLY"
+          assert output["real_one_way_open_boundary_physics"]=="NOT_RUN"
+          print("UD1K_HISTORY_BRY_SYNTHETIC_CONTRACT_PASS",
+                json.dumps({"fields":len(history["wet_field_checks"]),
+                            "boundary_variables":output["complete_field_variables"],
+                            "real_ES3K_history":"NOT_AVAILABLE"},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ud1k-synthetic-only-parent-history-and-bry-schema-fixture
+          path: ${{ runner.temp }}/ud1k_synthetic_contract
+          retention-days: 14
