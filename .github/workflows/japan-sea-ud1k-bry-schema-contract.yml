@@ -20,6 +20,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_dynamic_section.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_cf_time_bridge.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_cf_time_and_source_face_support.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_end_to_end_synthetic_parent.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_parent_smoke.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -51,6 +53,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_dynamic_section.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_cf_time_bridge.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_cf_time_and_source_face_support.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_optionb_end_to_end_synthetic_parent.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_optionb_synthetic_parent_smoke.py'
       - 'ROMS_Nesting/Data_pre/core/era5_action_credentials.py'
       - 'ROMS_Nesting/Data_pre/impl/preprocessing/download_era5_staged.py'
       - 'ROMS_Nesting/Data_pre/tests/test_era5_action_credentials.py'
@@ -90,6 +94,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_real_optionb_manifest_contract.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_optionb_synthetic_dynamic_section.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_cf_time_and_source_face_support.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_optionb_synthetic_parent_smoke.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_era5_action_credentials.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_micro_preflight.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_japan_sea_forcing_converter_micro.py' -v
@@ -195,7 +200,9 @@ jobs:
     # manifest and 3-time × 41-layer synthetic flux over real metrics.
     # Run manually only: avoids archived 30-day artifact expiration causing
     # routine PR failures. No real ES3K parent history or new bathymetry.
-    if: github.event_name == 'workflow_dispatch'
+    # One-time real manifest interop certification via pull_request;
+    # restore workflow_dispatch ONLY after it passes (artifact expires).
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     timeout-minutes: 8
     steps:
@@ -252,6 +259,32 @@ jobs:
           assert x["parent_to_child_mass_conservation"]=="NOT_RUN"
           assert x["real_ocean_physics"]=="NOT_RUN"
           PY
+      - name: End-to-end REAL Option B donor maps, synthetic full ES3K C-grid/history, actual four-side BRY write
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/optionb_synthetic_source_to_bry"
+          python ROMS_Nesting/Data_pre/nesting/ud1k_optionb_end_to_end_synthetic_parent.py \
+            --child-grid "$RUNNER_TEMP/real-static-optionb/UD1K_CONNECTED_CORE_SHORELINE_CLEAR_COMPARISON_CANDIDATE.nc" \
+            --rho-map "$RUNNER_TEMP/real-static-optionb/ud1k_core_shoreline_clear_1011_rho_map.json" \
+            --native-uv-map "$RUNNER_TEMP/real-static-optionb/ud1k_core_shoreline_clear_native_uv_boundary_map.json" \
+            --output-dir "$RUNNER_TEMP/optionb_synthetic_source_to_bry"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ["RUNNER_TEMP"])/"optionb_synthetic_source_to_bry"/"REAL_OPTIONB_SYNTHETIC_PARENT_TO_BRY_SMOKE_REPORT.json"
+          x=json.loads(p.read_text())
+          assert x["status"]=="REAL_OPTIONB_DONORS_FULL_SYNTHETIC_SOURCE_TO_BRY_PASS"
+          assert x["rho_u_v_receiver_counts"]=={"rho":1011,"u":1005,"v":1010}
+          assert x["normal_face_time_samples"]==2024
+          assert x["complete_bry_field_variables"]==28
+          assert x["CF_target_MJD_to_source_seconds"]=="PASS"
+          assert x["parent_grid_status"].startswith("FICTIONAL_ALL_WET")
+          assert x["source_donor_certified_parent_mask_independent_recheck"]=="NOT_RUN_ON_ACTUAL_PARENT"
+          assert x["true_parent_child_transport_conservation"]=="NOT_RUN"
+          assert x["real_ES3K_and_UD1K_ocean_integrations"]=="NOT_RUN"
+          print("OPTION_B_REAL_STENCIL_SYNTHETIC_PARENT_2TIMES_28BRY_PASS")
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -259,6 +292,7 @@ jobs:
           path: |
             ${{ runner.temp }}/UD1K_REAL_OPTIONB_STATIC_DONORS_ONLY.json
             ${{ runner.temp }}/UD1K_REAL_OPTIONB_SYNTHETIC_TIME_SHEAR_41LEVEL.json
+            ${{ runner.temp }}/optionb_synthetic_source_to_bry/REAL_OPTIONB_SYNTHETIC_PARENT_TO_BRY_SMOKE_REPORT.json
           retention-days: 7
 
   real-candidate-b-geometry-synthetic-bry-schema:
