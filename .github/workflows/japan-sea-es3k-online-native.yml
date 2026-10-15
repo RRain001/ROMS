@@ -24,6 +24,8 @@ on:
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_wet_connected_triangle_review.py'
       - 'ROMS_Nesting/Data_pre/nesting/ud1k_coastal_waterpath_fallback.py'
       - 'ROMS_Nesting/Data_pre/tests/test_ud1k_coastal_waterpath_fallback.py'
+      - 'ROMS_Nesting/Data_pre/nesting/ud1k_boundary_rho_fallback_map.py'
+      - 'ROMS_Nesting/Data_pre/tests/test_ud1k_boundary_rho_fallback_map.py'
       - 'ROMS_Nesting/configs/ud1k_kim2020_table1_trial.json'
       - 'ROMS_Nesting/configs/ud1k_user_20261014_frozen.json'
       - 'ROMS_Nesting/Data_pre/tests/test_es3k_wet_domain_audit.py'
@@ -55,6 +57,7 @@ jobs:
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_wet_triangle_review.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_wet_connected_triangle_review.py' -v
           python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_coastal_waterpath_fallback.py' -v
+          python -m unittest discover -s ROMS_Nesting/Data_pre/tests -p 'test_ud1k_boundary_rho_fallback_map.py' -v
           python -m py_compile \
             ROMS_Nesting/Data_pre/nesting/ud1k_wet_triangle_review.py \
             ROMS_Nesting/Data_pre/scripts/nesting/review_ud1k_wet_triangles.py
@@ -341,6 +344,39 @@ jobs:
           assert d["physical_validation"]=="NOT_RUN" and d["source_masks_modified"] is False
           print("UD1K_20_COAST_VISIBLE_FALLBACK_RESULTS",json.dumps(d["status_counts"],sort_keys=True))
           PY
+      - name: Compose all 27 conservative-vs-extrapolated RHO stencils and verify numeric fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ROMS_Nesting/Data_pre/nesting/ud1k_boundary_rho_fallback_map.py \
+            --parent-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc" \
+            --child-grid "$RUNNER_TEMP/ES3K_REAL_SOURCE/UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc" \
+            --preflight-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/real_es3k_ud1k_preflight.json" \
+            --strict-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_current_27_coastal_triangle_review.json" \
+            --connected-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_current_remaining_22_connected_3x3_review.json" \
+            --visible-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_current_20_coast_visible_bounded_fallback.json" \
+            --output-json "$RUNNER_TEMP/ES3K_REAL_SOURCE/ud1k_27_rho_wet_boundary_stencil_manifest.json"
+          python - <<'PY'
+          from pathlib import Path
+          import os,json
+          p=Path(os.environ["RUNNER_TEMP"])/"ES3K_REAL_SOURCE"/"ud1k_27_rho_wet_boundary_stencil_manifest.json"
+          z=json.loads(p.read_text())
+          assert z["now_with_coast_visible_wet_donors"]==27
+          assert z["all_weights_nonnegative_sum1"] and z["all_parent_nodes_wet"]
+          assert z["numeric_probe"]["all_27_parent_h_samples_finite"]
+          assert z["physical_validation"]=="NOT_RUN"
+          print("UD1K_27_COMPLETE_STATIC_RHO_BOUNDED_STENCIL_MANIFEST",json.dumps(z["counts_by_method"],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ud1k-27-wet-boundary-mapping-small-json
+          path: |
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_27_rho_wet_boundary_stencil_manifest.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_20_coast_visible_bounded_fallback.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_27_rho_wet_boundary_stencil_manifest.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_27_coastal_triangle_review.json
+            ${{ runner.temp }}/ES3K_REAL_SOURCE/ud1k_current_remaining_22_connected_3x3_review.json
+          retention-days: 30
       - uses: actions/upload-artifact@v4
         if: always()
         with:
