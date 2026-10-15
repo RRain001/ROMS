@@ -50,8 +50,8 @@ class RejectionAndCompletenessTests(unittest.TestCase):
                 self.wet,kind,(4,5))
 
     def test_perimeter_matches_unique_native_wet_faces(self):
-        self.assertEqual(self.admit()["verified_native_wet_receiver_count"],8)
-        self.assertEqual(self.admit("v")["verified_native_wet_receiver_count"],8)
+        self.assertEqual(self.admit()["verified_native_wet_receiver_count"],9)
+        self.assertEqual(self.admit("v")["verified_native_wet_receiver_count"],9)
 
     def test_missing_wet_receiver_refused(self):
         with self.assertRaisesRegex(ValueError,"wrong donor row count"):
