@@ -19,7 +19,9 @@ class CgridRhoVectorAudit(unittest.TestCase):
         self.rec=[{"child_eta_rho_zero_based":1,
                    "child_xi_rho_zero_based":2,
                    "donor_eta_xi_zero_based":[[2,2],[2,3]],
-                   "weights":[.25,.75]}]
+                   "weights":[.25,.75],
+                   "coastline_visible":True,
+                   "method":"SYNTHETIC_WET_RHO_SOURCE"}]
 
     def calc(self):
         return rotate_parent_to_child_rho(self.u,self.v,self.wet,self.ang,
