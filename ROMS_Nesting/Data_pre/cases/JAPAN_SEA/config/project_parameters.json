@@ -202,7 +202,7 @@
     "active_grid": "input/ES3K_JAPAN_SEA_TEST_ACTIVE.nc"
   },
   "run": {
-    "ntile_i": 2,
-    "ntile_j": 2
+    "ntile_i": 7,
+    "ntile_j": 8
   }
 }
