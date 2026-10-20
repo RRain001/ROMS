@@ -98,6 +98,27 @@ MIGRATION_OK
 3. `run/`、`logs/`、`bin/`、`build/` 继续留在 SSD（体积小、读写频繁）。
 4. 迁移或清理前，确认没有运行中的 ROMS 进程持有目标文件句柄。
 
+### 其他案例（2026-10-20 一并迁移）
+
+同一约定套用到 `/home/lhy/ROMS/projects/` 下的其余案例。脚本：`/tmp/migrate_case.sh`
+（`migrate_case.sh <CASE_DIR> <HDD_BASE> <SUBDIR>...`），流程与 JAPAN_SEA 完全相同：
+rsync → 逐文件比对（相对路径 + 大小）→ 一致后才删 SSD 副本 → 建符号链接。
+
+| 案例 | 迁移的目录 | 校验结果 | 机械盘占用 |
+|---|---|---|---|
+| FDNPP | data, input, output, archive | input 28 / output 23 / archive 13 文件 | 27 G |
+| LAHAGUE | data, input, output, archive | input 20 / output 27 / archive 108 文件 | 21 G |
+| WOLSONG | data, input, output | data / input 21 / output 35 文件 | 21 G |
+| WOLSONG_H3_4000BQL | input, output | input 2 / output 0 文件 | 284 K |
+| JAPAN_SEA | data, input, output | data 6 / input 6 / output 12 文件 | 97 G |
+
+`archive/` 一并迁移，因为它符合"大且冷"的判据（FDNPP 8.1 G、LAHAGUE 3.9 G），
+且不属于运行期读写路径。若后续需要把 `archive/` 放回 SSD，删掉符号链接、
+把目录拷回原处即可，无其它依赖。
+
+**全局效果**：SSD 可用空间 525 G → **661 G**（使用率 42% → 26%）；
+机械盘 `/workspace` 65% → 70%，`/workspace/roms_cases/` 合计 166 G。
+
 ## 三、对第二阶段验收的影响（需注意）
 
 此前完成的 Phase 2 关卡（Debug smoke、Debug external_startup、Release external_1h、Release external_6h）
