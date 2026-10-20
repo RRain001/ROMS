@@ -14,7 +14,7 @@
 | gate2_startup | external_startup（5 步） | Debug | **0** | 111.08 s | `PASS_WITH_EVIDENCE`（输出元数据 `NOT_ASSESSED`） |
 | gate3_1h | external_1h（360 步） | Release | **0** | 537.90 s | `PASS_WITH_EVIDENCE` |
 | gate4_6h | external_6h（2160 步） | Release | **0** | 3225.46 s | `PASS_WITH_EVIDENCE` |
-| gate5_24h | external_24h（8640 步） | Release | — | — | **`NOT_RUN`**（待复审就分解变更作出裁定后决定） |
+| gate5_24h | external_24h（8640 步） | Release | **0** | **13,147.37 s** | `PASS_WITH_EVIDENCE`（见 `japan_sea_es3k_phase2_24h_20261020.md`） |
 
 四关均按顺序执行，脚本在任一关非零退出时立即中止后续关卡；本轮四关全部退出码 0。
 
