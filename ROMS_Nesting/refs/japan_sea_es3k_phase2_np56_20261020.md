@@ -115,8 +115,13 @@ projects/JAPAN_SEA/logs/phase2/np56/gate2_startup/     {同上}
 projects/JAPAN_SEA/logs/phase2/np56/gate3_1h/          {同上, analysis.json}
 projects/JAPAN_SEA/logs/phase2/np56/gate4_6h/          {同上, analysis.json}
 projects/JAPAN_SEA/logs/phase2/np56/smoke.analysis.json
-projects/JAPAN_SEA/output/                             np=56 的 his/avg/dia/rst
-projects/JAPAN_SEA/output/np4_baseline/                np=4 的原始结果（保留未删）
+projects/JAPAN_SEA/output/                             np=56 的 his/avg/dia/rst（33 G）
 ```
 
 （`projects/` 受 `.gitignore` 约束，以上为运行证据，不入库；本文件与 `refs/` 下的记录入库。）
+
+> **2026-10-20 更新**：np=4 的原始结果目录 `output/np4_baseline/`（95 G）已按用户指示清理删除。
+> 第四节"逐位一致"的结论不依赖那些文件 —— 它比对的是 np=4 与 np=56 的 **ROMS 时间步日志**
+> （`logs/phase2/gate3_1h/roms.log`、`logs/phase2/gate4_6h/roms.log` 与
+> `logs/phase2/np56/gate3_1h/roms.log`、`logs/phase2/np56/gate4_6h/roms.log`），这些日志均已保留。
+> np=4 的 NetCDF 结果文件不再存在，若需字段级比对须重跑。
