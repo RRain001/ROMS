@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import json
 import math
+import os
 from pathlib import Path
 from typing import Iterable
 
@@ -224,6 +225,14 @@ def resolve_grid_path(
         if not grid_path.exists():
             raise SystemExit(f"grid file not found: {grid_path}")
         return grid_path
+    configured = load_project_params().get("paths", {}).get("active_grid")
+    if configured:
+        active = Path(os.path.expandvars(os.path.expanduser(str(configured))))
+        active = active if active.is_absolute() else ROOT / active
+        active = active.resolve()
+        if not active.is_file():
+            raise SystemExit(f"configured active grid not found: {active}")
+        return active
     if prefer_smoothed and DEFAULT_MASKCLEAN_SMOOTHED_GRID.exists():
         return DEFAULT_MASKCLEAN_SMOOTHED_GRID
     if prefer_smoothed and DEFAULT_SMOOTHED_GRID.exists():

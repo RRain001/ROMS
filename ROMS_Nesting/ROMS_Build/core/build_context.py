@@ -4,13 +4,16 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +24,7 @@ DATA_PRE_CORE = WORKSPACE_ROOT / "Data_pre" / "core"
 if str(DATA_PRE_CORE) not in sys.path:
     sys.path.insert(0, str(DATA_PRE_CORE))
 
-from case_context import export_case_context, resolve_case_context  # type: ignore  # noqa: E402
+from case_context import export_case_context, init_nesting_root, resolve_case_context  # type: ignore  # noqa: E402
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -154,6 +157,7 @@ def resolve_build_context(
     config_path: str | Path | None = None,
     variant: str | None = None,
 ) -> BuildContext:
+    init_nesting_root()
     case_context = resolve_case_context(case_name=case_name, case_root=case_root)
     export_case_context(case_context)
     project_params = _load_json(case_context.config_dir / "project_parameters.json")
@@ -230,7 +234,6 @@ def ensure_case_layout(context: BuildContext) -> None:
 def build_environment(context: BuildContext) -> dict[str, str]:
     compiler = context.compiler
     env = dict(os.environ)
-    env["HOME"] = str(context.paths.build_root)
     env["TMPDIR"] = str(context.paths.build_root)
     env["TMP"] = str(context.paths.build_root)
     env["TEMP"] = str(context.paths.build_root)
@@ -274,7 +277,7 @@ def shell_prelude(context: BuildContext) -> list[str]:
         lines.append(f'if [ -f {shlex.quote(str(context.oneapi_setvars))} ]; then source {shlex.quote(str(context.oneapi_setvars))} --force >/dev/null; fi')
     if context.my_local_paths is not None:
         lines.append(f'if [ -f {shlex.quote(str(context.my_local_paths))} ]; then source {shlex.quote(str(context.my_local_paths))}; fi')
-    else:
+    elif context.build_config.get("use_legacy_library_paths", True):
         fallback = context.compilers_dir / "my_build_paths.sh"
         lines.append(
             f'if [ -f {shlex.quote(str(fallback))} ]; then source {shlex.quote(str(fallback))} {shlex.quote(str(fallback))}; fi'
@@ -299,9 +302,19 @@ def execute_build(context: BuildContext, *, clean: bool, jobs: int | None = None
     make_cmd = "make"
     if effective_jobs and effective_jobs > 0:
         make_cmd = f"make -j {effective_jobs}"
+    # Case/platform overrides, without patching the frozen ROMS makefiles.
+    variables = {"MAKE_MACROS": str(context.paths.build_root / "make_macros.mk"),
+                 **context.build.get("make_variables", {})}
+    assignments = ""
+    for key, value in variables.items():
+        if not key.replace("_", "").isalnum():
+            raise ValueError(f"invalid make variable: {key}")
+        expanded = os.path.expandvars(os.path.expanduser(str(value)))
+        assignments += " " + shlex.quote(f"{key}={expanded}")
+    make_cmd += assignments
     script_lines = ["set -euo pipefail", *shell_prelude(context), f"cd {shlex.quote(str(context.roms_src))}"]
     if clean:
-        script_lines.append("make clean")
+        script_lines.append("make clean" + assignments)
     script_lines.append(make_cmd)
     script = "\n".join(script_lines)
     if dry_run:
@@ -309,11 +322,95 @@ def execute_build(context: BuildContext, *, clean: bool, jobs: int | None = None
         return 0
     result = subprocess.run(["bash", "-lc", script], env=build_environment(context), text=True)
     if result.returncode == 0:
-        actual_binary = context.paths.bin_dir / "romsM"
+        actual_binary = context.paths.bin_dir / ("romsG" if context.compiler.get("use_debug") else "romsM")
         if actual_binary.exists() and actual_binary != context.expected_binary:
             shutil.copy2(actual_binary, context.expected_binary)
             context.expected_binary.chmod(actual_binary.stat().st_mode)
+        if not context.expected_binary.is_file():
+            raise RuntimeError(f"make succeeded but expected executable is missing: {context.expected_binary}")
+        write_build_provenance(context, script)
     return result.returncode
+
+
+def _sha256(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _git_head(source_root: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(source_root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    head = (result.stdout or "").strip()
+    return head or None
+
+
+def write_build_provenance(context: BuildContext, build_command: str) -> Path:
+    """Record what this build actually produced.
+
+    One uniquely named file per build, so a stale snapshot can never be read as
+    evidence for the current artifact.  Everything here is measured from the
+    build that just ran -- nothing is copied from the configuration alone.
+    """
+    provenance_dir = context.case_root / "logs" / "build_provenance"
+    provenance_dir.mkdir(parents=True, exist_ok=True)
+
+    checkdefs = context.paths.build_dir / "checkdefs.f90"
+    strings = context.paths.build_dir / "mod_strings.f90"
+    fflags = None
+    if strings.is_file():
+        match = re.search(r'my_fflags\s*=\s*"([^"]*)"', strings.read_text(errors="ignore"))
+        fflags = match.group(1) if match else None
+    compiled_options: list[str] = []
+    if checkdefs.is_file():
+        compiled_options = sorted(set(re.findall(r"Coptions[^=]*='\s*([A-Z_0-9]+),", checkdefs.read_text(errors="ignore"))))
+
+    use_debug = bool(context.compiler.get("use_debug", False))
+    now = datetime.now(timezone.utc)
+    stamp = now.strftime("%Y%m%dT%H%M%S%fZ")
+    record = {
+        "generated_utc": now.isoformat(),
+        "case": context.case_name,
+        "build_kind": "debug" if use_debug else "release",
+        "use_debug": use_debug,
+        "use_parallel_io": bool(context.compiler.get("use_parallel_io", False)),
+        "use_netcdf4": bool(context.compiler.get("use_netcdf4", False)),
+        "io_policy": context.build_config.get("io_policy"),
+        "git_head": _git_head(context.roms_src),
+        "build_config": str(context.build_config_path),
+        "build_config_sha256": _sha256(context.build_config_path),
+        "roms_src": str(context.roms_src),
+        "header": str(context.variant.header_path),
+        "header_sha256": _sha256(context.variant.header_path),
+        "compiler": dict(context.compiler),
+        "fflags": fflags,
+        "compiled_options": compiled_options,
+        "binary": str(context.expected_binary),
+        "binary_bytes": context.expected_binary.stat().st_size if context.expected_binary.is_file() else None,
+        "binary_sha256": _sha256(context.expected_binary),
+        "build_directory": str(context.paths.build_dir),
+        "build_command": build_command,
+    }
+    path = provenance_dir / f"{stamp}_{context.build_config_path.stem}_{context.variant.name}.json"
+    suffix = 0
+    while path.exists():
+        suffix += 1
+        path = provenance_dir / (
+            f"{stamp}_{context.build_config_path.stem}_{context.variant.name}.{suffix}.json"
+        )
+    path.write_text(json.dumps(record, indent=2) + "\n")
+    return path
 
 
 def clean_build_tree(context: BuildContext) -> None:

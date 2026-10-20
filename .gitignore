@@ -5,3 +5,8 @@ __pycache__/
 *.py[cod]
 .DS_Store
 .omo/
+# Never commit ERA5 / CDS API credentials or local auth files.
+credentials/
+.cdsapirc
+**/.cdsapirc
+*.cds_credentials

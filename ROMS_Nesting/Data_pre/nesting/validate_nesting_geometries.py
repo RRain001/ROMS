@@ -13,7 +13,7 @@ import json
 import numpy as np
 from netCDF4 import Dataset
 from pyproj import CRS,Transformer
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point
 from scipy.spatial import cKDTree
 
 
@@ -57,6 +57,56 @@ def _rim(arr: np.ndarray, n: int=0) -> np.ndarray:
 def _xy(xform: Transformer, lon, lat) -> np.ndarray:
     xx,yy=xform.transform(lon,lat)
     return np.column_stack((xx,yy))
+
+
+
+def _full_wet_quad_coverage(parent_xy: np.ndarray, parent_wet: np.ndarray,
+                            child_boundary_xy: np.ndarray) -> np.ndarray:
+    """Read-only preflight for all-wet parent RHO quads that contain targets.
+
+    Unlike a fixed k-nearest centroid search, the query radius bounds
+    *every point* in *every* eligible quadrilateral. Therefore a distant
+    centroid of a warped but valid cell cannot create a false uncovered
+    child-boundary point. This tests geometry and wet vertices only; it
+    does not verify shoreline intersection, a ROMS interpolation kernel,
+    staggered velocities, or conservative physical boundary fluxes.
+    """
+    xy = np.asarray(parent_xy, dtype=np.float64)
+    wet = np.asarray(parent_wet, dtype=bool)
+    targets = np.asarray(child_boundary_xy, dtype=np.float64)
+    if (xy.ndim != 3 or xy.shape[2] != 2 or xy.shape[:2] != wet.shape
+            or min(wet.shape) < 2 or targets.ndim != 2 or targets.shape[1] != 2
+            or not np.isfinite(xy).all() or not np.isfinite(targets).all()):
+        raise ValueError("invalid parent wet quad stencil geometry")
+    eligible = (wet[:-1, :-1] & wet[:-1, 1:]
+                & wet[1:, :-1] & wet[1:, 1:])
+    quads = np.argwhere(eligible)
+    covered = np.zeros(len(targets), dtype=bool)
+    if not len(quads) or not len(targets):
+        return covered
+
+    # One spatial index query contains every polygon that could include a
+    # receiver point: each entire quad lies inside the ball around its
+    # vertex centroid with radius = max distance to any of its vertices.
+    # Taking the maximum radius over eligible quads guarantees inclusion
+    # even for strongly nonuniform but still valid parent geometry.
+    j, i = quads[:, 0], quads[:, 1]
+    corners = np.stack((xy[j, i], xy[j, i + 1],
+                        xy[j + 1, i + 1], xy[j + 1, i]), axis=1)
+    centers = corners.mean(axis=1)
+    radius = float(np.max(np.linalg.norm(
+        corners - centers[:, None, :], axis=2)))
+    candidate_ids = cKDTree(centers).query_ball_point(
+        targets, r=np.nextafter(radius, np.inf))
+    for n, (position, ids) in enumerate(zip(targets, candidate_ids)):
+        point = Point(float(position[0]), float(position[1]))
+        for quad_id in ids:
+            polygon = Polygon(corners[int(quad_id)])
+            if polygon.is_valid and polygon.area > 0 and polygon.covers(point):
+                covered[n] = True
+                break
+    return covered
+
 
 
 def check_pair(parent_grid: Path, child_grid: Path, *,
@@ -119,6 +169,41 @@ def check_pair(parent_grid: Path, child_grid: Path, *,
     distance=np.asarray(distance)
     max_gap=float(np.max(distance))
     wet_coverage=bool(np.all(distance<=wet_parent_search_cells*pcell))
+    parent_xy = _xy(tr, p["lon_rho"].ravel(), p["lat_rho"].ravel()).reshape(
+        (*wet_parent.shape, 2))
+    full_quad = _full_wet_quad_coverage(parent_xy, wet_parent, cwet)
+    # The row-major RHO mask and geographic boundary positions share
+    # the same flattened ordering. Keep zero-based (eta, xi) for reproducible
+    # coastline review, and count logical sides separately (corners overlap).
+    uncovered_ij = np.argwhere(wet_boundary)[~full_quad]
+    ny, nx = wet_boundary.shape
+    uncovered_by_side = {
+        "south": int(np.count_nonzero(uncovered_ij[:, 0] == 0)),
+        "north": int(np.count_nonzero(uncovered_ij[:, 0] == ny - 1)),
+        "west": int(np.count_nonzero(uncovered_ij[:, 1] == 0)),
+        "east": int(np.count_nonzero(uncovered_ij[:, 1] == nx - 1)),
+    }
+    sample_limit = 256
+    stencil_diagnostic = {
+        "method": "EXHAUSTIVE_RADIUS_BOUNDED_ALL_WET_RHO_QUAD_CONTAINS_CHILD_POINT",
+        "search_completeness": "NO_FIXED_NEAREST_K_CENTROID_TRUNCATION",
+        "child_wet_boundary_rho_points": int(len(full_quad)),
+        "with_full_wet_parent_rho_quad": int(full_quad.sum()),
+        "without_full_wet_parent_rho_quad": int((~full_quad).sum()),
+        "fraction_with_full_wet_quad": float(full_quad.mean()),
+        "uncovered_by_logical_side_corner_counts_overlap": uncovered_by_side,
+        "uncovered_sample_limit": sample_limit,
+        "uncovered_sample_ij_lonlat": [
+            {"eta_rho_zero_based": int(j), "xi_rho_zero_based": int(i),
+             "lon": float(c["lon_rho"][j, i]),
+             "lat": float(c["lat_rho"][j, i])}
+            for j, i in uncovered_ij[:sample_limit]
+        ],
+        "disposition": ("FULL_WET_RHO_QUAD_DIAGNOSTIC_ONLY"
+                        if full_quad.all() else
+                        "COASTAL_STENCIL_REVIEW_REQUIRED_NOT_A_PHYSICS_FAILURE"),
+        "physical_velocity_rotation_vertical_remap_and_flux": "NOT_RUN",
+    }
     return {
         "status":"PASS_PRELIMINARY_ONLY" if wet_coverage else "FAIL",
         "parent_grid_id":p["id"],"child_grid_id":c["id"],
@@ -127,6 +212,7 @@ def check_pair(parent_grid: Path, child_grid: Path, *,
         "buffered_parent_boundary_gap_min_m":gap,
         "wet_boundary_points_checked":int(wet_boundary.sum()),
         "farthest_nearest_parent_wet_m":max_gap,
+        "full_wet_parent_quad_stencil":stencil_diagnostic,
         "wet_parent_search_cells":wet_parent_search_cells,
         "parent_nominal_cell_m":pcell,
         "child_nominal_cell_m":ccell,

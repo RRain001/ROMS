@@ -59,8 +59,8 @@
     "smagorinsky_coefficient": 0.2,
     "uv_smagorinsky": true,
     "ts_smagorinsky": true,
-    "akv_bak_m2_s": 0.00001,
-    "akt_bak_m2_s": 0.000001,
+    "akv_bak_m2_s": 1e-05,
+    "akt_bak_m2_s": 1e-06,
     "tnu2_m2_s": 10,
     "visc2_m2_s": 10
   },
@@ -198,6 +198,11 @@
     "global_bathymetry": "/workspace/GEBCO/GEBCO_2026.nc",
     "input_dir": "input",
     "output_dir": "output",
-    "logs_dir": "logs"
+    "logs_dir": "logs",
+    "active_grid": "input/ES3K_JAPAN_SEA_TEST_ACTIVE.nc"
+  },
+  "run": {
+    "ntile_i": 7,
+    "ntile_j": 8
   }
 }

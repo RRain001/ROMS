@@ -1,0 +1,27 @@
+{
+  "grid_id": "UD1K",
+  "geometry_status": "CANDIDATE_APPROXIMATE",
+  "geometry_type": "axis_aligned_lonlat_angular",
+  "lon_min": 127.5,
+  "lon_max": 134,
+  "lat_min": 35.5,
+  "lat_max": 39,
+  "nominal_resolution_deg": 0.009259259259259259,
+  "nominal_resolution_fraction": "1/108 deg",
+  "angular_boundary_policy": "PRESERVE_EXACT_USER_BOUNDS_NOMINAL_ANGULAR",
+  "max_nominal_spacing_deviation_fraction": 0.000001,
+  "max_rho_points": 500000,
+  "expected_rho_shape_eta_xi": [
+    379,
+    703
+  ],
+  "expected_xi_intervals": 702,
+  "expected_eta_intervals": 378,
+  "reference": "Daehyuk Kim et al. (2020), Simulation of the Ocean Circulation Around Ulleungdo and Dokdo Using a Numerical Model of High-Resolution Nested Grid, Journal of Korean Society of Coastal and Ocean Engineers 32(6):587-601, DOI:10.9765/KSCOE.2020.32.6.587, Table 1 (paper page 589)",
+  "citation_url": "https://doi.org/10.9765/KSCOE.2020.32.6.587",
+  "paper_domain_metadata": "WEST127.5_EAST134_SOUTH35.5_NORTH39.0_FROM_TABLE_1",
+  "comparison_only": true,
+  "approval": "REFERENCE_DOMAIN_TEST_ONLY_NOT_USER_REPLACEMENT",
+  "physical_validation": "NOT_RUN",
+  "real_data_bathymetry_shoreline": "GEBCO_2026_GSHHG_2_3_7_NATIVE15S"
+}

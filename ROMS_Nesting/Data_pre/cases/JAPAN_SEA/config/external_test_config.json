@@ -1,0 +1,39 @@
+{
+  "purpose": "ES3K_LOCAL_EXTERNAL_FORCING_TEST_ONLY_NOT_PRODUCTION",
+  "test_start": "2018-01-02T00:00:00",
+  "test_stop": "2018-01-03T00:00:00",
+  "dt_seconds": 10,
+  "header_template": "japan_sea.h",
+  "modes": [
+    "smoke",
+    "external_startup",
+    "external_1h",
+    "external_6h",
+    "external_24h"
+  ],
+  "grid": {
+    "archive": "https://github.com/RRain001/ROMS/actions/runs/38680030642",
+    "artifact_id": 11948485417,
+    "artifact_name": "es3k-real-public-gebco2026-native15s-gshhg237",
+    "source_name": "ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc",
+    "source_sha256": "df7fd493e81a379e791a6c858836f2410a1c3809d0571d03dce597379274fa18",
+    "rho_shape": [
+      732,
+      464
+    ],
+    "wet_rho_points": 193920,
+    "max_rx0": 0.35,
+    "max_rx1": 8.0,
+    "max_orthogonality_deg": 1.0
+  },
+  "forcing_paths": {
+    "ini": "../input/roms_ini_japan_sea_es3k_test_glorys12v1_20180102.nc",
+    "bry": "../input/roms_bdy_japan_sea_es3k_test_glorys12v1_20180102_20180103.nc",
+    "atm": "../input/roms_atm_japan_sea_es3k_test_20180102_20180103.nc",
+    "rad": "../input/roms_rad_japan_sea_es3k_test_20180102_20180103.nc",
+    "tides": "../input/roms_tides_japan_sea_es3k_test_20180102.nc"
+  },
+  "hydrodynamics_authorized_in_this_stage": false,
+  "production_year_selected": false,
+  "candidate_design_promoted": false
+}

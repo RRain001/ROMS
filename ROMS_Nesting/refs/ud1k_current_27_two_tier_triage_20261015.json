@@ -1,0 +1,425 @@
+{
+  "report": "CURRENT_USER_UD1K_27_REAL_TWO_TIER_COASTAL_TRIANGLE_TRIAGE",
+  "generated_from": "READ_ONLY_NATIVE_GITHUB_ACTIONS_REAL_DATA_ARTIFACTS_2026_10_15",
+  "base_initial_evidence": "ROMS_Nesting/refs/ud1k_kim2020_20261015_real_comparison_evidence.json",
+  "runs": [
+    {
+      "id": 38664676402,
+      "stage": "exactly three wet in one parent 2x2",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "id": 38665674215,
+      "stage": "graph connected 3x3 plus dry rho and GSHHG",
+      "conclusion": "SUCCESS"
+    }
+  ],
+  "sources": {
+    "parent": "ES3K_JAPAN_SEA_CORE_SMOOTHED_I3_CANDIDATE.nc",
+    "child": "UD1K_GEBCO2026_GSHHG237_I3_CANDIDATE.nc",
+    "bathymetry": "GEBCO2026 native 15-arcsecond",
+    "shoreline": "GSHHG 2.3.7 high Level1"
+  },
+  "counts": {
+    "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE": 11,
+    "TIER1_SAME_QUAD_3WET_CLEAR": 5,
+    "TIER2_CONNECTED_3X3_COASTLINE_CLEAR": 2,
+    "TIER2_GEOMETRY_EXISTS_REJECTED_LAND_OR_GSHHG": 9
+  },
+  "uncertainty": "20 remaining without accepted local triangles do NOT necessarily signify intrinsically unresolved waterways. 7 static geometry candidates do NOT signify hydrodynamically valid boundary conditions.",
+  "roMS_physics": "NOT_RUN",
+  "original_masks_modified": false,
+  "records": [
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 9,
+      "lon": 128.4488611111111,
+      "lat": 34.965472222222225,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 10,
+      "lon": 128.45812037037035,
+      "lat": 34.965472222222225,
+      "status": "TIER1_SAME_QUAD_3WET_CLEAR",
+      "donor_eta_xi_zero_based": [
+        [
+          45,
+          259
+        ],
+        [
+          45,
+          260
+        ],
+        [
+          46,
+          259
+        ]
+      ],
+      "weights": [
+        0.19673169626259773,
+        0.2476008547621636,
+        0.5556674489752387
+      ],
+      "maximum_donor_distance_m_rounded_0p01": 2661.92,
+      "coastline_check": "GSHHG_L1_NO_INTERSECTION_DETECTED",
+      "pass_type": "STATIC_CANDIDATE_NOT_ROMs_PHYSICS"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 11,
+      "lon": 128.46737962962962,
+      "lat": 34.965472222222225,
+      "status": "TIER2_CONNECTED_3X3_COASTLINE_CLEAR",
+      "donor_eta_xi_zero_based": [
+        [
+          45,
+          260
+        ],
+        [
+          45,
+          261
+        ],
+        [
+          46,
+          259
+        ]
+      ],
+      "weights": [
+        0.05399956199697547,
+        0.22154222943136337,
+        0.7244582085716611
+      ],
+      "maximum_donor_distance_m_rounded_0p01": 4509.9,
+      "coastline_check": "GSHHG_L1_NO_INTERSECTION_DETECTED",
+      "pass_type": "STATIC_CANDIDATE_NOT_ROMs_PHYSICS"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 12,
+      "lon": 128.47663888888889,
+      "lat": 34.965472222222225,
+      "status": "TIER2_GEOMETRY_EXISTS_REJECTED_LAND_OR_GSHHG",
+      "local_geometric_candidate_count": 15,
+      "graph_connected_candidate_count": 15,
+      "rejected_parent_dry_rho_inside_triangle_count": 12,
+      "rejected_GSHHG_coastline_intersection_count": 3
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 13,
+      "lon": 128.48589814814815,
+      "lat": 34.965472222222225,
+      "status": "TIER2_GEOMETRY_EXISTS_REJECTED_LAND_OR_GSHHG",
+      "local_geometric_candidate_count": 15,
+      "graph_connected_candidate_count": 10,
+      "rejected_parent_dry_rho_inside_triangle_count": 5,
+      "rejected_GSHHG_coastline_intersection_count": 5
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 14,
+      "lon": 128.4951574074074,
+      "lat": 34.965472222222225,
+      "status": "TIER2_GEOMETRY_EXISTS_REJECTED_LAND_OR_GSHHG",
+      "local_geometric_candidate_count": 16,
+      "graph_connected_candidate_count": 7,
+      "rejected_parent_dry_rho_inside_triangle_count": 5,
+      "rejected_GSHHG_coastline_intersection_count": 2
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 15,
+      "lon": 128.50441666666666,
+      "lat": 34.965472222222225,
+      "status": "TIER2_GEOMETRY_EXISTS_REJECTED_LAND_OR_GSHHG",
+      "local_geometric_candidate_count": 15,
+      "graph_connected_candidate_count": 1,
+      "rejected_parent_dry_rho_inside_triangle_count": 1,
+      "rejected_GSHHG_coastline_intersection_count": 0
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 19,
+      "lon": 128.5414537037037,
+      "lat": 34.965472222222225,
+      "status": "TIER2_GEOMETRY_EXISTS_REJECTED_LAND_OR_GSHHG",
+      "local_geometric_candidate_count": 14,
+      "graph_connected_candidate_count": 6,
+      "rejected_parent_dry_rho_inside_triangle_count": 0,
+      "rejected_GSHHG_coastline_intersection_count": 6
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 20,
+      "lon": 128.55071296296296,
+      "lat": 34.965472222222225,
+      "status": "TIER2_CONNECTED_3X3_COASTLINE_CLEAR",
+      "donor_eta_xi_zero_based": [
+        [
+          47,
+          262
+        ],
+        [
+          48,
+          261
+        ],
+        [
+          48,
+          260
+        ]
+      ],
+      "weights": [
+        0.7556808921516434,
+        0.2316358302358416,
+        0.012683277612514976
+      ],
+      "maximum_donor_distance_m_rounded_0p01": 5081.5,
+      "coastline_check": "GSHHG_L1_NO_INTERSECTION_DETECTED",
+      "pass_type": "STATIC_CANDIDATE_NOT_ROMs_PHYSICS"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 21,
+      "lon": 128.55997222222223,
+      "lat": 34.965472222222225,
+      "status": "TIER1_SAME_QUAD_3WET_CLEAR",
+      "donor_eta_xi_zero_based": [
+        [
+          47,
+          262
+        ],
+        [
+          48,
+          262
+        ],
+        [
+          48,
+          261
+        ]
+      ],
+      "weights": [
+        0.5867496205171238,
+        0.4058270960031992,
+        0.007423283479677023
+      ],
+      "maximum_donor_distance_m_rounded_0p01": 3187.01,
+      "coastline_check": "GSHHG_L1_NO_INTERSECTION_DETECTED",
+      "pass_type": "STATIC_CANDIDATE_NOT_ROMs_PHYSICS"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 25,
+      "lon": 128.59700925925927,
+      "lat": 34.965472222222225,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 27,
+      "lon": 128.61552777777777,
+      "lat": 34.965472222222225,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 28,
+      "lon": 128.62478703703704,
+      "lat": 34.965472222222225,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 30,
+      "lon": 128.64330555555554,
+      "lat": 34.965472222222225,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 38,
+      "lon": 128.71737962962962,
+      "lat": 34.965472222222225,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 40,
+      "lon": 128.73589814814815,
+      "lat": 34.965472222222225,
+      "status": "TIER2_GEOMETRY_EXISTS_REJECTED_LAND_OR_GSHHG",
+      "local_geometric_candidate_count": 3,
+      "graph_connected_candidate_count": 3,
+      "rejected_parent_dry_rho_inside_triangle_count": 0,
+      "rejected_GSHHG_coastline_intersection_count": 3
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 41,
+      "lon": 128.7451574074074,
+      "lat": 34.965472222222225,
+      "status": "TIER2_GEOMETRY_EXISTS_REJECTED_LAND_OR_GSHHG",
+      "local_geometric_candidate_count": 7,
+      "graph_connected_candidate_count": 7,
+      "rejected_parent_dry_rho_inside_triangle_count": 0,
+      "rejected_GSHHG_coastline_intersection_count": 7
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 42,
+      "lon": 128.75441666666666,
+      "lat": 34.965472222222225,
+      "status": "TIER1_SAME_QUAD_3WET_CLEAR",
+      "donor_eta_xi_zero_based": [
+        [
+          50,
+          268
+        ],
+        [
+          51,
+          268
+        ],
+        [
+          51,
+          267
+        ]
+      ],
+      "weights": [
+        0.03704858828152069,
+        0.19466336445651028,
+        0.7682880472619691
+      ],
+      "maximum_donor_distance_m_rounded_0p01": 3763.44,
+      "coastline_check": "GSHHG_L1_NO_INTERSECTION_DETECTED",
+      "pass_type": "STATIC_CANDIDATE_NOT_ROMs_PHYSICS"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 49,
+      "lon": 128.81923148148147,
+      "lat": 34.965472222222225,
+      "status": "TIER1_SAME_QUAD_3WET_CLEAR",
+      "donor_eta_xi_zero_based": [
+        [
+          52,
+          268
+        ],
+        [
+          52,
+          269
+        ],
+        [
+          53,
+          269
+        ]
+      ],
+      "weights": [
+        0.022228173216917575,
+        0.8305516557002953,
+        0.14722017108278707
+      ],
+      "maximum_donor_distance_m_rounded_0p01": 2855.46,
+      "coastline_check": "GSHHG_L1_NO_INTERSECTION_DETECTED",
+      "pass_type": "STATIC_CANDIDATE_NOT_ROMs_PHYSICS"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 407,
+      "lon": 132.13404629629628,
+      "lat": 34.965472222222225,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    },
+    {
+      "eta_rho_zero_based": 0,
+      "xi_rho_zero_based": 408,
+      "lon": 132.14330555555554,
+      "lat": 34.965472222222225,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    },
+    {
+      "eta_rho_zero_based": 23,
+      "xi_rho_zero_based": 437,
+      "lon": 132.41182407407408,
+      "lat": 35.17843518518519,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    },
+    {
+      "eta_rho_zero_based": 24,
+      "xi_rho_zero_based": 437,
+      "lon": 132.41182407407408,
+      "lat": 35.187694444444446,
+      "status": "TIER2_GEOMETRY_EXISTS_REJECTED_LAND_OR_GSHHG",
+      "local_geometric_candidate_count": 6,
+      "graph_connected_candidate_count": 6,
+      "rejected_parent_dry_rho_inside_triangle_count": 0,
+      "rejected_GSHHG_coastline_intersection_count": 6
+    },
+    {
+      "eta_rho_zero_based": 25,
+      "xi_rho_zero_based": 437,
+      "lon": 132.41182407407408,
+      "lat": 35.196953703703706,
+      "status": "TIER2_GEOMETRY_EXISTS_REJECTED_LAND_OR_GSHHG",
+      "local_geometric_candidate_count": 10,
+      "graph_connected_candidate_count": 10,
+      "rejected_parent_dry_rho_inside_triangle_count": 0,
+      "rejected_GSHHG_coastline_intersection_count": 10
+    },
+    {
+      "eta_rho_zero_based": 26,
+      "xi_rho_zero_based": 437,
+      "lon": 132.41182407407408,
+      "lat": 35.206212962962965,
+      "status": "TIER1_SAME_QUAD_3WET_CLEAR",
+      "donor_eta_xi_zero_based": [
+        [
+          124,
+          358
+        ],
+        [
+          125,
+          359
+        ],
+        [
+          125,
+          358
+        ]
+      ],
+      "weights": [
+        0.5442754711976622,
+        0.1862955949712095,
+        0.2694289338311283
+      ],
+      "maximum_donor_distance_m_rounded_0p01": 2723.67,
+      "coastline_check": "GSHHG_L1_NO_INTERSECTION_DETECTED",
+      "pass_type": "STATIC_CANDIDATE_NOT_ROMs_PHYSICS"
+    },
+    {
+      "eta_rho_zero_based": 289,
+      "xi_rho_zero_based": 74,
+      "lon": 129.05071296296296,
+      "lat": 37.64139814814815,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    },
+    {
+      "eta_rho_zero_based": 289,
+      "xi_rho_zero_based": 75,
+      "lon": 129.05997222222223,
+      "lat": 37.64139814814815,
+      "status": "TIER2_NO_ENCLOSING_LOCAL_CONNECTED_3X3_WET_TRIANGLE",
+      "note": "Does not prove source waterway unresolvable"
+    }
+  ],
+  "source_full_precision_note": "Donor barycentric weights are preserved from original artifact; max distances rounded to 0.01 m in this permanent condensed record."
+}
